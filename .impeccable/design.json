@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-07T00:00:00.000Z",
+  "title": "Design System: Clarus App",
+  "extensions": {
+    "colorMeta": {
+      "verified-mint": {
+        "role": "primary",
+        "displayName": "Verified Mint",
+        "canonical": "oklch(0.5940 0.1233 165.8415)",
+        "tonalRamp": [
+          "oklch(0.18 0.06 166)",
+          "oklch(0.28 0.08 166)",
+          "oklch(0.38 0.10 166)",
+          "oklch(0.48 0.11 166)",
+          "oklch(0.594 0.123 166)",
+          "oklch(0.68 0.14 166)",
+          "oklch(0.784 0.153 166)",
+          "oklch(0.92 0.08 166)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "oklch(0.9642 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.24 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.50 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.80 0 0)",
+          "oklch(0.90 0 0)",
+          "oklch(0.964 0 0)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.1591 0 0)",
+        "tonalRamp": [
+          "oklch(0.10 0 0)",
+          "oklch(0.159 0 0)",
+          "oklch(0.22 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.49 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.80 0 0)",
+          "oklch(0.92 0 0)"
+        ]
+      },
+      "nav-accent": {
+        "role": "secondary",
+        "displayName": "Nav Accent",
+        "canonical": "oklch(0.5677 0.1665 251.3134)",
+        "tonalRamp": [
+          "oklch(0.20 0.08 251)",
+          "oklch(0.30 0.10 251)",
+          "oklch(0.40 0.12 251)",
+          "oklch(0.50 0.14 251)",
+          "oklch(0.568 0.167 251)",
+          "oklch(0.65 0.16 251)",
+          "oklch(0.75 0.14 251)",
+          "oklch(0.88 0.08 251)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles in the app shell." },
+      "headline": { "displayName": "Headline", "purpose": "Section and panel headers." },
+      "body": { "displayName": "Body", "purpose": "Default UI copy; max 65–75ch in prose." },
+      "mono": { "displayName": "Mono", "purpose": "Code, IDs, technical labels via Fira Code." }
+    },
+    "shadows": [
+      {
+        "name": "shadow-sm",
+        "value": "0px 4px 16px 0px hsl(0 0% 0% / 0.08), 0px 1px 2px -1px hsl(0 0% 0% / 0.08)",
+        "purpose": "Dropdowns, popovers, floating panels."
+      },
+      {
+        "name": "shadow-md",
+        "value": "0px 4px 16px 0px hsl(0 0% 0% / 0.08), 0px 2px 4px -1px hsl(0 0% 0% / 0.08)",
+        "purpose": "Modals and dialogs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Default state transitions; no bounce."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call to action — one per view when possible.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Save changes</button>",
+      "css": ".ds-btn-primary { appearance: none; background: oklch(0.594 0.123 166); color: oklch(1 0 0); font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; line-height: 1.4; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { background: oklch(0.52 0.12 166); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.594 0.123 166); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary actions alongside a primary.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Cancel</button>",
+      "css": ".ds-btn-secondary { appearance: none; background: oklch(0.934 0 0); color: oklch(0.281 0 0); font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-secondary:hover { background: oklch(0.90 0 0); } .ds-btn-secondary:focus-visible { outline: 2px solid oklch(0.594 0.123 166); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary actions in toolbars and dense UI.",
+      "html": "<button class=\"ds-btn-ghost\" type=\"button\">View details</button>",
+      "css": ".ds-btn-ghost { appearance: none; background: transparent; color: oklch(0.159 0 0); font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-ghost:hover { background: oklch(0.982 0 0); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(0.594 0.123 166); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "description": "Default form field on Surface background.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search…\" aria-label=\"Search\" />",
+      "css": ".ds-input { display: block; width: 100%; max-width: 320px; background: oklch(1 0 0); color: oklch(0.159 0 0); font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; padding: 8px 12px; border: 1px solid oklch(0.861 0 0); border-radius: 8px; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: oklch(0.493 0 0); } .ds-input:focus { outline: none; border-color: oklch(0.594 0.123 166); box-shadow: 0 0 0 2px oklch(0.594 0.123 166 / 0.25); }"
+    },
+    {
+      "name": "App Nav Item",
+      "kind": "nav",
+      "description": "Sidebar navigation item — default and active.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main\"><a class=\"ds-nav-item ds-nav-item--active\" href=\"#\">Dashboard</a><a class=\"ds-nav-item\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; } .ds-nav-item { display: block; padding: 8px 12px; font-size: 0.8125rem; font-weight: 500; color: oklch(0.493 0 0); text-decoration: none; border-radius: 8px; transition: background 150ms, color 150ms; } .ds-nav-item:hover { background: oklch(0.982 0 0); color: oklch(0.159 0 0); } .ds-nav-item--active { background: oklch(0.970 0.011 244); color: oklch(0.568 0.167 251); font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid oklch(0.594 0.123 166); outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "description": "Flat container — border at rest, no ghost shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Overview</h3><p class=\"ds-card-body\">Account activity for the last 30 days.</p></div>",
+      "css": ".ds-card { background: oklch(1 0 0); border: 1px solid oklch(0.861 0 0); border-radius: 8px; padding: 16px 20px; } .ds-card-title { margin: 0 0 8px; font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 1.125rem; font-weight: 600; color: oklch(0.159 0 0); line-height: 1.35; } .ds-card-body { margin: 0; font-family: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; color: oklch(0.493 0 0); line-height: 1.55; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clear Frame",
+    "overview": "Clarus treats clarity as architecture, not decoration. The visual system is a confident SaaS frame: neutral surfaces, precise type, and a single Verified Mint accent that marks action without shouting. Depth is earned through surface steps and subtle lift on elevated layers — not stacked ghost cards or decorative glass.",
+    "keyCharacteristics": [
+      "Neutral canvas with chroma-0 neutrals; brand hue lives in accent and focus",
+      "Segoe UI Variable + Fira Code; Georgia for editorial moments only",
+      "8px base radius — tight and capable",
+      "Subtle shadows only on elevated layers",
+      "Light and dark modes share the same direct personality"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Verified Mint appears on primary actions, focus rings, and one wayfinding element per view. If more than ~10% of a screen reads as accent, remove color until hierarchy returns.", "section": "colors" },
+      { "name": "The Neutral Canvas Rule", "body": "Backgrounds stay achromatic (chroma 0). Warmth and personality come from accent, typography, and content — not sand-tinted body backgrounds.", "section": "colors" },
+      { "name": "The Readable Muted Rule", "body": "Muted foreground (oklch 0.493) is the floor for secondary text on Canvas — never lighter grays that fail AA.", "section": "typography" },
+      { "name": "The No Ghost Card Rule", "body": "Never pair a 1px border with a wide soft shadow on the same element. Pick border OR shadow for separation.", "section": "elevation" },
+      { "name": "The Flat-By-Default Rule", "body": "Cards and list rows use surface contrast and borders at rest. Shadow appears on interaction or elevation tier change only.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Verified Mint for one primary action per view and focus-visible rings.",
+      "Do keep neutrals achromatic; let accent and typography carry brand.",
+      "Do use shadcn-vue components from @/components/ui/* — extend, don't hand-roll primitives.",
+      "Do honor prefers-reduced-motion — crossfade or instant state changes.",
+      "Do test muted text and placeholders at WCAG AA on Canvas and Surface."
+    ],
+    "donts": [
+      "Don't use generic SaaS scaffolding — cream backgrounds, gradient heroes, hero metrics, eyebrow kickers on every section, identical icon-card grids.",
+      "Don't over-design — glassmorphism, paired border-plus-wide-shadow ghost cards, oversized radii (24px+ on cards), decorative motion.",
+      "Don't clutter like enterprise dense UI — tiny gray text, cramped tables, no breathing room.",
+      "Don't go overly playful — sketchy illustrations, bouncy elastic motion, loud decorative color.",
+      "Don't use gradient text, side-stripe borders (>1px colored accent), or decorative grid/stripe backgrounds.",
+      "Don't stack nested cards — one surface level per grouping."
+    ]
+  }
+}
