@@ -1,4 +1,13 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+
+/*
+   ---break---
+   */
+
 @import "tailwindcss";
+
+@import "tw-animate-css";
 
 @font-face {
   font-family: 'Segoe UI Variable';
@@ -67,6 +76,16 @@
   --accent-foreground: oklch(0.2350 0 0);
   --destructive: oklch(0.5844 0.2008 35.7714);
   --destructive-foreground: oklch(1.0000 0 0);
+  --success: oklch(0.5940 0.1233 165.8415);
+  --success-foreground: oklch(1.0000 0 0);
+  --warning: oklch(0.6820 0.1520 62.0000);
+  --warning-foreground: oklch(0.2200 0.0400 62.0000);
+  --info: oklch(0.5677 0.1665 251.3134);
+  --info-foreground: oklch(1.0000 0 0);
+  /* Emphasis tones for status text/icons on soft tinted chips — darkened for AA on light surfaces. */
+  --success-emphasis: oklch(0.4900 0.1050 165.8415);
+  --warning-emphasis: oklch(0.4700 0.1050 62.0000);
+  --destructive-emphasis: oklch(0.5100 0.1900 35.7714);
   --border: oklch(0.8607 0 0);
   --input: oklch(1.0000 0 0);
   --ring: oklch(0.5940 0.1233 165.8415);
@@ -75,7 +94,7 @@
   --chart-3: oklch(0.8290 0.1712 81.0381);
   --chart-4: oklch(0.5844 0.2008 35.7714);
   --chart-5: oklch(0.4498 0.2097 309.1018);
-  --sidebar: oklch(0.9642 0 0);
+  --sidebar: oklch(0.9280 0 0);
   --sidebar-foreground: oklch(0.1591 0 0);
   --sidebar-primary: oklch(0.5677 0.1665 251.3134);
   --sidebar-primary-foreground: oklch(1.0000 0 0);
@@ -125,6 +144,16 @@
   --accent-foreground: oklch(0.9612 0 0);
   --destructive: oklch(0.7159 0.1491 39.5293);
   --destructive-foreground: oklch(0.1913 0 0);
+  --success: oklch(0.7842 0.1532 165.5210);
+  --success-foreground: oklch(0.1591 0 0);
+  --warning: oklch(0.8290 0.1520 78.0000);
+  --warning-foreground: oklch(0.2200 0.0400 62.0000);
+  --info: oklch(0.6979 0.1444 247.1567);
+  --info-foreground: oklch(0.1591 0 0);
+  /* Brightened for AA on dark surfaces. */
+  --success-emphasis: oklch(0.8200 0.1400 165.5210);
+  --warning-emphasis: oklch(0.8500 0.1400 78.0000);
+  --destructive-emphasis: oklch(0.7800 0.1400 39.5293);
   --border: oklch(0.3904 0 0);
   --input: oklch(0.2931 0 0);
   --ring: oklch(0.7842 0.1532 165.5210);
@@ -133,7 +162,7 @@
   --chart-3: oklch(0.8290 0.1712 81.0381);
   --chart-4: oklch(0.7159 0.1491 39.5293);
   --chart-5: oklch(0.5791 0.1972 308.3714);
-  --sidebar: oklch(0.2393 0 0);
+  --sidebar: oklch(0.2045 0 0);
   --sidebar-foreground: oklch(0.9612 0 0);
   --sidebar-primary: oklch(0.6979 0.1444 247.1567);
   --sidebar-primary-foreground: oklch(0.1591 0 0);
@@ -182,6 +211,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -239,8 +274,35 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /*
+   * Smooth light/dark handoff: elements without their own explicit
+   * transition utility (buttons, links, etc. already declare
+   * transition-colors/transition-shadow themselves and win via the
+   * utilities layer) still cross-fade their theme-driven colors instead
+   * of snapping when `.dark` toggles on <html>.
+   */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

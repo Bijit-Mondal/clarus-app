@@ -78,7 +78,7 @@
 
 Strategic and visual design specs live at the project root. Read both before UI work:
 
-- **PRODUCT.md** — register (`product`), users, purpose, brand personality (Confident · Direct · Capable), anti-references, and design principles. Design serves SaaS workflows; clarity is the through-line.
-- **DESIGN.md** — tokens and visual system. Creative North Star: *The Clear Frame*. Primary accent: **Verified Mint** (`oklch(0.594 0.123 166)`). Neutrals are achromatic; 8px radii; subtle lift on elevated layers only. shadcn-vue (New York) for primitives. WCAG 2.1 AA.
+- **PRODUCT.md** — register (`product`), users, purpose, brand personality (Confident · Modern · Effortless), anti-references, and design principles. Clarus is a **compliance / GRC platform** (SOC 2, ISO 27001; controls, evidence, findings, auditors) serving three roles on one surface — owners, contributors, and external auditors. Clarity is the through-line; trust is the product.
+- **DESIGN.md** — tokens and visual system, drawn from **Windows 11 / Fluent Design**. Creative North Star: *The Clear Frame*. Primary accent: **Verified Mint** (`oklch(0.594 0.123 166)`, doubles as `--success`). Achromatic Fluent surface layers; full status vocabulary (success/warning/info/destructive) — pair status with icon/label, never color alone; 8px radii; subtle lift on elevated layers only; calm functional motion. shadcn-vue (New York) for primitives. WCAG 2.1 AA.
 
 Impeccable live mode is configured (`.impeccable/live/config.json`). Run `$impeccable live` for in-browser variant iteration.
