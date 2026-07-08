@@ -35,7 +35,23 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: getModulePagePath('controls', 'overview'),
+      component: () => import('@/views/auth/LoginChoice.vue'),
+    },
+    {
+      path: '/login/sso',
+      component: () => import('@/views/auth/LoginSso.vue'),
+    },
+    {
+      path: '/login/email',
+      component: () => import('@/views/auth/LoginEmail.vue'),
+    },
+    {
+      path: '/register',
+      component: () => import('@/views/auth/RegisterPage.vue'),
+    },
+    {
+      path: '/orgs',
+      component: () => import('@/views/orgs/SelectOrg.vue'),
     },
     {
       path: '/dashboard',
