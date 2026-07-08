@@ -11,6 +11,7 @@ const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 /** Pages with a real, built-out view. Everything else falls back to the shell placeholder. */
 const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'controls-overview': () => import('@/views/controls/ControlsOverview.vue'),
+  'controls-frameworks': () => import('@/views/controls/FrameworksPage.vue'),
 }
 
 const dashboardChildren = appModules.flatMap((module) =>
