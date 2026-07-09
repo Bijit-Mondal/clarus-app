@@ -24,10 +24,11 @@ function isActive(moduleId: AppModuleId) {
 
 const itemClass = (active: boolean) =>
   cn(
-    'group relative flex size-10 items-center justify-center rounded-xl transition-colors duration-200',
+    'group relative flex size-10 items-center justify-center rounded-xl duration-200',
+    'transition-[background-color,color,box-shadow,transform] active:scale-95 motion-reduce:active:scale-100',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
     active
-      ? 'bg-primary/12 text-primary ring-1 ring-inset ring-primary/25'
+      ? 'bg-primary/14 text-primary hover:bg-primary/18'
       : 'text-sidebar-foreground/60 hover:bg-sidebar-foreground/[0.06] hover:text-sidebar-foreground',
   )
 </script>
@@ -38,11 +39,11 @@ const itemClass = (active: boolean) =>
     class="flex w-14 shrink-0 flex-col items-center gap-1 bg-sidebar py-3"
   >
     <RouterLink
-      to="/dashboard/controls/overview"
-      class="mb-3 flex size-10 items-center justify-center rounded-xl bg-card text-foreground shadow-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar motion-reduce:transition-none motion-reduce:hover:scale-100"
+      to="/dashboard"
+      class="mb-3 flex size-10 items-center justify-center rounded-xl text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-foreground/[0.06] hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
       aria-label="Clarus home"
     >
-      <ClarusLogo :size="24" tone="duo" />
+      <ClarusLogo :size="22" tone="mono" />
     </RouterLink>
 
     <div class="flex flex-1 flex-col items-center gap-1">
@@ -53,6 +54,11 @@ const itemClass = (active: boolean) =>
             :aria-current="isActive(module.id) ? 'page' : undefined"
             :class="itemClass(isActive(module.id))"
           >
+            <span
+              v-if="isActive(module.id)"
+              aria-hidden="true"
+              class="clarus-rail-pill pointer-events-none absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary"
+            />
             <component
               :is="module.icon"
               :size="22"
@@ -75,6 +81,11 @@ const itemClass = (active: boolean) =>
           :aria-current="isActive(settingsModule.id) ? 'page' : undefined"
           :class="itemClass(isActive(settingsModule.id))"
         >
+          <span
+            v-if="isActive(settingsModule.id)"
+            aria-hidden="true"
+            class="clarus-rail-pill pointer-events-none absolute -left-1.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary"
+          />
           <component
             :is="settingsModule.icon"
             :size="22"

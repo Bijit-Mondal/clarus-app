@@ -237,6 +237,9 @@
   --font-sans: 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Fira Code', ui-monospace, monospace;
   --font-serif: Georgia, ui-serif, serif;
+  /* Geometric grotesque for the Clarus logotype — a deliberate contrast
+     against the humanist Segoe UI body face (geometric + humanist axis). */
+  --font-wordmark: 'Geist', 'Segoe UI Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -305,4 +308,69 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/*
+ * Fluent-style navigation selection pill — the accent indicator on the
+ * active module in the rail grows in vertically when selected, echoing the
+ * Windows 11 NavigationView selection behavior. Reduced-motion users get
+ * the resting state instantly via the global reduce rule above.
+ */
+@keyframes clarus-rail-pill-in {
+  from {
+    transform: translateY(-50%) scaleY(0.35);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) scaleY(1);
+    opacity: 1;
+  }
+}
+
+.clarus-rail-pill {
+  animation: clarus-rail-pill-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Calm, restrained scroll region — a thin native overlay scrollbar that
+ * stays out of the way until content actually overflows. Used in the
+ * Clarus AI panel so the copilot reads as a clean, quiet surface rather
+ * than a boxed-in list with a heavy always-on bar.
+ */
+.clarus-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+  transition: scrollbar-color 200ms ease;
+}
+
+.clarus-scroll:hover,
+.clarus-scroll:focus-within {
+  scrollbar-color: color-mix(in oklch, var(--border) 85%, transparent) transparent;
+}
+
+.clarus-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.clarus-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clarus-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  transition: background-color 200ms ease;
+}
+
+.clarus-scroll:hover::-webkit-scrollbar-thumb,
+.clarus-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--border) 85%, transparent);
+}
+
+.clarus-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
 }
