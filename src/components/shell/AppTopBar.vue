@@ -11,6 +11,7 @@ import {
 import AskClarusButton from '@/components/shell/AskClarusButton.vue'
 import GlobalSearchDialog from '@/components/shell/GlobalSearchDialog.vue'
 import MobilePageNav from '@/components/shell/MobilePageNav.vue'
+import NotificationCenter from '@/components/shell/NotificationCenter.vue'
 import OrgSwitcher from '@/components/shell/OrgSwitcher.vue'
 import SearchTrigger from '@/components/shell/SearchTrigger.vue'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -24,11 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSidebar } from '@/composables/useSidebar'
 import { useTheme } from '@/composables/useTheme'
 
@@ -81,6 +78,7 @@ function onThemeSelect(event: Event) {
 
     <div class="flex flex-1 shrink-0 items-center justify-end gap-1.5 sm:gap-2">
       <AskClarusButton />
+      <NotificationCenter />
 
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
@@ -101,9 +99,7 @@ function onThemeSelect(event: Event) {
           <DropdownMenuLabel class="font-normal">
             <div class="flex flex-col gap-1">
               <p class="text-sm font-medium leading-none">Alex Morgan</p>
-              <p class="text-xs leading-none text-muted-foreground">
-                alex@clarus.app
-              </p>
+              <p class="text-xs leading-none text-muted-foreground">alex@clarus.app</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

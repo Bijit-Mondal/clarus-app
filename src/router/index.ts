@@ -1,10 +1,6 @@
 import type { RouteComponent } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
-import {
-  appModules,
-  getModulePagePath,
-  getPageRouteName,
-} from '@/config/navigation'
+import { appModules, getPageRouteName } from '@/config/navigation'
 
 const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 
@@ -61,6 +57,15 @@ const router = createRouter({
         {
           path: '',
           redirect: { name: getPageRouteName('controls', 'overview') },
+        },
+        {
+          path: 'notifications',
+          name: 'notifications',
+          component: () => import('@/views/notifications/NotificationsPage.vue'),
+          meta: {
+            title: 'Notifications',
+            description: 'All system notifications, requests, alerts, and audit updates.',
+          },
         },
         ...dashboardChildren,
       ],

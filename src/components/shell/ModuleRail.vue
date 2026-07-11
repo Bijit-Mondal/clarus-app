@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import ClarusLogo from '@/components/shell/ClarusLogo.vue'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   getModulePagePath,
   primaryModules,
@@ -34,10 +30,7 @@ const itemClass = (active: boolean) =>
 </script>
 
 <template>
-  <nav
-    aria-label="Modules"
-    class="flex w-14 shrink-0 flex-col items-center gap-1 bg-sidebar py-3"
-  >
+  <nav aria-label="Modules" class="flex w-14 shrink-0 flex-col items-center gap-1 bg-sidebar py-3">
     <RouterLink
       to="/dashboard"
       class="mb-3 flex size-10 items-center justify-center rounded-xl text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-foreground/[0.06] hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"

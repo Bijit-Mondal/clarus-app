@@ -97,7 +97,9 @@ function createAndEnter() {
 
         <div class="relative flex items-center" role="separator" aria-hidden="true">
           <div class="grow border-t border-border" />
-          <span class="shrink-0 px-3 text-xs uppercase tracking-wider text-muted-foreground">or</span>
+          <span class="shrink-0 px-3 text-xs uppercase tracking-wider text-muted-foreground"
+            >or</span
+          >
           <div class="grow border-t border-border" />
         </div>
 

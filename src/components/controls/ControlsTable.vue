@@ -55,10 +55,7 @@ const filtered = computed(() => {
   return props.controls.filter((c) => {
     if (q && !`${c.code} ${c.name}`.toLowerCase().includes(q)) return false
     if (statusFilter.value !== 'all' && c.status !== statusFilter.value) return false
-    if (
-      frameworkFilter.value !== 'all' &&
-      !c.frameworks.includes(frameworkFilter.value)
-    )
+    if (frameworkFilter.value !== 'all' && !c.frameworks.includes(frameworkFilter.value))
       return false
     if (ownerFilter.value !== 'all' && c.owner.id !== ownerFilter.value) return false
     return true
@@ -85,9 +82,7 @@ const paged = computed(() => {
 const rangeStart = computed(() =>
   sorted.value.length === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1,
 )
-const rangeEnd = computed(() =>
-  Math.min(page.value * PAGE_SIZE, sorted.value.length),
-)
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, sorted.value.length))
 
 // Reset to first page whenever the result set changes.
 watch([search, statusFilter, frameworkFilter, ownerFilter, sortKey, sortDir], () => {
@@ -129,11 +124,10 @@ function formatDate(iso: string) {
 </script>
 
 <template>
-  <section
-    class="rounded-xl border border-border bg-card"
-    aria-label="Controls"
-  >
-    <div class="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
+  <section class="rounded-xl border border-border bg-card" aria-label="Controls">
+    <div
+      class="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between"
+    >
       <div class="relative w-full lg:max-w-xs">
         <PhMagnifyingGlass
           :size="16"
@@ -192,30 +186,54 @@ function formatDate(iso: string) {
       <table class="w-full min-w-[820px] border-collapse text-sm">
         <thead>
           <tr class="border-b border-border text-left align-middle">
-            <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground" :aria-sort="ariaSort('code')">
+            <th
+              scope="col"
+              class="px-4 py-2.5 font-medium text-muted-foreground"
+              :aria-sort="ariaSort('code')"
+            >
               <button
                 type="button"
                 class="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 @click="toggleSort('code')"
               >
                 Control
-                <PhArrowUp v-if="sortKey === 'code' && sortDir === 'asc'" :size="12" aria-hidden="true" />
-                <PhArrowDown v-else-if="sortKey === 'code' && sortDir === 'desc'" :size="12" aria-hidden="true" />
+                <PhArrowUp
+                  v-if="sortKey === 'code' && sortDir === 'asc'"
+                  :size="12"
+                  aria-hidden="true"
+                />
+                <PhArrowDown
+                  v-else-if="sortKey === 'code' && sortDir === 'desc'"
+                  :size="12"
+                  aria-hidden="true"
+                />
               </button>
             </th>
             <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground">Frameworks</th>
             <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground">Owner</th>
             <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground">Status</th>
             <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground">Evidence</th>
-            <th scope="col" class="px-4 py-2.5 font-medium text-muted-foreground" :aria-sort="ariaSort('nextReview')">
+            <th
+              scope="col"
+              class="px-4 py-2.5 font-medium text-muted-foreground"
+              :aria-sort="ariaSort('nextReview')"
+            >
               <button
                 type="button"
                 class="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 @click="toggleSort('nextReview')"
               >
                 Next review
-                <PhArrowUp v-if="sortKey === 'nextReview' && sortDir === 'asc'" :size="12" aria-hidden="true" />
-                <PhArrowDown v-else-if="sortKey === 'nextReview' && sortDir === 'desc'" :size="12" aria-hidden="true" />
+                <PhArrowUp
+                  v-if="sortKey === 'nextReview' && sortDir === 'asc'"
+                  :size="12"
+                  aria-hidden="true"
+                />
+                <PhArrowDown
+                  v-else-if="sortKey === 'nextReview' && sortDir === 'desc'"
+                  :size="12"
+                  aria-hidden="true"
+                />
               </button>
             </th>
           </tr>
@@ -246,7 +264,9 @@ function formatDate(iso: string) {
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <Avatar class="size-6">
-                  <AvatarFallback class="bg-secondary text-[0.625rem] font-medium text-secondary-foreground">
+                  <AvatarFallback
+                    class="bg-secondary text-[0.625rem] font-medium text-secondary-foreground"
+                  >
                     {{ control.owner.initials }}
                   </AvatarFallback>
                 </Avatar>
@@ -291,8 +311,8 @@ function formatDate(iso: string) {
       class="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <p class="text-sm text-muted-foreground" aria-live="polite">
-        Showing <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span>
-        of <span class="font-medium text-foreground">{{ sorted.length }}</span> controls
+        Showing <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
+        <span class="font-medium text-foreground">{{ sorted.length }}</span> controls
       </p>
       <div class="flex items-center gap-1">
         <Button

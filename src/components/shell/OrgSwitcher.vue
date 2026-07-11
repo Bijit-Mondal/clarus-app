@@ -79,7 +79,9 @@ function createOrg() {
           {{ activeOrganization?.initials }}
         </AvatarFallback>
       </Avatar>
-      <span class="min-w-0 max-w-[9rem] flex-1 truncate text-sm font-medium text-foreground sm:max-w-[12rem]">
+      <span
+        class="min-w-0 max-w-[9rem] flex-1 truncate text-sm font-medium text-foreground sm:max-w-[12rem]"
+      >
         {{ activeOrganization?.name }}
       </span>
       <PhCaretDown
@@ -102,10 +104,7 @@ function createOrg() {
           </DialogDescription>
         </DialogHeader>
 
-        <ul
-          class="flex max-h-[min(360px,50vh)] flex-col gap-1 overflow-y-auto p-3"
-          role="list"
-        >
+        <ul class="flex max-h-[min(360px,50vh)] flex-col gap-1 overflow-y-auto p-3" role="list">
           <li v-for="org in organizations" :key="org.id">
             <button
               type="button"
@@ -168,12 +167,8 @@ function createOrg() {
             />
           </div>
           <DialogFooter class="gap-2 sm:justify-between">
-            <Button type="button" variant="ghost" @click="backToList">
-              Back
-            </Button>
-            <Button type="submit" :disabled="!canCreate">
-              Create organization
-            </Button>
+            <Button type="button" variant="ghost" @click="backToList"> Back </Button>
+            <Button type="submit" :disabled="!canCreate"> Create organization </Button>
           </DialogFooter>
         </form>
       </template>

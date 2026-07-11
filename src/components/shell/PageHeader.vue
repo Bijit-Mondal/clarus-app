@@ -8,7 +8,7 @@ const route = useRoute()
 
 const moduleId = computed(() => route.meta.module as string | undefined)
 const moduleLabel = computed(() =>
-  moduleId.value ? getModuleById(moduleId.value)?.label ?? '' : '',
+  moduleId.value ? (getModuleById(moduleId.value)?.label ?? '') : '',
 )
 const title = computed(() => (route.meta.title as string) ?? 'Page')
 const description = computed(() => (route.meta.description as string) ?? '')
@@ -26,9 +26,7 @@ const description = computed(() => (route.meta.description as string) ?? '')
         <PhCaretRight :size="12" class="opacity-60" aria-hidden="true" />
         <span class="font-medium text-foreground">{{ title }}</span>
       </nav>
-      <h1
-        class="text-2xl font-semibold tracking-tight text-foreground text-balance sm:text-3xl"
-      >
+      <h1 class="text-2xl font-semibold tracking-tight text-foreground text-balance sm:text-3xl">
         {{ title }}
       </h1>
       <p

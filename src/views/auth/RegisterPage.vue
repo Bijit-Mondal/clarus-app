@@ -90,7 +90,11 @@ function handleSubmit() {
               v-model="form.fullName"
               type="text"
               placeholder="Jane Smith"
-              :class="hasError('fullName') ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive' : ''"
+              :class="
+                hasError('fullName')
+                  ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
+                  : ''
+              "
               @blur="validateField('fullName')"
             />
             <p
@@ -110,7 +114,11 @@ function handleSubmit() {
               type="email"
               placeholder="jane@company.com"
               autocomplete="email"
-              :class="hasError('email') ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive' : ''"
+              :class="
+                hasError('email')
+                  ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
+                  : ''
+              "
               @blur="validateField('email')"
             />
             <p
@@ -130,7 +138,11 @@ function handleSubmit() {
               type="password"
               placeholder="At least 8 characters"
               autocomplete="new-password"
-              :class="hasError('password') ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive' : ''"
+              :class="
+                hasError('password')
+                  ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
+                  : ''
+              "
               @blur="validateField('password')"
             />
             <div class="flex items-center justify-between">
@@ -148,15 +160,11 @@ function handleSubmit() {
                 <PhCheck class="h-3 w-3" />
                 Strong enough
               </p>
-              <p v-else class="text-xs text-muted-foreground">
-                Min. 8 characters
-              </p>
+              <p v-else class="text-xs text-muted-foreground">Min. 8 characters</p>
             </div>
           </div>
 
-          <Button class="w-full" type="submit">
-            Create account
-          </Button>
+          <Button class="w-full" type="submit"> Create account </Button>
         </form>
 
         <p class="text-center text-sm text-muted-foreground">

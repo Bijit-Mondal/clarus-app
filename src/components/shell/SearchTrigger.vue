@@ -28,11 +28,7 @@ const emit = defineEmits<{
     aria-label="Search"
     @click="emit('open')"
   >
-    <PhMagnifyingGlass
-      :size="16"
-      class="shrink-0"
-      aria-hidden="true"
-    />
+    <PhMagnifyingGlass :size="16" class="shrink-0" aria-hidden="true" />
     <span class="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:inline">
       Search…
     </span>

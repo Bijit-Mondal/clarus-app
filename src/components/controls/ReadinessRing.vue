@@ -58,12 +58,7 @@ const segments = computed(() => {
     role="img"
     :aria-label="`${summary.readiness}% audit ready. ${summary.passing} passing, ${summary.attention} need attention, ${summary.failing} failing.`"
   >
-    <svg
-      :width="size"
-      :height="size"
-      :viewBox="`0 0 ${size} ${size}`"
-      class="-rotate-90"
-    >
+    <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`" class="-rotate-90">
       <circle
         :cx="center"
         :cy="center"
@@ -87,10 +82,7 @@ const segments = computed(() => {
         class="ring-segment"
       />
     </svg>
-    <div
-      class="absolute inset-0 flex flex-col items-center justify-center"
-      aria-hidden="true"
-    >
+    <div class="absolute inset-0 flex flex-col items-center justify-center" aria-hidden="true">
       <span class="text-3xl font-semibold tracking-tight tabular-nums text-foreground">
         {{ summary.readiness }}%
       </span>
@@ -101,7 +93,8 @@ const segments = computed(() => {
 
 <style scoped>
 .ring-segment {
-  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1),
+  transition:
+    stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1),
     stroke-dasharray 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

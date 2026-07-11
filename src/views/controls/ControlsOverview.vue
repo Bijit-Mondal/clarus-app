@@ -89,17 +89,26 @@ function pct(part: number, total: number) {
               <span
                 v-if="fw.summary.passing"
                 class="h-full"
-                :style="{ width: `${pct(fw.summary.passing, fw.summary.total)}%`, backgroundColor: 'var(--success)' }"
+                :style="{
+                  width: `${pct(fw.summary.passing, fw.summary.total)}%`,
+                  backgroundColor: 'var(--success)',
+                }"
               />
               <span
                 v-if="fw.summary.attention"
                 class="h-full"
-                :style="{ width: `${pct(fw.summary.attention, fw.summary.total)}%`, backgroundColor: 'var(--warning)' }"
+                :style="{
+                  width: `${pct(fw.summary.attention, fw.summary.total)}%`,
+                  backgroundColor: 'var(--warning)',
+                }"
               />
               <span
                 v-if="fw.summary.failing"
                 class="h-full"
-                :style="{ width: `${pct(fw.summary.failing, fw.summary.total)}%`, backgroundColor: 'var(--destructive)' }"
+                :style="{
+                  width: `${pct(fw.summary.failing, fw.summary.total)}%`,
+                  backgroundColor: 'var(--destructive)',
+                }"
               />
             </div>
             <p class="mt-1.5 text-xs text-muted-foreground">

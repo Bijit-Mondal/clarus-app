@@ -1,18 +1,7 @@
 import type { Component } from 'vue'
-import {
-  PhChartLineUp,
-  PhFolderOpen,
-  PhGearSix,
-  PhHouse,
-  PhShieldCheck,
-} from '@phosphor-icons/vue'
+import { PhChartLineUp, PhFolderOpen, PhGearSix, PhHouse, PhShieldCheck } from '@phosphor-icons/vue'
 
-export type AppModuleId =
-  | 'controls'
-  | 'workspace'
-  | 'analytics'
-  | 'projects'
-  | 'settings'
+export type AppModuleId = 'controls' | 'workspace' | 'analytics' | 'projects' | 'settings'
 
 export type AppPage = {
   id: string
@@ -71,7 +60,8 @@ export const appModules: AppModule[] = [
       {
         id: 'overview',
         label: 'Overview',
-        description: 'Your workspace at a glance — recent activity, pinned items, and quick actions.',
+        description:
+          'Your workspace at a glance — recent activity, pinned items, and quick actions.',
       },
       {
         id: 'activity',

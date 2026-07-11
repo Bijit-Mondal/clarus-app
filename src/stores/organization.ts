@@ -44,9 +44,7 @@ export const useOrganizationStore = defineStore('organization', () => {
   const activeOrgId = ref(seedOrgs[0]!.id)
 
   const activeOrganization = computed(
-    () =>
-      organizations.value.find((org) => org.id === activeOrgId.value) ??
-      organizations.value[0],
+    () => organizations.value.find((org) => org.id === activeOrgId.value) ?? organizations.value[0],
   )
 
   function selectOrganization(id: string) {

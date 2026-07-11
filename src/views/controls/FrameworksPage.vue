@@ -106,7 +106,9 @@ const frameworkIcons: Record<string, any> = {
                 />
                 Needs attention
               </span>
-              <span class="font-medium tabular-nums text-foreground">{{ fw.summary.attention }}</span>
+              <span class="font-medium tabular-nums text-foreground">{{
+                fw.summary.attention
+              }}</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="flex items-center gap-2 text-muted-foreground">
@@ -124,11 +126,10 @@ const frameworkIcons: Record<string, any> = {
 
         <footer class="mt-6 flex items-center justify-between text-xs">
           <span class="text-muted-foreground">
-            Next review in <span class="font-medium tabular-nums text-foreground">{{ fw.reviewInDays }}</span> days
+            Next review in
+            <span class="font-medium tabular-nums text-foreground">{{ fw.reviewInDays }}</span> days
           </span>
-          <Button variant="ghost" size="sm" class="-mr-2 -my-1">
-            View framework
-          </Button>
+          <Button variant="ghost" size="sm" class="-mr-2 -my-1"> View framework </Button>
         </footer>
       </article>
 
@@ -137,14 +138,14 @@ const frameworkIcons: Record<string, any> = {
         class="group flex flex-col items-center justify-center gap-4 rounded-xl border border-border border-dashed bg-transparent p-6 text-muted-foreground hover:border-border hover:bg-muted/30 hover:text-foreground transition-colors"
         @click="openDialog = true"
       >
-        <div class="flex size-10 items-center justify-center rounded-lg border border-border bg-background">
+        <div
+          class="flex size-10 items-center justify-center rounded-lg border border-border bg-background"
+        >
           <PhFolderPlus :size="20" aria-hidden="true" />
         </div>
         <div class="flex flex-col items-center gap-1">
           <span class="text-sm font-medium">Add new framework</span>
-          <span class="text-xs text-muted-foreground">
-            SOC 2, ISO 27001, GDPR, or custom
-          </span>
+          <span class="text-xs text-muted-foreground"> SOC 2, ISO 27001, GDPR, or custom </span>
         </div>
       </button>
     </div>

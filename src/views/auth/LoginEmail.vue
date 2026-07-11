@@ -71,7 +71,11 @@ function handleSubmit() {
               type="email"
               placeholder="name@example.com"
               autocomplete="email"
-              :class="hasError('email') ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive' : ''"
+              :class="
+                hasError('email')
+                  ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
+                  : ''
+              "
               @blur="validateField('email')"
             />
             <p
@@ -90,7 +94,11 @@ function handleSubmit() {
               type="password"
               placeholder="••••••••"
               autocomplete="current-password"
-              :class="hasError('password') ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive' : ''"
+              :class="
+                hasError('password')
+                  ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
+                  : ''
+              "
               @blur="validateField('password')"
             />
             <p
@@ -101,18 +109,20 @@ function handleSubmit() {
               {{ errors.password }}
             </p>
           </div>
-          <Button class="w-full" type="submit">
-            Login
-          </Button>
+          <Button class="w-full" type="submit"> Login </Button>
         </form>
         <div class="grid gap-3">
           <div class="text-center text-sm text-muted-foreground">
             Don't have an account?
-            <RouterLink to="/register" class="underline underline-offset-4 hover:text-foreground">Register</RouterLink>
+            <RouterLink to="/register" class="underline underline-offset-4 hover:text-foreground"
+              >Register</RouterLink
+            >
           </div>
           <div class="text-center text-sm text-muted-foreground">
             Forgot password?
-            <a href="#" class="underline underline-offset-4 hover:text-foreground">Reset password</a>
+            <a href="#" class="underline underline-offset-4 hover:text-foreground"
+              >Reset password</a
+            >
           </div>
         </div>
       </div>

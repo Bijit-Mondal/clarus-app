@@ -33,10 +33,7 @@ const activeModule = computed(() =>
         <AppTopBar />
 
         <div class="flex min-h-0 min-w-0 flex-1">
-          <main
-            id="main-content"
-            class="min-h-0 min-w-0 flex-1 overflow-y-auto"
-          >
+          <main id="main-content" class="min-h-0 min-w-0 flex-1 overflow-y-auto">
             <div class="mx-auto w-full max-w-6xl px-6 py-8 lg:px-10">
               <RouterView v-slot="{ Component: PageComponent }">
                 <Transition

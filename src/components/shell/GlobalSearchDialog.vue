@@ -56,11 +56,7 @@ onUnmounted(() => {
       </DialogHeader>
 
       <div class="flex items-center gap-3 border-b border-border px-4">
-        <PhMagnifyingGlass
-          :size="18"
-          class="shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
+        <PhMagnifyingGlass :size="18" class="shrink-0 text-muted-foreground" aria-hidden="true" />
         <Input
           :id="inputId"
           v-model="query"

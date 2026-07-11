@@ -282,9 +282,7 @@ export function summarize(list: Control[]): StatusSummary {
   const attention = list.filter((c) => c.status === 'attention').length
   const failing = list.filter((c) => c.status === 'failing').length
   const total = list.length
-  const readiness = total === 0
-    ? 0
-    : Math.round(((passing + attention * 0.5) / total) * 100)
+  const readiness = total === 0 ? 0 : Math.round(((passing + attention * 0.5) / total) * 100)
   return { passing, attention, failing, total, readiness }
 }
 

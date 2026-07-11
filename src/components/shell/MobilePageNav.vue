@@ -9,10 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  getModuleById,
-  getModulePagePath,
-} from '@/config/navigation'
+import { getModuleById, getModulePagePath } from '@/config/navigation'
 
 const route = useRoute()
 const router = useRouter()

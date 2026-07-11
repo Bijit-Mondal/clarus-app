@@ -18,9 +18,7 @@ const router = useRouter()
           <h1 class="text-2xl font-semibold tracking-tight">Sign in to your account</h1>
         </div>
         <div class="grid gap-4">
-          <Button class="w-full" @click="router.push('/login/sso')">
-            Sign in with SSO
-          </Button>
+          <Button class="w-full" @click="router.push('/login/sso')"> Sign in with SSO </Button>
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
               <Separator />
@@ -35,7 +33,9 @@ const router = useRouter()
         </div>
         <div class="text-center text-sm text-muted-foreground">
           New to Clarus?
-          <RouterLink to="/register" class="underline underline-offset-4 hover:text-foreground">Create account</RouterLink>
+          <RouterLink to="/register" class="underline underline-offset-4 hover:text-foreground"
+            >Create account</RouterLink
+          >
         </div>
       </div>
     </div>

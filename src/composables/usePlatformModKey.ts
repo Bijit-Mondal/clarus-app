@@ -15,9 +15,7 @@ export function usePlatformModKey() {
 
   /** Compact hint: `⌘K` on Apple, `Ctrl+K` elsewhere. */
   function shortcut(key: string) {
-    return computed(() =>
-      isApple.value ? `⌘${key.toUpperCase()}` : `Ctrl+${key.toUpperCase()}`,
-    )
+    return computed(() => (isApple.value ? `⌘${key.toUpperCase()}` : `Ctrl+${key.toUpperCase()}`))
   }
 
   return { isApple, modKey, modKeyLabel, shortcut }

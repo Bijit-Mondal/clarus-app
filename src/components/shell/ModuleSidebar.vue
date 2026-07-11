@@ -2,10 +2,7 @@
 import { RouterLink } from 'vue-router'
 import { PhLockSimple } from '@phosphor-icons/vue'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  getModulePagePath,
-  type AppModule,
-} from '@/config/navigation'
+import { getModulePagePath, type AppModule } from '@/config/navigation'
 import { useSidebar } from '@/composables/useSidebar'
 import { cn } from '@/lib/utils'
 
@@ -39,15 +36,15 @@ const { collapsed } = useSidebar()
           class="shrink-0 text-primary"
           aria-hidden="true"
         />
-        <h2 class="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-sidebar-foreground">
+        <h2
+          class="min-w-0 flex-1 truncate text-base font-semibold tracking-tight text-sidebar-foreground"
+        >
           {{ module.label }}
         </h2>
       </div>
 
       <ScrollArea class="min-h-0 flex-1 px-3 pb-4">
-        <p class="px-3 pb-2 pt-1 text-xs font-medium text-sidebar-foreground/55">
-          Pages
-        </p>
+        <p class="px-3 pb-2 pt-1 text-xs font-medium text-sidebar-foreground/55">Pages</p>
         <ul class="flex flex-col gap-0.5" role="list">
           <li v-for="page in module.pages" :key="page.id">
             <span
@@ -56,7 +53,9 @@ const { collapsed } = useSidebar()
               aria-disabled="true"
             >
               <span class="truncate">{{ page.label }}</span>
-              <span class="flex items-center gap-1 text-[0.6875rem] font-medium uppercase tracking-wide">
+              <span
+                class="flex items-center gap-1 text-[0.6875rem] font-medium uppercase tracking-wide"
+              >
                 <PhLockSimple :size="12" aria-hidden="true" />
                 Soon
               </span>
