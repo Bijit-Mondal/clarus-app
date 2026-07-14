@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { PhExport, PhPlus } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
-import ReadinessRing from '@/components/controls/ReadinessRing.vue'
-import ControlsTable from '@/components/controls/ControlsTable.vue'
+import ReadinessRing from '@/components/compliance/ReadinessRing.vue'
+import ControlsTable from '@/components/compliance/ControlsTable.vue'
 import { Button } from '@/components/ui/button'
 import { controls, frameworkProgress, summarize } from '@/data/controls'
 

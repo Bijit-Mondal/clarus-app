@@ -46,10 +46,12 @@ async function createAndEnter() {
   if (!name) return
 
   submitError.value = ''
+  let createdSlug = ''
   try {
     const created = await createTenantMutation.mutateAsync({ name })
     if (!created) throw new Error('The server did not return the created organization.')
     orgStore.selectOrganization(created.id)
+    createdSlug = created.slug
   } catch (error: unknown) {
     submitError.value = getApiErrorMessage(
       error,
@@ -60,7 +62,7 @@ async function createAndEnter() {
 
   open.value = false
   orgName.value = ''
-  router.push(getOrganizationDashboardPath(created.slug))
+  router.push(getOrganizationDashboardPath(createdSlug))
 }
 </script>
 

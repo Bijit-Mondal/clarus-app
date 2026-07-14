@@ -31,7 +31,7 @@ const errors = reactive<Record<keyof SsoForm, string>>({
 function validateField(field: keyof SsoForm) {
   touched[field] = true
   const result = ssoSchema.shape[field].safeParse(form[field])
-  errors[field] = result.success ? '' : result.error.issues[0].message
+  errors[field] = result.success ? '' : (result.error.issues[0]?.message ?? '')
 }
 
 function hasError(field: keyof SsoForm) {

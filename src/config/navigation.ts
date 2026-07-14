@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { PhChartLineUp, PhFolderOpen, PhGearSix, PhHouse, PhShieldCheck } from '@phosphor-icons/vue'
 
-export type AppModuleId = 'controls' | 'workspace' | 'analytics' | 'projects' | 'settings'
+export type AppModuleId = 'compliance' | 'workspace' | 'analytics' | 'projects' | 'settings'
 
 export type AppPage = {
   id: string
@@ -20,8 +20,8 @@ export type AppModule = {
 
 export const appModules: AppModule[] = [
   {
-    id: 'controls',
-    label: 'Controls',
+    id: 'compliance',
+    label: 'Compliance',
     icon: PhShieldCheck,
     pages: [
       {

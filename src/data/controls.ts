@@ -37,7 +37,7 @@ export const FRAMEWORKS: Record<FrameworkId, Framework> = {
 
 export const FRAMEWORK_ORDER: FrameworkId[] = ['soc2', 'iso27001', 'gdpr']
 
-const OWNERS: Record<string, Owner> = {
+const OWNERS = {
   maya: { id: 'maya', name: 'Maya Chen', initials: 'MC' },
   daniel: { id: 'daniel', name: 'Daniel Kim', initials: 'DK' },
   aisha: { id: 'aisha', name: 'Aisha Patel', initials: 'AP' },
@@ -45,7 +45,7 @@ const OWNERS: Record<string, Owner> = {
   sophie: { id: 'sophie', name: 'Sophie Martin', initials: 'SM' },
   ravi: { id: 'ravi', name: 'Ravi Singh', initials: 'RS' },
   priya: { id: 'priya', name: 'Priya Shah', initials: 'PS' },
-}
+} satisfies Record<string, Owner>
 
 export const OWNER_LIST: Owner[] = Object.values(OWNERS)
 

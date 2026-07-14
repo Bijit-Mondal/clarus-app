@@ -7,8 +7,8 @@ import {
   PhCaretRight,
   PhMagnifyingGlass,
 } from '@phosphor-icons/vue'
-import ControlStatusBadge from '@/components/controls/ControlStatusBadge.vue'
-import EvidenceIndicator from '@/components/controls/EvidenceIndicator.vue'
+import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
+import EvidenceIndicator from '@/components/compliance/EvidenceIndicator.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -61,7 +61,7 @@ const route = useRoute()
 function navigateToRequirements(item: AdoptedFrameworkDisplay) {
   const slug = route.params.organizationSlug as string
   void router.push({
-    name: 'controls-framework-requirements',
+    name: 'compliance-framework-requirements',
     params: {
       organizationSlug: slug,
       frameworkId: item.tenantFramework.frameworkReleaseId,
@@ -201,7 +201,9 @@ async function selectFramework(framework: Framework) {
 
   try {
     const response = await getFrameworkReleases(framework.$id)
-    dialogReleases.value = response.frameworkReleases.filter((release) => release.status === 'published')
+    dialogReleases.value = response.frameworkReleases.filter(
+      (release) => release.status === 'published',
+    )
     selectedReleaseId.value = dialogReleases.value[0]?.$id ?? ''
   } catch (error: unknown) {
     releasesError.value = getApiErrorMessage(error, 'Unable to load framework releases. Try again.')
@@ -284,12 +286,23 @@ onMounted(async () => {
     <!-- Adopted frameworks -->
     <section aria-labelledby="adopted-heading">
       <!-- Loading -->
-      <div v-if="isLoadingAdopted" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading adopted frameworks">
-        <div v-for="item in 3" :key="item" class="h-36 animate-pulse rounded-lg border border-border bg-muted/50" />
+      <div
+        v-if="isLoadingAdopted"
+        class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+        aria-label="Loading adopted frameworks"
+      >
+        <div
+          v-for="item in 3"
+          :key="item"
+          class="h-36 animate-pulse rounded-lg border border-border bg-muted/50"
+        />
       </div>
 
       <!-- Error -->
-      <div v-else-if="adoptedError" class="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
+      <div
+        v-else-if="adoptedError"
+        class="rounded-lg border border-destructive/30 bg-destructive/5 p-5"
+      >
         <div class="flex items-start gap-3">
           <PhWarningCircle :size="20" class="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
           <div>
@@ -304,15 +317,15 @@ onMounted(async () => {
       <div v-else-if="adoptedDisplay.length" class="space-y-5">
         <div class="flex items-center justify-between gap-4">
           <p class="text-sm text-muted-foreground">
-            {{ adoptedDisplay.length }} {{ adoptedDisplay.length === 1 ? 'framework' : 'frameworks' }} adopted
+            {{ adoptedDisplay.length }}
+            {{ adoptedDisplay.length === 1 ? 'framework' : 'frameworks' }} adopted
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            :disabled="isLoadingAdopted"
-            @click="loadAdopted"
-          >
-            <PhArrowClockwise :size="16" :class="{ 'animate-spin': isLoadingAdopted }" aria-hidden="true" />
+          <Button variant="ghost" size="sm" :disabled="isLoadingAdopted" @click="loadAdopted">
+            <PhArrowClockwise
+              :size="16"
+              :class="{ 'animate-spin': isLoadingAdopted }"
+              aria-hidden="true"
+            />
             Refresh
           </Button>
         </div>
@@ -332,7 +345,9 @@ onMounted(async () => {
             <!-- Top section: logo + three-dot menu -->
             <div class="flex items-start justify-between p-5 pb-3">
               <!-- Large logo -->
-              <div class="flex items-center justify-center rounded-md bg-muted/60 p-3 text-foreground">
+              <div
+                class="flex items-center justify-center rounded-md bg-muted/60 p-3 text-foreground"
+              >
                 <component
                   :is="item.framework ? frameworkLogo(item.framework) : PhShieldCheck"
                   :size="48"
@@ -353,10 +368,14 @@ onMounted(async () => {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-44">
-                  <DropdownMenuItem @click.stop="navigateToRequirements(item)">View requirements</DropdownMenuItem>
+                  <DropdownMenuItem @click.stop="navigateToRequirements(item)"
+                    >View requirements</DropdownMenuItem
+                  >
                   <DropdownMenuItem>View controls</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem class="text-destructive focus:text-destructive">Remove framework</DropdownMenuItem>
+                  <DropdownMenuItem class="text-destructive focus:text-destructive"
+                    >Remove framework</DropdownMenuItem
+                  >
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -372,7 +391,9 @@ onMounted(async () => {
             </div>
 
             <!-- Bottom strip: adopted date -->
-            <div class="mt-auto flex items-center gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            <div
+              class="mt-auto flex items-center gap-1.5 border-t border-border px-5 py-3 text-xs text-muted-foreground"
+            >
               <PhCalendar :size="13" aria-hidden="true" class="shrink-0" />
               <span>Adopted {{ formatDate(item.tenantFramework.adoptedAt) }}</span>
             </div>
@@ -387,9 +408,7 @@ onMounted(async () => {
         >
           <PhFolder :size="24" aria-hidden="true" />
         </div>
-        <h3 class="mt-4 font-medium text-foreground">
-          No frameworks adopted yet
-        </h3>
+        <h3 class="mt-4 font-medium text-foreground">No frameworks adopted yet</h3>
         <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
           Adopt a compliance framework to begin mapping controls and tracking readiness for
           {{ organizationStore.activeOrganization?.name ?? 'your organization' }}.
@@ -417,14 +436,22 @@ onMounted(async () => {
             </button>
             <DialogTitle>
               <template v-if="dialogStep === 'adopted'">Framework adopted</template>
-              <template v-else-if="dialogStep === 'pick-release'">{{ selectedFramework?.name }}</template>
+              <template v-else-if="dialogStep === 'pick-release'">{{
+                selectedFramework?.name
+              }}</template>
               <template v-else>Add a framework</template>
             </DialogTitle>
           </div>
           <DialogDescription>
-            <template v-if="dialogStep === 'adopted'">You can now begin tracking its requirements.</template>
-            <template v-else-if="dialogStep === 'pick-release'">Choose a published release to adopt.</template>
-            <template v-else>Browse available compliance frameworks and choose one to adopt.</template>
+            <template v-if="dialogStep === 'adopted'"
+              >You can now begin tracking its requirements.</template
+            >
+            <template v-else-if="dialogStep === 'pick-release'"
+              >Choose a published release to adopt.</template
+            >
+            <template v-else
+              >Browse available compliance frameworks and choose one to adopt.</template
+            >
           </DialogDescription>
         </DialogHeader>
 
@@ -444,7 +471,8 @@ onMounted(async () => {
                 'bg-primary text-primary-foreground': dialogStep === 'pick-framework',
                 'bg-muted text-muted-foreground': dialogStep !== 'pick-framework',
               }"
-            >1</span>
+              >1</span
+            >
             Framework
           </span>
           <span class="h-px w-6 bg-border" />
@@ -458,35 +486,59 @@ onMounted(async () => {
                 'bg-primary text-primary-foreground': dialogStep === 'pick-release',
                 'bg-muted text-muted-foreground': dialogStep !== 'pick-release',
               }"
-            >2</span>
+              >2</span
+            >
             Release
           </span>
         </div>
 
         <!-- Success state -->
-        <div v-if="adoptedReleaseTitle" class="rounded-lg border border-success/30 bg-success/10 p-4">
+        <div
+          v-if="adoptedReleaseTitle"
+          class="rounded-lg border border-success/30 bg-success/10 p-4"
+        >
           <div class="flex gap-3">
-            <PhCheckCircle :size="20" weight="fill" class="shrink-0 text-success" aria-hidden="true" />
+            <PhCheckCircle
+              :size="20"
+              weight="fill"
+              class="shrink-0 text-success"
+              aria-hidden="true"
+            />
             <div>
               <p class="font-medium text-foreground">{{ adoptedReleaseTitle }} was adopted</p>
-              <p class="mt-1 text-sm text-muted-foreground">You can now begin tracking its requirements.</p>
+              <p class="mt-1 text-sm text-muted-foreground">
+                You can now begin tracking its requirements.
+              </p>
             </div>
           </div>
         </div>
 
         <!-- Step 1: Pick a framework -->
         <template v-else-if="!selectedFramework">
-          <div v-if="isLoadingFrameworks" class="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Loading frameworks">
+          <div
+            v-if="isLoadingFrameworks"
+            class="grid grid-cols-1 gap-2 sm:grid-cols-2"
+            aria-label="Loading frameworks"
+          >
             <div v-for="item in 4" :key="item" class="h-16 animate-pulse rounded-lg bg-muted" />
           </div>
 
-          <div v-else-if="frameworksError" class="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          <div
+            v-else-if="frameworksError"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+          >
             <div class="flex items-start gap-3">
-              <PhWarningCircle :size="20" class="mt-0.5 shrink-0 text-destructive" aria-hidden="true" />
+              <PhWarningCircle
+                :size="20"
+                class="mt-0.5 shrink-0 text-destructive"
+                aria-hidden="true"
+              />
               <div>
                 <p class="font-medium text-foreground">Frameworks could not be loaded</p>
                 <p class="mt-1 text-sm text-muted-foreground">{{ frameworksError }}</p>
-                <Button class="mt-3" size="sm" variant="outline" @click="loadFrameworksCatalog">Try again</Button>
+                <Button class="mt-3" size="sm" variant="outline" @click="loadFrameworksCatalog"
+                  >Try again</Button
+                >
               </div>
             </div>
           </div>
@@ -500,12 +552,16 @@ onMounted(async () => {
               :disabled="framework.status !== 'active'"
               @click="selectFramework(framework)"
             >
-              <div class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+              <div
+                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
+              >
                 <component :is="frameworkLogo(framework)" :size="22" aria-hidden="true" />
               </div>
               <span class="min-w-0 flex-1">
                 <span class="block font-medium text-foreground">{{ framework.name }}</span>
-                <span class="block truncate text-sm text-muted-foreground">{{ framework.publisher }}</span>
+                <span class="block truncate text-sm text-muted-foreground">{{
+                  framework.publisher
+                }}</span>
               </span>
               <span
                 v-if="framework.status !== 'active'"
@@ -516,7 +572,10 @@ onMounted(async () => {
             </button>
           </div>
 
-          <div v-else class="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+          <div
+            v-else
+            class="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground"
+          >
             No frameworks are available. Contact your administrator.
           </div>
         </template>
@@ -527,10 +586,19 @@ onMounted(async () => {
             <div v-for="item in 2" :key="item" class="h-20 animate-pulse rounded-lg bg-muted" />
           </div>
 
-          <div v-else-if="releasesError" class="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          <div
+            v-else-if="releasesError"
+            class="rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+          >
             <p class="font-medium text-foreground">Releases could not be loaded</p>
             <p class="mt-1 text-sm text-muted-foreground">{{ releasesError }}</p>
-            <Button class="mt-3" size="sm" variant="outline" @click="selectFramework(selectedFramework!)">Try again</Button>
+            <Button
+              class="mt-3"
+              size="sm"
+              variant="outline"
+              @click="selectFramework(selectedFramework!)"
+              >Try again</Button
+            >
           </div>
 
           <template v-else>
@@ -550,38 +618,64 @@ onMounted(async () => {
                 <span
                   class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border"
                   :class="{
-                    'border-primary bg-primary text-primary-foreground': selectedReleaseId === release.$id,
+                    'border-primary bg-primary text-primary-foreground':
+                      selectedReleaseId === release.$id,
                     'border-muted-foreground': selectedReleaseId !== release.$id,
                   }"
                 >
-                  <PhCheckCircle v-if="selectedReleaseId === release.$id" :size="14" weight="fill" aria-hidden="true" />
+                  <PhCheckCircle
+                    v-if="selectedReleaseId === release.$id"
+                    :size="14"
+                    weight="fill"
+                    aria-hidden="true"
+                  />
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span class="font-medium text-foreground">{{ release.title }}</span>
-                    <span class="font-mono text-xs text-muted-foreground">v{{ release.version }}</span>
+                    <span class="font-mono text-xs text-muted-foreground"
+                      >v{{ release.version }}</span
+                    >
                   </span>
-                  <span class="mt-1 block text-sm text-muted-foreground">Published {{ formatDate(release.publishedAt) }}</span>
-                  <span v-if="release.releaseNotes" class="mt-2 block text-sm text-muted-foreground">{{ release.releaseNotes }}</span>
+                  <span class="mt-1 block text-sm text-muted-foreground"
+                    >Published {{ formatDate(release.publishedAt) }}</span
+                  >
+                  <span
+                    v-if="release.releaseNotes"
+                    class="mt-2 block text-sm text-muted-foreground"
+                    >{{ release.releaseNotes }}</span
+                  >
                 </span>
               </button>
             </div>
 
-            <div v-else class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">
+            <div
+              v-else
+              class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
+            >
               There are no published releases available for {{ selectedFramework.name }}.
             </div>
 
-            <div v-if="selectedRelease" class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
+            <div
+              v-if="selectedRelease"
+              class="mt-5 flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4"
+            >
               <div>
                 <Label for="map-controls">Map controls</Label>
                 <p class="mt-1 text-sm text-muted-foreground">
-                  {{ mapControls ? 'Apply recommended control mappings.' : 'Adopt assessments only without control mappings.' }}
+                  {{
+                    mapControls
+                      ? 'Apply recommended control mappings.'
+                      : 'Adopt assessments only without control mappings.'
+                  }}
                 </p>
               </div>
               <Switch id="map-controls" v-model="mapControls" aria-label="Map controls" />
             </div>
 
-            <p v-if="adoptionError" class="mt-4 text-sm text-destructive" role="alert">{{ adoptionError }}</p>
+            <p v-if="adoptionError" class="mt-4 text-sm text-destructive" role="alert">
+              {{ adoptionError }}
+            </p>
           </template>
         </template>
 

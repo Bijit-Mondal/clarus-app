@@ -7,10 +7,10 @@ const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 
 /** Pages with a real, built-out view. Everything else falls back to the shell placeholder. */
 const pageComponents: Record<string, () => Promise<RouteComponent>> = {
-  'controls-overview': () => import('@/views/controls/ControlsOverview.vue'),
-  'controls-frameworks': () => import('@/views/controls/FrameworksPage.vue'),
-  'controls-framework-requirements': () =>
-    import('@/views/controls/FrameworkRequirementsPage.vue'),
+  'compliance-overview': () => import('@/views/compliance/ComplianceOverview.vue'),
+  'compliance-frameworks': () => import('@/views/compliance/FrameworksPage.vue'),
+  'compliance-framework-requirements': () =>
+    import('@/views/compliance/FrameworkRequirementsPage.vue'),
 }
 
 const dashboardChildren = appModules.flatMap((module) =>
@@ -75,7 +75,7 @@ const router = createRouter({
         {
           path: '',
           redirect: (to) => ({
-            name: getPageRouteName('controls', 'overview'),
+            name: getPageRouteName('compliance', 'overview'),
             params: { organizationSlug: to.params.organizationSlug },
           }),
         },
@@ -90,11 +90,11 @@ const router = createRouter({
         },
         ...dashboardChildren,
         {
-          path: 'controls/frameworks/:frameworkId/requirements',
-          name: 'controls-framework-requirements',
-          component: pageComponents['controls-framework-requirements'],
+          path: 'compliance/frameworks/:frameworkId/requirements',
+          name: 'compliance-framework-requirements',
+          component: pageComponents['compliance-framework-requirements']!,
           meta: {
-            module: 'controls',
+            module: 'compliance',
             title: 'Requirements',
           },
         },

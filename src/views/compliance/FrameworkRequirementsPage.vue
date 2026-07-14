@@ -148,7 +148,7 @@ const DUMMY_REQUIREMENTS: Requirement[] = [
     code: 'C1.1',
     title: 'Confidentiality — Identification',
     description:
-      'The entity identifies and maintains confidential information to meet the entity\'s objectives related to confidentiality.',
+      "The entity identifies and maintains confidential information to meet the entity's objectives related to confidentiality.",
     bestPractice: true,
     maturityLevel: '2 - Repeatable',
     category: 'Confidentiality',
@@ -158,7 +158,7 @@ const DUMMY_REQUIREMENTS: Requirement[] = [
     code: 'C1.2',
     title: 'Confidentiality — Disposal',
     description:
-      'The entity disposes of confidential information to meet the entity\'s objectives related to confidentiality.',
+      "The entity disposes of confidential information to meet the entity's objectives related to confidentiality.",
     bestPractice: false,
     maturityLevel: '3 - Defined',
     category: 'Confidentiality',
@@ -192,9 +192,27 @@ const DUMMY_AUDITS: LinkItem[] = [
 ]
 
 const DUMMY_OBLIGATIONS: LinkItem[] = [
-  { id: 'obl-1', name: 'GDPR Art. 32 — Security measures', area: 'Data Privacy', source: 'GDPR', state: 'Active' },
-  { id: 'obl-2', name: 'HIPAA §164.312 — Access control', area: 'Healthcare', source: 'HIPAA', state: 'Active' },
-  { id: 'obl-3', name: 'PCI DSS Req. 8 — Authentication', area: 'Payment', source: 'PCI DSS', state: 'Under review' },
+  {
+    id: 'obl-1',
+    name: 'GDPR Art. 32 — Security measures',
+    area: 'Data Privacy',
+    source: 'GDPR',
+    state: 'Active',
+  },
+  {
+    id: 'obl-2',
+    name: 'HIPAA §164.312 — Access control',
+    area: 'Healthcare',
+    source: 'HIPAA',
+    state: 'Active',
+  },
+  {
+    id: 'obl-3',
+    name: 'PCI DSS Req. 8 — Authentication',
+    area: 'Payment',
+    source: 'PCI DSS',
+    state: 'Under review',
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -224,10 +242,10 @@ function goBack() {
 // Requirements list state
 // ---------------------------------------------------------------------------
 
-const selectedId = ref<string>(DUMMY_REQUIREMENTS[0].id)
+const selectedId = ref<string>(DUMMY_REQUIREMENTS[0]!.id)
 
 const selectedRequirement = computed(
-  () => DUMMY_REQUIREMENTS.find((r) => r.id === selectedId.value) ?? DUMMY_REQUIREMENTS[0],
+  () => DUMMY_REQUIREMENTS.find((r) => r.id === selectedId.value) ?? DUMMY_REQUIREMENTS[0]!,
 )
 
 /** Group requirements by category for the left panel */
@@ -250,9 +268,9 @@ type LinkedState = Record<string, Record<LinkSection['id'], LinkItem[]>>
 
 const linkedItems = ref<LinkedState>({
   'cc1.1': {
-    controls: [DUMMY_CONTROLS[0]],
+    controls: [DUMMY_CONTROLS[0]!],
     documents: [],
-    audits: [DUMMY_AUDITS[0]],
+    audits: [DUMMY_AUDITS[0]!],
     obligations: [],
   },
 })
@@ -282,7 +300,6 @@ const activeTab = ref<LinkSection['id']>('controls')
 watch(selectedId, () => {
   activeTab.value = 'controls'
 })
-
 
 const LINK_SECTIONS: Omit<LinkSection, 'items'>[] = [
   {
@@ -364,7 +381,6 @@ function toggleLink(item: LinkItem) {
     sticky within the outer flex container.
   -->
   <div class="flex h-[calc(100dvh-3.5rem-4rem)] flex-col overflow-hidden">
-
     <!-- ─── Sticky page header ──────────────────────────────────────────── -->
     <header class="flex shrink-0 items-center gap-3 pb-5">
       <button
@@ -377,7 +393,9 @@ function toggleLink(item: LinkItem) {
       </button>
 
       <div class="flex min-w-0 flex-1 items-center gap-3">
-        <div class="flex shrink-0 items-center justify-center rounded-md bg-muted/60 p-1.5 text-foreground">
+        <div
+          class="flex shrink-0 items-center justify-center rounded-md bg-muted/60 p-1.5 text-foreground"
+        >
           <component :is="logoComponent()" :size="32" aria-hidden="true" />
         </div>
         <div class="min-w-0">
@@ -391,18 +409,15 @@ function toggleLink(item: LinkItem) {
 
     <!-- ─── Two-panel body ──────────────────────────────────────────────── -->
     <div class="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-card">
-
       <!-- Left: independently scrolling requirement list -->
       <aside
         class="clarus-scroll w-64 shrink-0 overflow-y-auto border-r border-border bg-sidebar"
         aria-label="Requirements list"
       >
-        <div
-          v-for="group in groupedRequirements"
-          :key="group.category"
-          class="py-3"
-        >
-          <p class="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        <div v-for="group in groupedRequirements" :key="group.category" class="py-3">
+          <p
+            class="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60"
+          >
             {{ group.category }}
           </p>
           <button
@@ -441,7 +456,6 @@ function toggleLink(item: LinkItem) {
       <!-- Right: independently scrolling requirement detail -->
       <div class="clarus-scroll min-w-0 flex-1 overflow-y-auto bg-background">
         <div v-if="selectedRequirement">
-
           <!-- Requirement description block -->
           <div class="border-b border-border px-6 py-6 lg:px-8">
             <span
@@ -449,12 +463,16 @@ function toggleLink(item: LinkItem) {
             >
               {{ selectedRequirement.code }}
             </span>
-            <p class="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-foreground text-pretty">
+            <p
+              class="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-foreground text-pretty"
+            >
               {{ selectedRequirement.description }}
             </p>
 
             <!-- Inline metadata chips -->
-            <div class="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-4">
+            <div
+              class="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-4"
+            >
               <div class="flex flex-col gap-0.5">
                 <span class="text-[11px] text-muted-foreground">Best Practice</span>
                 <span
@@ -466,18 +484,21 @@ function toggleLink(item: LinkItem) {
               </div>
               <div class="flex flex-col gap-0.5">
                 <span class="text-[11px] text-muted-foreground">Maturity level</span>
-                <span class="text-sm font-medium text-foreground">{{ selectedRequirement.maturityLevel }}</span>
+                <span class="text-sm font-medium text-foreground">{{
+                  selectedRequirement.maturityLevel
+                }}</span>
               </div>
               <div class="flex flex-col gap-0.5">
                 <span class="text-[11px] text-muted-foreground">Category</span>
-                <span class="text-sm font-medium text-foreground">{{ selectedRequirement.category }}</span>
+                <span class="text-sm font-medium text-foreground">{{
+                  selectedRequirement.category
+                }}</span>
               </div>
             </div>
           </div>
 
           <!-- ─── Tabbed link sections ──────────────────────────────────── -->
           <div class="px-6 py-5 lg:px-8">
-
             <!-- Tab bar -->
             <div
               class="mb-5 flex items-end border-b border-border"
@@ -534,7 +555,16 @@ function toggleLink(item: LinkItem) {
                   @click="openLinkDialog(section.id)"
                 >
                   <PhPlus :size="13" weight="bold" aria-hidden="true" />
-                  Link {{ section.id === 'audits' ? 'audit' : section.id === 'obligations' ? 'obligation' : section.id === 'documents' ? 'document' : 'control' }}
+                  Link
+                  {{
+                    section.id === 'audits'
+                      ? 'audit'
+                      : section.id === 'obligations'
+                        ? 'obligation'
+                        : section.id === 'documents'
+                          ? 'document'
+                          : 'control'
+                  }}
                 </Button>
               </div>
 
@@ -544,8 +574,12 @@ function toggleLink(item: LinkItem) {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b border-border bg-muted/40">
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">State</th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Name
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          State
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -576,9 +610,15 @@ function toggleLink(item: LinkItem) {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b border-border bg-muted/40">
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Type</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">State</th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Name
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Type
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          State
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -610,8 +650,12 @@ function toggleLink(item: LinkItem) {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b border-border bg-muted/40">
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">State</th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Name
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          State
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -642,10 +686,18 @@ function toggleLink(item: LinkItem) {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b border-border bg-muted/40">
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Area</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Source</th>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Name
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Area
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Source
+                        </th>
+                        <th class="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -671,7 +723,6 @@ function toggleLink(item: LinkItem) {
                   </table>
                 </div>
               </template>
-
             </div>
           </div>
         </div>
@@ -680,7 +731,9 @@ function toggleLink(item: LinkItem) {
 
     <!-- ─── Link items dialog ───────────────────────────────────────────── -->
     <Dialog :open="!!activeLinkSection" @update:open="(v) => !v && closeLinkDialog()">
-      <DialogContent class="flex max-h-[min(36rem,calc(100vh-4rem))] flex-col gap-0 p-0 sm:max-w-lg overflow-hidden">
+      <DialogContent
+        class="flex max-h-[min(36rem,calc(100vh-4rem))] flex-col gap-0 p-0 sm:max-w-lg overflow-hidden"
+      >
         <DialogHeader class="shrink-0 border-b border-border px-5 py-4">
           <DialogTitle class="flex items-center gap-2 text-base">
             <component
@@ -692,7 +745,8 @@ function toggleLink(item: LinkItem) {
             Link {{ activeLinkSection?.label }}
           </DialogTitle>
           <DialogDescription class="text-sm text-muted-foreground">
-            Search and select {{ activeLinkSection?.label?.toLowerCase() }} to link to this requirement.
+            Search and select {{ activeLinkSection?.label?.toLowerCase() }} to link to this
+            requirement.
           </DialogDescription>
         </DialogHeader>
 
@@ -740,7 +794,10 @@ function toggleLink(item: LinkItem) {
                 {{ isAlreadyLinked(item) ? 'Linked' : 'Link' }}
               </Button>
             </li>
-            <li v-if="!dialogSearchResults.length" class="px-5 py-8 text-center text-sm text-muted-foreground">
+            <li
+              v-if="!dialogSearchResults.length"
+              class="px-5 py-8 text-center text-sm text-muted-foreground"
+            >
               No results for "{{ linkSearchQuery }}"
             </li>
           </ul>

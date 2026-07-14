@@ -22,7 +22,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       type: 'failure',
       createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45m ago
       read: false,
-      targetUrl: '/dashboard/controls/overview',
+      targetUrl: '/dashboard/compliance/overview',
       severity: 'destructive',
     },
     {
@@ -33,7 +33,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       type: 'expiry',
       createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(), // 3h ago
       read: false,
-      targetUrl: '/dashboard/controls/evidence',
+      targetUrl: '/dashboard/compliance/evidence',
       severity: 'warning',
     },
     {
@@ -44,7 +44,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       type: 'task',
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1d ago
       read: false,
-      targetUrl: '/dashboard/controls/reviews',
+      targetUrl: '/dashboard/compliance/reviews',
       severity: 'info',
     },
     {
@@ -55,7 +55,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       type: 'update',
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(), // 1.5d ago
       read: true,
-      targetUrl: '/dashboard/controls/overview',
+      targetUrl: '/dashboard/compliance/overview',
       severity: 'success',
     },
     {
@@ -66,7 +66,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       type: 'update',
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3d ago
       read: true,
-      targetUrl: '/dashboard/controls/overview',
+      targetUrl: '/dashboard/compliance/overview',
       severity: 'success',
     },
   ])
