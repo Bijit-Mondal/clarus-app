@@ -1,6 +1,7 @@
 import type { RouteComponent } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import { appModules, getPageRouteName } from '@/config/navigation'
+import { authMiddleware } from '@/router/guards/auth'
 
 const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 
@@ -32,31 +33,49 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'login',
       component: () => import('@/views/auth/LoginChoice.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/login/sso',
+      name: 'login-sso',
       component: () => import('@/views/auth/LoginSso.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/login/email',
+      name: 'login-email',
       component: () => import('@/views/auth/LoginEmail.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/register',
+      name: 'register',
       component: () => import('@/views/auth/RegisterPage.vue'),
+      meta: { guestOnly: true },
     },
     {
       path: '/orgs',
+      name: 'organizations',
       component: () => import('@/views/orgs/SelectOrg.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/dashboard',
+      redirect: '/orgs',
+    },
+    {
+      path: '/:organizationSlug/dashboard',
       component: () => import('@/layouts/DashboardLayout.vue'),
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
-          redirect: { name: getPageRouteName('controls', 'overview') },
+          redirect: (to) => ({
+            name: getPageRouteName('controls', 'overview'),
+            params: { organizationSlug: to.params.organizationSlug },
+          }),
         },
         {
           path: 'notifications',
@@ -72,5 +91,7 @@ const router = createRouter({
     },
   ],
 })
+
+router.beforeEach(authMiddleware)
 
 export default router

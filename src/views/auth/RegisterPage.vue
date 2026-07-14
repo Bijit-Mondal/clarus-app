@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhArrowLeft, PhCheck, PhX } from '@phosphor-icons/vue'
 import ClarusLogo from '@/components/shell/ClarusLogo.vue'
+import { getApiErrorMessage } from '@/lib/api'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
+const { registerAndLogin, registerMutation, loginMutation } = useAuth()
+const submitError = ref('')
 
 const registerSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
@@ -53,11 +57,27 @@ function canSubmit() {
   return result.success
 }
 
-function handleSubmit() {
+const isSubmitting = computed(
+  () => registerMutation.isPending.value || loginMutation.isPending.value,
+)
+
+async function handleSubmit() {
   for (const field of Object.keys(form) as Field[]) {
     validateField(field)
   }
   if (!canSubmit()) return
+
+  submitError.value = ''
+  try {
+    await registerAndLogin({
+      name: form.fullName,
+      email: form.email,
+      password: form.password,
+    })
+    await router.replace('/orgs')
+  } catch (error: unknown) {
+    submitError.value = getApiErrorMessage(error, 'We could not create your account. Try again.')
+  }
 }
 </script>
 
@@ -164,7 +184,16 @@ function handleSubmit() {
             </div>
           </div>
 
-          <Button class="w-full" type="submit"> Create account </Button>
+          <p
+            v-if="submitError"
+            class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-emphasis"
+            role="alert"
+          >
+            {{ submitError }}
+          </p>
+          <Button class="w-full" type="submit" :disabled="isSubmitting">
+            {{ isSubmitting ? 'Creating account…' : 'Create account' }}
+          </Button>
         </form>
 
         <p class="text-center text-sm text-muted-foreground">

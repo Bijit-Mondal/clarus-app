@@ -155,8 +155,27 @@ export function getPageRouteName(moduleId: AppModuleId, pageId: string): string 
   return `${moduleId}-${pageId}`
 }
 
-export function getModulePagePath(moduleId: AppModuleId, pageId: string): string {
-  return `/dashboard/${moduleId}/${pageId}`
+export function getOrganizationPath(organizationSlug: string, path = '/dashboard'): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  return `/${encodeURIComponent(organizationSlug)}${normalizedPath}`
+}
+
+export function getOrganizationDashboardPath(organizationSlug: string): string {
+  return getOrganizationPath(organizationSlug)
+}
+
+export function getModulePagePath(
+  moduleId: AppModuleId,
+  pageId: string,
+  organizationSlug?: string,
+): string {
+  const path = `/dashboard/${moduleId}/${pageId}`
+  return organizationSlug ? getOrganizationPath(organizationSlug, path) : path
+}
+
+export function scopeDashboardPath(organizationSlug: string | undefined, path: string): string {
+  if (!organizationSlug || !path.startsWith('/dashboard')) return path
+  return getOrganizationPath(organizationSlug, path)
 }
 
 export function resolveModulePage(moduleId: string, pageId: string) {

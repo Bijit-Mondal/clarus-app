@@ -1,0 +1,20 @@
+info:
+  name: Get File Download
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://localhost:8080/v1/attachments/6a511aab69d40ec5bab9/download
+  headers:
+    - name: X-Tenant-Id
+      value: 6a4d2f254b0c3c9d9a3f
+    - name: Cookie
+      value: cookies.txt
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

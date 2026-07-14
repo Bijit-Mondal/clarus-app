@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { PhLockSimple } from '@phosphor-icons/vue'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getModulePagePath, type AppModule } from '@/config/navigation'
@@ -12,6 +13,10 @@ defineProps<{
 }>()
 
 const { collapsed } = useSidebar()
+const route = useRoute()
+const organizationSlug = computed(() =>
+  typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined,
+)
 </script>
 
 <template>
@@ -62,7 +67,7 @@ const { collapsed } = useSidebar()
             </span>
             <RouterLink
               v-else
-              :to="getModulePagePath(module.id, page.id)"
+              :to="getModulePagePath(module.id, page.id, organizationSlug)"
               :aria-current="activePageId === page.id ? 'page' : undefined"
               :class="
                 cn(

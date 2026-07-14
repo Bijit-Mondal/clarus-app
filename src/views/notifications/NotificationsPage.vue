@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
-  PhCheck,
   PhChecks,
   PhTrash,
   PhShieldWarning,
@@ -19,9 +18,10 @@ import {
 import { useNotificationStore, type Notification } from '@/stores/notifications'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import { scopeDashboardPath } from '@/config/navigation'
 
 const router = useRouter()
+const route = useRoute()
 const store = useNotificationStore()
 
 const currentFilter = ref<'all' | 'unread' | 'read'>('all')
@@ -65,7 +65,7 @@ const groupedNotifications = computed(() => {
 
   // Filter out groups with no items
   return Object.entries(groups)
-    .filter(([_, items]) => items.length > 0)
+    .filter(([, items]) => items.length > 0)
     .map(([title, items]) => ({
       title,
       // Sort each group with newest first
@@ -83,7 +83,9 @@ function formatTime(dateString: string) {
 function handleNotificationClick(n: Notification) {
   store.markAsRead(n.id)
   if (n.targetUrl) {
-    router.push(n.targetUrl)
+    const organizationSlug =
+      typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined
+    router.push(scopeDashboardPath(organizationSlug, n.targetUrl))
   }
 }
 

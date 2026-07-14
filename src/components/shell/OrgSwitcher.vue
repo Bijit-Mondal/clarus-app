@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { PhCaretDown, PhCheck, PhPlus } from '@phosphor-icons/vue'
 import { storeToRefs } from 'pinia'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,9 +17,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useOrganizationStore } from '@/stores/organization'
 import { cn } from '@/lib/utils'
+import { getOrganizationPath } from '@/config/navigation'
 
 const orgStore = useOrganizationStore()
 const { organizations, activeOrganization } = storeToRefs(orgStore)
+const route = useRoute()
+const router = useRouter()
 
 const open = ref(false)
 const mode = ref<'list' | 'create'>('list')
@@ -43,6 +47,15 @@ watch(mode, async (next) => {
 
 function selectOrg(id: string) {
   orgStore.selectOrganization(id)
+  const organization = organizations.value.find((candidate) => candidate.id === id)
+  if (organization) {
+    const currentSlug = route.params.organizationSlug
+    const currentPath =
+      typeof currentSlug === 'string' && route.path.startsWith(`/${currentSlug}`)
+        ? route.path.slice(currentSlug.length + 1)
+        : '/dashboard'
+    router.push(getOrganizationPath(organization.slug, currentPath))
+  }
   open.value = false
 }
 

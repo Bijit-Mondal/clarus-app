@@ -1,0 +1,25 @@
+info:
+  name: Adapt Framework Version
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8080/v1/tenant/frameworks/adoptions
+  headers:
+    - name: X-Tenant-ID
+      value: 6a51401706a8d3667d07
+  body:
+    type: json
+    data: |-
+      {
+        "frameworkReleaseId": "9c82186c4a05fa478b18",
+        "mappingMode": "recommended"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

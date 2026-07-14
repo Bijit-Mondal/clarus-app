@@ -13,7 +13,6 @@ node_modules
 dist
 dist-ssr
 coverage
-bruno
 *.local
 
 # Editor directories and files

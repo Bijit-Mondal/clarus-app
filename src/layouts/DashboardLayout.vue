@@ -7,10 +7,16 @@ import ModuleSidebar from '@/components/shell/ModuleSidebar.vue'
 import AppTopBar from '@/components/shell/AppTopBar.vue'
 import ClarusAiPanel from '@/components/shell/ClarusAiPanel.vue'
 import { getModuleById } from '@/config/navigation'
+import { useTenantsQuery } from '@/composables/useTenants'
 
 const route = useRoute()
 
+useTenantsQuery()
+
 const activeModuleId = computed(() => route.meta.module as string | undefined)
+const activePageId = computed(() =>
+  typeof route.meta.page === 'string' ? route.meta.page : undefined,
+)
 const activeModule = computed(() =>
   activeModuleId.value ? getModuleById(activeModuleId.value) : undefined,
 )
@@ -22,11 +28,7 @@ const activeModule = computed(() =>
       <div class="flex shrink-0 border-r border-sidebar-border">
         <ModuleRail :active-module-id="activeModuleId" />
 
-        <ModuleSidebar
-          v-if="activeModule"
-          :module="activeModule"
-          :active-page-id="route.meta.page as string | undefined"
-        />
+        <ModuleSidebar v-if="activeModule" :module="activeModule" :active-page-id="activePageId" />
       </div>
 
       <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-background">

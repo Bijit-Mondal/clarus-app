@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PhBell,
   PhCheck,
@@ -11,15 +11,15 @@ import {
   PhCheckCircle,
   PhArrowRight,
   PhInfo,
-  PhWarning,
 } from '@phosphor-icons/vue'
 import { useNotificationStore, type Notification } from '@/stores/notifications'
-import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { scopeDashboardPath } from '@/config/navigation'
 
 const router = useRouter()
+const route = useRoute()
 const store = useNotificationStore()
 
 const isOpen = ref(false)
@@ -51,13 +51,17 @@ function handleNotificationClick(n: Notification) {
   store.markAsRead(n.id)
   isOpen.value = false
   if (n.targetUrl) {
-    router.push(n.targetUrl)
+    const organizationSlug =
+      typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined
+    router.push(scopeDashboardPath(organizationSlug, n.targetUrl))
   }
 }
 
 function handleViewAll() {
   isOpen.value = false
-  router.push('/dashboard/notifications')
+  const organizationSlug =
+    typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined
+  router.push(scopeDashboardPath(organizationSlug, '/dashboard/notifications'))
 }
 
 // Icon helper mapped to type

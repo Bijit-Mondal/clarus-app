@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhArrowLeft, PhX } from '@phosphor-icons/vue'
+import { getApiErrorMessage } from '@/lib/api'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
+const route = useRoute()
+const { loginMutation } = useAuth()
+const submitError = ref('')
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -41,11 +47,23 @@ function hasError(field: keyof LoginForm) {
   return touched[field] && !!errors[field]
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   for (const field of Object.keys(form) as (keyof LoginForm)[]) {
     validateField(field)
   }
   if (!loginSchema.safeParse(form).success) return
+
+  submitError.value = ''
+  try {
+    await loginMutation.mutateAsync({ ...form })
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/orgs'
+    await router.replace(redirect)
+  } catch (error: unknown) {
+    submitError.value = getApiErrorMessage(
+      error,
+      'We could not sign you in. Check your details and try again.',
+    )
+  }
 }
 </script>
 
@@ -109,7 +127,16 @@ function handleSubmit() {
               {{ errors.password }}
             </p>
           </div>
-          <Button class="w-full" type="submit"> Login </Button>
+          <p
+            v-if="submitError"
+            class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-emphasis"
+            role="alert"
+          >
+            {{ submitError }}
+          </p>
+          <Button class="w-full" type="submit" :disabled="loginMutation.isPending.value">
+            {{ loginMutation.isPending.value ? 'Signing in…' : 'Login' }}
+          </Button>
         </form>
         <div class="grid gap-3">
           <div class="text-center text-sm text-muted-foreground">

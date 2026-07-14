@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import ClarusLogo from '@/components/shell/ClarusLogo.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  getOrganizationDashboardPath,
   getModulePagePath,
   primaryModules,
   settingsModule,
@@ -13,6 +15,11 @@ import { cn } from '@/lib/utils'
 const props = defineProps<{
   activeModuleId?: string
 }>()
+
+const route = useRoute()
+const organizationSlug = computed(() =>
+  typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined,
+)
 
 function isActive(moduleId: AppModuleId) {
   return props.activeModuleId === moduleId
@@ -32,7 +39,7 @@ const itemClass = (active: boolean) =>
 <template>
   <nav aria-label="Modules" class="flex w-14 shrink-0 flex-col items-center gap-1 bg-sidebar py-3">
     <RouterLink
-      to="/dashboard"
+      :to="organizationSlug ? getOrganizationDashboardPath(organizationSlug) : '/orgs'"
       class="mb-3 flex size-10 items-center justify-center rounded-xl text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-foreground/[0.06] hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
       aria-label="Clarus home"
     >
@@ -43,7 +50,7 @@ const itemClass = (active: boolean) =>
       <Tooltip v-for="module in primaryModules" :key="module.id">
         <TooltipTrigger as-child>
           <RouterLink
-            :to="getModulePagePath(module.id, module.pages[0]!.id)"
+            :to="getModulePagePath(module.id, module.pages[0]!.id, organizationSlug)"
             :aria-current="isActive(module.id) ? 'page' : undefined"
             :class="itemClass(isActive(module.id))"
           >
@@ -70,7 +77,7 @@ const itemClass = (active: boolean) =>
     <Tooltip>
       <TooltipTrigger as-child>
         <RouterLink
-          :to="getModulePagePath(settingsModule.id, settingsModule.pages[0]!.id)"
+          :to="getModulePagePath(settingsModule.id, settingsModule.pages[0]!.id, organizationSlug)"
           :aria-current="isActive(settingsModule.id) ? 'page' : undefined"
           :class="itemClass(isActive(settingsModule.id))"
         >

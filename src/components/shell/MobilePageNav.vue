@@ -23,10 +23,13 @@ const activePageId = computed(() => route.meta.page as string | undefined)
 const activePageLabel = computed(
   () => module.value?.pages.find((p) => p.id === activePageId.value)?.label,
 )
+const organizationSlug = computed(() =>
+  typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined,
+)
 
 function goToPage(pageId: string) {
   if (!module.value) return
-  router.push(getModulePagePath(module.value.id, pageId))
+  router.push(getModulePagePath(module.value.id, pageId, organizationSlug.value))
 }
 </script>
 

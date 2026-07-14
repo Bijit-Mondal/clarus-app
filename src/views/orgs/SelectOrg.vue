@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { PhPlus, PhCaretRight, PhCheck } from '@phosphor-icons/vue'
@@ -18,25 +18,47 @@ import {
 import ClarusLogo from '@/components/shell/ClarusLogo.vue'
 import { useOrganizationStore } from '@/stores/organization'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api'
+import { useCreateTenantMutation, useTenantsQuery } from '@/composables/useTenants'
+import { getOrganizationDashboardPath } from '@/config/navigation'
 
 const router = useRouter()
 const orgStore = useOrganizationStore()
 const { organizations, activeOrganization } = storeToRefs(orgStore)
+const tenantsQuery = useTenantsQuery()
+const createTenantMutation = useCreateTenantMutation()
 
 const open = ref(false)
 const orgName = ref('')
+const submitError = ref('')
+const isCreating = computed(() => createTenantMutation.isPending.value)
 
 function selectOrg(orgId: string) {
   orgStore.selectOrganization(orgId)
-  router.push('/dashboard')
+  const organization = organizations.value.find((org) => org.id === orgId)
+  if (organization) router.push(getOrganizationDashboardPath(organization.slug))
 }
 
-function createAndEnter() {
-  const created = orgStore.createOrganization(orgName.value)
-  if (!created) return
+async function createAndEnter() {
+  const name = orgName.value.trim()
+  if (!name) return
+
+  submitError.value = ''
+  try {
+    const created = await createTenantMutation.mutateAsync({ name })
+    if (!created) throw new Error('The server did not return the created organization.')
+    orgStore.selectOrganization(created.id)
+  } catch (error: unknown) {
+    submitError.value = getApiErrorMessage(
+      error,
+      'We could not create the organization. Try again.',
+    )
+    return
+  }
+
   open.value = false
   orgName.value = ''
-  router.push('/dashboard')
+  router.push(getOrganizationDashboardPath(created.slug))
 }
 </script>
 
@@ -56,7 +78,33 @@ function createAndEnter() {
           </div>
         </div>
 
-        <ul class="flex flex-col gap-2" role="list">
+        <div
+          v-if="tenantsQuery.isPending.value"
+          class="rounded-lg border border-border bg-card px-4 py-4 text-sm text-muted-foreground"
+        >
+          Loading your organizations…
+        </div>
+        <div
+          v-else-if="tenantsQuery.isError.value"
+          class="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-4 text-sm text-destructive-emphasis"
+          role="alert"
+        >
+          We could not load your organizations.
+          <button
+            class="ml-1 font-medium underline underline-offset-4"
+            type="button"
+            @click="tenantsQuery.refetch()"
+          >
+            Try again
+          </button>
+        </div>
+        <p
+          v-else-if="!organizations.length"
+          class="rounded-lg border border-border bg-card px-4 py-4 text-sm text-muted-foreground"
+        >
+          You do not have an organization yet. Create one to continue.
+        </p>
+        <ul v-else class="flex flex-col gap-2" role="list">
           <li v-for="org in organizations" :key="org.id">
             <button
               type="button"
@@ -124,8 +172,11 @@ function createAndEnter() {
                 The name of your organization as it will appear throughout the platform.
               </p>
               <DialogFooter class="pt-2">
-                <Button type="submit" class="w-full" :disabled="!orgName.trim()">
-                  Create organization
+                <p v-if="submitError" class="text-sm text-destructive-emphasis" role="alert">
+                  {{ submitError }}
+                </p>
+                <Button type="submit" class="w-full" :disabled="!orgName.trim() || isCreating">
+                  {{ isCreating ? 'Creating…' : 'Create organization' }}
                 </Button>
               </DialogFooter>
             </form>
