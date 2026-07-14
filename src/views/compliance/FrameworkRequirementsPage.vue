@@ -11,8 +11,10 @@ import {
   PhShieldCheck,
 } from '@phosphor-icons/vue'
 import AICPALogo from '@/components/brand/AICPALogo.vue'
-import ISOLogo from '@/components/brand/ISOLogo.vue'
+import CCPALogo from '@/components/brand/CCPALogo.vue'
+import GDPRLogo from '@/components/brand/GDPRLogo.vue'
 import HIPAALogo from '@/components/brand/HIPAALogo.vue'
+import ISOLogo from '@/components/brand/ISOLogo.vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -228,9 +230,12 @@ const frameworkPublisher = computed(() => (route.query.publisher as string) || '
 
 function logoComponent() {
   const p = frameworkPublisher.value
+  const n = frameworkName.value.toLowerCase()
   if (p === 'AICPA') return AICPALogo
   if (p === 'ISO') return ISOLogo
-  if (p === 'HHS') return HIPAALogo
+  if (p === 'HHS' || p === 'hipaa' || n.includes('hipaa')) return HIPAALogo
+  if (p === 'GDPR' || p === 'EU' || n.includes('gdpr')) return GDPRLogo
+  if (p === 'CCPA' || n.includes('ccpa')) return CCPALogo
   return PhShieldCheck
 }
 
@@ -374,13 +379,13 @@ function toggleLink(item: LinkItem) {
 </script>
 
 <template>
-  <!--
-    Escape the DashboardLayout's px-6 py-8 wrapper so we can own our own
-    full-height surface. h-[calc(100dvh-3.5rem)] = viewport height minus the
-    h-14 AppTopBar. Each panel scrolls independently; the page header is
-    sticky within the outer flex container.
-  -->
   <div class="flex h-[calc(100dvh-3.5rem-4rem)] flex-col overflow-hidden">
+    <!--
+      Escape the DashboardLayout's px-6 py-8 wrapper so we can own our own
+      full-height surface. h-[calc(100dvh-3.5rem)] = viewport height minus the
+      h-14 AppTopBar. Each panel scrolls independently; the page header is
+      sticky within the outer flex container.
+    -->
     <!-- ─── Sticky page header ──────────────────────────────────────────── -->
     <header class="flex shrink-0 items-center gap-3 pb-5">
       <button

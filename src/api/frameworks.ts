@@ -41,6 +41,8 @@ export type TenantFramework = {
   targetDate: string
   adoptedAt: string
   adoptedById: string
+  framework?: Framework
+  frameworkRelease?: FrameworkRelease
 }
 
 type TenantFrameworksResponse = {
@@ -70,7 +72,7 @@ export function getFrameworkReleases(frameworkId: string) {
 }
 
 export function adoptFramework(tenantId: string, input: AdoptFrameworkInput) {
-  return apiRequest<unknown>('/v1/tenant/frameworks/adoptions', {
+  return apiRequest<TenantFramework>('/v1/tenant/frameworks/adoptions', {
     method: 'POST',
     headers: {
       'x-tenant-id': tenantId,

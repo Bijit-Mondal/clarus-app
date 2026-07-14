@@ -14,6 +14,8 @@ import {
   PhWarningCircle,
 } from '@phosphor-icons/vue'
 import AICPALogo from '@/components/brand/AICPALogo.vue'
+import CCPALogo from '@/components/brand/CCPALogo.vue'
+import GDPRLogo from '@/components/brand/GDPRLogo.vue'
 import HIPAALogo from '@/components/brand/HIPAALogo.vue'
 import ISOLogo from '@/components/brand/ISOLogo.vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
@@ -73,6 +75,16 @@ function navigateToRequirements(item: AdoptedFrameworkDisplay) {
   })
 }
 
+function navigateToNewlyAdopted() {
+  if (!newlyAdopted.value) return
+  navigateToRequirements({
+    tenantFramework: newlyAdopted.value,
+    framework: newlyAdopted.value.framework,
+    release: newlyAdopted.value.frameworkRelease,
+  })
+}
+
+
 // --- Adopted frameworks state (page body) ---
 const adoptedFrameworks = ref<TenantFramework[]>([])
 const isLoadingAdopted = ref(true)
@@ -80,7 +92,6 @@ const adoptedError = ref('')
 
 // --- Catalog data for enrichment ---
 const frameworks = ref<Framework[]>([])
-const allReleases = ref<Map<string, FrameworkRelease>>(new Map())
 const isLoadingFrameworks = ref(false)
 const frameworksError = ref('')
 
@@ -94,7 +105,7 @@ const selectedReleaseId = ref('')
 const mapControls = ref(true)
 const isAdopting = ref(false)
 const adoptionError = ref('')
-const adoptedReleaseTitle = ref('')
+const newlyAdopted = ref<TenantFramework | null>(null)
 
 const selectedRelease = computed(() =>
   dialogReleases.value.find((release) => release.$id === selectedReleaseId.value),
@@ -105,23 +116,28 @@ const mappingMode = computed<'recommended' | 'assessments_only'>(() =>
 )
 
 const dialogStep = computed<'pick-framework' | 'pick-release' | 'adopted'>(() => {
-  if (adoptedReleaseTitle.value) return 'adopted'
+  if (newlyAdopted.value) return 'adopted'
   if (selectedFramework.value) return 'pick-release'
   return 'pick-framework'
 })
 
+const isAdopted = (frameworkId: string) => {
+  return adoptedFrameworks.value.some(
+    (tf) => tf.framework?.$id === frameworkId || tf.frameworkRelease?.frameworkId === frameworkId,
+  )
+}
+
 /**
- * Build enriched display items by joining tenant frameworks with
- * the catalog frameworks + releases. The API doesn't embed these
- * yet, so we cross-reference client-side.
+ * Build enriched display items using embedded framework and release
+ * data from the tenant frameworks list.
  */
 const adoptedDisplay = computed<AdoptedFrameworkDisplay[]>(() => {
   return adoptedFrameworks.value.map((tf) => {
-    const release = allReleases.value.get(tf.frameworkReleaseId)
-    const framework = release
-      ? frameworks.value.find((fw) => fw.$id === release.frameworkId)
-      : undefined
-    return { tenantFramework: tf, framework, release }
+    return {
+      tenantFramework: tf,
+      framework: tf.framework,
+      release: tf.frameworkRelease,
+    }
   })
 })
 
@@ -129,6 +145,9 @@ function frameworkLogo(framework: Framework): Component {
   if (framework.publisher === 'AICPA') return AICPALogo
   if (framework.publisher === 'ISO') return ISOLogo
   if (framework.key === 'hipaa' || framework.publisher === 'HHS') return HIPAALogo
+  if (framework.key === 'gdpr' || framework.publisher === 'GDPR' || framework.publisher === 'EU')
+    return GDPRLogo
+  if (framework.key === 'ccpa' || framework.publisher === 'CCPA') return CCPALogo
   return PhShieldCheck
 }
 
@@ -169,20 +188,6 @@ async function loadFrameworksCatalog() {
   try {
     const response = await getFrameworks()
     frameworks.value = response.frameworks
-
-    // Fetch releases for every framework so we can enrich the page + dialog
-    const releasesMap = new Map<string, FrameworkRelease>()
-    const releaseResponses = await Promise.allSettled(
-      response.frameworks.map((fw) => getFrameworkReleases(fw.$id)),
-    )
-    for (const result of releaseResponses) {
-      if (result.status === 'fulfilled') {
-        for (const release of result.value.frameworkReleases) {
-          releasesMap.set(release.$id, release)
-        }
-      }
-    }
-    allReleases.value = releasesMap
   } catch (error: unknown) {
     frameworksError.value = getApiErrorMessage(error, 'Unable to load frameworks. Try again.')
   } finally {
@@ -196,7 +201,7 @@ async function selectFramework(framework: Framework) {
   selectedReleaseId.value = ''
   releasesError.value = ''
   adoptionError.value = ''
-  adoptedReleaseTitle.value = ''
+  newlyAdopted.value = null
   isLoadingReleases.value = true
 
   try {
@@ -231,7 +236,7 @@ function resetAdoptionFlow() {
   selectedReleaseId.value = ''
   releasesError.value = ''
   adoptionError.value = ''
-  adoptedReleaseTitle.value = ''
+  newlyAdopted.value = null
   mapControls.value = true
 }
 
@@ -247,11 +252,11 @@ async function adoptSelectedFramework() {
   isAdopting.value = true
   adoptionError.value = ''
   try {
-    await adoptFramework(tenantId, {
+    const response = await adoptFramework(tenantId, {
       frameworkReleaseId: selectedRelease.value.$id,
       mappingMode: mappingMode.value,
     })
-    adoptedReleaseTitle.value = selectedRelease.value.title
+    newlyAdopted.value = response
     // Refresh adopted list so the page shows the new framework
     void loadAdopted()
   } catch (error: unknown) {
@@ -266,8 +271,7 @@ watch(isAdoptionDialogOpen, (isOpen) => {
 })
 
 onMounted(async () => {
-  // Load catalog first (for enrichment), then adopted frameworks
-  await loadFrameworksCatalog()
+  // Only load adopted frameworks on mount. The catalog is loaded on-demand when the dialog opens.
   await loadAdopted()
 })
 </script>
@@ -494,21 +498,37 @@ onMounted(async () => {
 
         <!-- Success state -->
         <div
-          v-if="adoptedReleaseTitle"
-          class="rounded-lg border border-success/30 bg-success/10 p-4"
+          v-if="newlyAdopted"
+          class="rounded-lg border border-success/30 bg-success/5 p-5"
         >
-          <div class="flex gap-3">
-            <PhCheckCircle
-              :size="20"
-              weight="fill"
-              class="shrink-0 text-success"
-              aria-hidden="true"
-            />
-            <div>
-              <p class="font-medium text-foreground">{{ adoptedReleaseTitle }} was adopted</p>
-              <p class="mt-1 text-sm text-muted-foreground">
-                You can now begin tracking its requirements.
+          <div class="flex gap-4">
+            <!-- Large logo for the adopted framework -->
+            <div
+              class="flex shrink-0 items-center justify-center rounded-md bg-muted/60 p-3 text-foreground"
+            >
+              <component
+                :is="newlyAdopted.framework ? frameworkLogo(newlyAdopted.framework) : PhShieldCheck"
+                :size="40"
+                aria-hidden="true"
+              />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-foreground text-base">
+                {{ newlyAdopted.framework?.name || newlyAdopted.frameworkRelease?.title }} has been adopted
               </p>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Version {{ newlyAdopted.frameworkRelease?.version }} &middot; Publisher: {{ newlyAdopted.framework?.publisher }}
+              </p>
+              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                <span class="flex items-center gap-1">
+                  <PhCalendar :size="13" />
+                  Adopted on {{ formatDate(newlyAdopted.adoptedAt) }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <PhShieldCheck :size="13" />
+                  Status: <span class="capitalize text-success-emphasis font-medium">{{ newlyAdopted.status }}</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -543,32 +563,46 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-else-if="frameworks.length" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div v-else-if="frameworks.length" class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <button
               v-for="framework in frameworks"
               :key="framework.$id"
               type="button"
-              class="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="framework.status !== 'active'"
+              class="group relative flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3 text-left transition-all hover:bg-muted/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="framework.status !== 'active' || isAdopted(framework.$id)"
               @click="selectFramework(framework)"
             >
-              <div
-                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
-              >
-                <component :is="frameworkLogo(framework)" :size="22" aria-hidden="true" />
+              <!-- Typography mirroring the tenant framework card on the left -->
+              <div class="min-w-0 flex-1">
+                <span class="block text-lg font-semibold leading-tight text-foreground">
+                  {{ framework.name }}
+                </span>
+                <div class="mt-0.5 flex flex-wrap items-center gap-2">
+                  <span class="block font-mono text-xs text-muted-foreground">
+                    {{ framework.publisher }}
+                  </span>
+                  <span
+                    v-if="framework.status !== 'active'"
+                    class="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    {{ framework.status }}
+                  </span>
+                  <span
+                    v-if="isAdopted(framework.$id)"
+                    class="inline-flex items-center gap-1 rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-success-emphasis"
+                  >
+                    <PhCheckCircle :size="10" weight="fill" />
+                    Adopted
+                  </span>
+                </div>
               </div>
-              <span class="min-w-0 flex-1">
-                <span class="block font-medium text-foreground">{{ framework.name }}</span>
-                <span class="block truncate text-sm text-muted-foreground">{{
-                  framework.publisher
-                }}</span>
-              </span>
-              <span
-                v-if="framework.status !== 'active'"
-                class="shrink-0 text-xs text-muted-foreground"
+
+              <!-- Logo Container on the right -->
+              <div
+                class="flex shrink-0 items-center justify-center rounded-md bg-muted/60 p-2 text-foreground transition-colors group-hover:bg-muted/80"
               >
-                {{ framework.status }}
-              </span>
+                <component :is="frameworkLogo(framework)" :size="24" aria-hidden="true" />
+              </div>
             </button>
           </div>
 
@@ -581,7 +615,7 @@ onMounted(async () => {
         </template>
 
         <!-- Step 2: Pick a release -->
-        <template v-else-if="!adoptedReleaseTitle">
+        <template v-else-if="!newlyAdopted">
           <div v-if="isLoadingReleases" class="space-y-3" aria-label="Loading releases">
             <div v-for="item in 2" :key="item" class="h-20 animate-pulse rounded-lg bg-muted" />
           </div>
@@ -680,16 +714,26 @@ onMounted(async () => {
         </template>
 
         <DialogFooter>
-          <Button variant="outline" @click="isAdoptionDialogOpen = false">
-            {{ adoptedReleaseTitle ? 'Close' : 'Cancel' }}
-          </Button>
-          <Button
-            v-if="!adoptedReleaseTitle"
-            :disabled="!selectedRelease || isAdopting"
-            @click="adoptSelectedFramework"
-          >
-            {{ isAdopting ? 'Adopting…' : 'Adopt framework' }}
-          </Button>
+          <template v-if="newlyAdopted">
+            <Button variant="outline" @click="isAdoptionDialogOpen = false">
+              Close
+            </Button>
+            <Button @click="navigateToNewlyAdopted">
+              View requirements
+            </Button>
+          </template>
+          <template v-else>
+            <Button variant="outline" @click="isAdoptionDialogOpen = false">
+              Cancel
+            </Button>
+            <Button
+              v-if="dialogStep === 'pick-release'"
+              :disabled="!selectedRelease || isAdopting"
+              @click="adoptSelectedFramework"
+            >
+              {{ isAdopting ? 'Adopting…' : 'Adopt framework' }}
+            </Button>
+          </template>
         </DialogFooter>
       </DialogContent>
     </Dialog>
