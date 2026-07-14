@@ -146,7 +146,7 @@ function onKeydown(event: KeyboardEvent) {
             class="mb-5 flex size-14 items-center justify-center text-foreground/80"
             aria-hidden="true"
           >
-            <ClarusLogo :size="48" tone="mono" />
+            <ClarusLogo :size="48" />
           </span>
 
           <h2 class="text-balance text-lg font-semibold tracking-tight text-foreground">

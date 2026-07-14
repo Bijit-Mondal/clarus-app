@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { PhCircle, PhCircleWavy, PhFolderPlus, PhPlus, PhShieldCheck } from '@phosphor-icons/vue'
+import { PhFolderPlus, PhPlus } from '@phosphor-icons/vue'
+import AICPALogo from '@/components/brand/AICPALogo.vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ReadinessRing from '@/components/controls/ReadinessRing.vue'
 import { Button } from '@/components/ui/button'
@@ -22,12 +23,6 @@ function frameworkIconColor(fw: FrameworkProgress) {
   if (fw.summary.readiness >= 85) return 'var(--success)'
   if (fw.summary.readiness >= 60) return 'var(--warning)'
   return 'var(--destructive)'
-}
-
-const frameworkIcons: Record<string, any> = {
-  soc2: PhShieldCheck,
-  iso27001: PhCircleWavy,
-  gdpr: PhCircle,
 }
 </script>
 
@@ -71,10 +66,10 @@ const frameworkIcons: Record<string, any> = {
         <header class="flex items-start justify-between">
           <div class="flex items-center gap-3">
             <div
-              class="flex size-10 items-center justify-center rounded-lg bg-background border border-border"
+              class="flex size-12 items-center justify-center rounded-md bg-background border border-border"
               :style="{ color: frameworkIconColor(fw) }"
             >
-              <component :is="frameworkIcons[fw.id]" :size="20" aria-hidden="true" />
+              <AICPALogo :size="30" />
             </div>
             <div class="flex flex-col">
               <span class="font-semibold text-foreground">{{ fw.label }}</span>

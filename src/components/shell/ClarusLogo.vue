@@ -1,12 +1,6 @@
 <script setup lang="ts">
-/**
- * Clarus logomark — an open verification ring with an integrated
- * checkmark tail, drawn as a single continuous gesture. The ring reads
- * as focus/clarity (an aperture, a frame); the tail resolves it into a
- * confirmed, verified state. Two-tone by default (ink ring, mint tail);
- * `tone="mono"` collapses both strokes to currentColor for use on a
- * solid brand-color tile.
- */
+import { ref, onMounted } from 'vue'
+
 withDefaults(
   defineProps<{
     size?: number
@@ -17,6 +11,12 @@ withDefaults(
     tone: 'duo',
   },
 )
+
+const animate = ref(false)
+
+onMounted(() => {
+  animate.value = true
+})
 </script>
 
 <template>
@@ -40,6 +40,25 @@ withDefaults(
       stroke-width="5"
       stroke-linecap="round"
       stroke-linejoin="round"
+      class="tick-path"
+      :class="{ 'tick-draw': animate }"
     />
   </svg>
 </template>
+
+<style scoped>
+.tick-path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.tick-draw {
+  animation: tick-draw 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes tick-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+</style>

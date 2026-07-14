@@ -36,7 +36,7 @@ const itemClass = (active: boolean) =>
       class="mb-3 flex size-10 items-center justify-center rounded-xl text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-foreground/[0.06] hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
       aria-label="Clarus home"
     >
-      <ClarusLogo :size="22" tone="mono" />
+      <ClarusLogo :size="22" />
     </RouterLink>
 
     <div class="flex flex-1 flex-col items-center gap-1">
