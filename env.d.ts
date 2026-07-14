@@ -7,3 +7,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+type ApiErrorResponse = {
+  message: string
+  code: number
+}
