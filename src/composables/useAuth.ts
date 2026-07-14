@@ -1,6 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import {
+  getCurrentAccount,
   loginWithEmail,
   logoutCurrentSession,
   registerAccount,
@@ -11,16 +13,24 @@ import { useOrganizationStore } from '@/stores/organization'
 
 export const authKeys = {
   session: ['auth', 'session'] as const,
+  account: ['auth', 'account'] as const,
 }
 
 export function useAuth() {
   const authStore = useAuthStore()
   const queryClient = useQueryClient()
 
+  const accountQuery = useQuery({
+    queryKey: authKeys.account,
+    queryFn: getCurrentAccount,
+    enabled: computed(() => authStore.isAuthenticated),
+  })
+
   const loginMutation = useMutation({
     mutationFn: (input: LoginInput) => loginWithEmail(input),
     onSuccess: () => {
       authStore.markAuthenticated()
+      queryClient.invalidateQueries({ queryKey: authKeys.account })
       queryClient.invalidateQueries({ queryKey: ['tenants'] })
     },
   })
@@ -33,6 +43,7 @@ export function useAuth() {
     mutationFn: () => logoutCurrentSession(),
     onSuccess: () => {
       authStore.markUnauthenticated()
+      queryClient.removeQueries({ queryKey: authKeys.account })
       useOrganizationStore().setOrganizations([])
       queryClient.removeQueries({ queryKey: ['tenants'] })
     },
@@ -43,5 +54,12 @@ export function useAuth() {
     await loginMutation.mutateAsync({ email: input.email, password: input.password })
   }
 
-  return { authStore, loginMutation, registerMutation, registerAndLogin, logoutMutation }
+  return {
+    authStore,
+    accountQuery,
+    loginMutation,
+    registerMutation,
+    registerAndLogin,
+    logoutMutation,
+  }
 }

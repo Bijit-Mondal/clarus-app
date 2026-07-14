@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   PhMoon,
@@ -15,7 +15,7 @@ import MobilePageNav from '@/components/shell/MobilePageNav.vue'
 import NotificationCenter from '@/components/shell/NotificationCenter.vue'
 import OrgSwitcher from '@/components/shell/OrgSwitcher.vue'
 import SearchTrigger from '@/components/shell/SearchTrigger.vue'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -33,8 +33,23 @@ import { useAuth } from '@/composables/useAuth'
 
 const { collapsed, toggle } = useSidebar()
 const { isDark, toggleTheme } = useTheme()
-const { logoutMutation } = useAuth()
+const { accountQuery, logoutMutation } = useAuth()
 const router = useRouter()
+
+const accountName = computed(() => {
+  if (accountQuery.data.value?.name) return accountQuery.data.value.name
+  return accountQuery.isPending.value ? 'Loading profile…' : 'Account'
+})
+
+const accountEmail = computed(() => accountQuery.data.value?.email ?? '')
+
+const accountInitials = computed(() => {
+  const name = accountQuery.data.value?.name?.trim() ?? ''
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
+})
 
 const searchOpen = ref(false)
 
@@ -103,9 +118,8 @@ async function onLogout() {
             aria-label="Open profile menu"
           >
             <Avatar class="size-9">
-              <AvatarImage src="" alt="Alex Morgan" />
               <AvatarFallback class="bg-primary/10 text-sm font-medium text-primary">
-                AM
+                {{ accountInitials }}
               </AvatarFallback>
             </Avatar>
           </Button>
@@ -113,8 +127,13 @@ async function onLogout() {
         <DropdownMenuContent align="end" class="w-56">
           <DropdownMenuLabel class="font-normal">
             <div class="flex flex-col gap-1">
-              <p class="text-sm font-medium leading-none">Alex Morgan</p>
-              <p class="text-xs leading-none text-muted-foreground">alex@clarus.app</p>
+              <p class="text-sm font-medium leading-none">{{ accountName }}</p>
+              <p v-if="accountEmail" class="text-xs leading-none text-muted-foreground">
+                {{ accountEmail }}
+              </p>
+              <p v-else class="text-xs leading-none text-muted-foreground">
+                {{ accountQuery.isError.value ? 'Profile unavailable' : 'Loading profile…' }}
+              </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

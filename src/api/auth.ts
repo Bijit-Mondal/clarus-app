@@ -28,6 +28,10 @@ export type EmailSessionResponse = {
   expire: string
 }
 
+export function getCurrentAccount() {
+  return apiRequest<AccountResponse>('/v1/account')
+}
+
 export function registerAccount(input: RegisterInput) {
   return apiRequest<AccountResponse>('/v1/account', {
     method: 'POST',
