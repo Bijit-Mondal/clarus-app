@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getTenants } from '@/api/tenants'
+import { getCurrentTenant } from '@/api/tenants'
 import { getApiErrorStatus } from '@/lib/api'
 import { queryClient } from '@/lib/query-client'
 import { useOrganizationStore } from '@/stores/organization'
@@ -21,13 +21,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function ensureSession() {
     if (status.value === 'authenticated') return true
+    if (status.value === 'unauthenticated') return false
     if (status.value === 'checking') return false
 
     status.value = 'checking'
     try {
-      const tenants = await getTenants()
-      useOrganizationStore().setOrganizations(tenants)
-      queryClient.setQueryData(['tenants'], tenants)
+      const organizationStore = useOrganizationStore()
+      const activeTenantId = organizationStore.activeOrgId
+      if (!activeTenantId) {
+        markUnauthenticated()
+        return false
+      }
+
+      const currentTenant = await getCurrentTenant(activeTenantId)
+      if (currentTenant) {
+        organizationStore.setOrganizations([currentTenant])
+        queryClient.setQueryData(['tenants'], [currentTenant])
+      }
+
       markAuthenticated()
       return true
     } catch (error: unknown) {

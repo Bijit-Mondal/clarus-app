@@ -41,3 +41,9 @@ export function loginWithEmail(input: LoginInput) {
     body: input,
   })
 }
+
+export function logoutCurrentSession() {
+  return apiRequest<void>('/v1/account/sessions/current', {
+    method: 'DELETE',
+  })
+}

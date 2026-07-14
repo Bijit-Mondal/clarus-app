@@ -28,6 +28,8 @@ const { organizations, activeOrganization } = storeToRefs(orgStore)
 const tenantsQuery = useTenantsQuery()
 const createTenantMutation = useCreateTenantMutation()
 
+void tenantsQuery.loadTenants()
+
 const open = ref(false)
 const orgName = ref('')
 const submitError = ref('')

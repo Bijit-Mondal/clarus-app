@@ -71,6 +71,15 @@ export async function getTenants() {
   })
 }
 
+export async function getCurrentTenant(tenantId: string) {
+  const response = await apiRequest<unknown>('/v1/tenants/current', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+  return normalizeTenant(response)
+}
+
 export async function createTenant(input: CreateTenantInput) {
   const response = await apiRequest<unknown>('/v1/tenants', {
     method: 'POST',

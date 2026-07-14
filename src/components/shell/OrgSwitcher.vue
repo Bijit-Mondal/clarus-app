@@ -18,11 +18,13 @@ import { Label } from '@/components/ui/label'
 import { useOrganizationStore } from '@/stores/organization'
 import { cn } from '@/lib/utils'
 import { getOrganizationPath } from '@/config/navigation'
+import { useTenantsQuery } from '@/composables/useTenants'
 
 const orgStore = useOrganizationStore()
 const { organizations, activeOrganization } = storeToRefs(orgStore)
 const route = useRoute()
 const router = useRouter()
+const tenantsQuery = useTenantsQuery()
 
 const open = ref(false)
 const mode = ref<'list' | 'create'>('list')
@@ -32,6 +34,7 @@ const nameInputId = 'org-switcher-name'
 const canCreate = computed(() => orgName.value.trim().length > 0)
 
 watch(open, (isOpen) => {
+  if (isOpen) void tenantsQuery.loadTenants()
   if (!isOpen) {
     mode.value = 'list'
     orgName.value = ''

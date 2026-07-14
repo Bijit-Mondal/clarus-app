@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { createTenant, getTenants, type CreateTenantInput } from '@/api/tenants'
 import { useAuthStore } from '@/stores/auth'
@@ -11,10 +11,11 @@ export const tenantKeys = {
 export function useTenantsQuery() {
   const authStore = useAuthStore()
   const organizationStore = useOrganizationStore()
+  const shouldLoad = ref(false)
   const query = useQuery({
     queryKey: tenantKeys.all,
     queryFn: getTenants,
-    enabled: computed(() => authStore.isAuthenticated),
+    enabled: computed(() => authStore.isAuthenticated && shouldLoad.value),
   })
 
   watch(
@@ -25,7 +26,12 @@ export function useTenantsQuery() {
     { immediate: true },
   )
 
-  return query
+  function loadTenants() {
+    shouldLoad.value = true
+    return query.refetch()
+  }
+
+  return { ...query, loadTenants }
 }
 
 export function useCreateTenantMutation() {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PhMoon,
   PhSidebarSimple,
@@ -28,9 +29,12 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSidebar } from '@/composables/useSidebar'
 import { useTheme } from '@/composables/useTheme'
+import { useAuth } from '@/composables/useAuth'
 
 const { collapsed, toggle } = useSidebar()
 const { isDark, toggleTheme } = useTheme()
+const { logoutMutation } = useAuth()
+const router = useRouter()
 
 const searchOpen = ref(false)
 
@@ -42,6 +46,17 @@ function openSearch() {
 function onThemeSelect(event: Event) {
   event.preventDefault()
   toggleTheme()
+}
+
+async function onLogout() {
+  if (logoutMutation.isPending.value) return
+
+  try {
+    await logoutMutation.mutateAsync()
+    await router.replace({ name: 'login' })
+  } catch {
+    // Keep the user on the page so the session can be retried if logout fails.
+  }
 }
 </script>
 
@@ -120,9 +135,13 @@ function onThemeSelect(event: Event) {
             {{ isDark ? 'Light mode' : 'Dark mode' }}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">
+          <DropdownMenuItem
+            variant="destructive"
+            :disabled="logoutMutation.isPending.value"
+            @select="onLogout"
+          >
             <PhSignOut :size="16" class="mr-2" aria-hidden="true" />
-            Sign out
+            {{ logoutMutation.isPending.value ? 'Signing out…' : 'Sign out' }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
