@@ -9,6 +9,8 @@ const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'controls-overview': () => import('@/views/controls/ControlsOverview.vue'),
   'controls-frameworks': () => import('@/views/controls/FrameworksPage.vue'),
+  'controls-framework-requirements': () =>
+    import('@/views/controls/FrameworkRequirementsPage.vue'),
 }
 
 const dashboardChildren = appModules.flatMap((module) =>
@@ -87,6 +89,15 @@ const router = createRouter({
           },
         },
         ...dashboardChildren,
+        {
+          path: 'controls/frameworks/:frameworkId/requirements',
+          name: 'controls-framework-requirements',
+          component: pageComponents['controls-framework-requirements'],
+          meta: {
+            module: 'controls',
+            title: 'Requirements',
+          },
+        },
       ],
     },
   ],
