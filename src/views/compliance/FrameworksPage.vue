@@ -66,7 +66,7 @@ function navigateToRequirements(item: AdoptedFrameworkDisplay) {
     name: 'compliance-framework-requirements',
     params: {
       organizationSlug: slug,
-      frameworkId: item.tenantFramework.frameworkReleaseId,
+      frameworkId: item.tenantFramework.$id,
     },
     query: {
       name: item.framework?.name ?? '',
@@ -83,7 +83,6 @@ function navigateToNewlyAdopted() {
     release: newlyAdopted.value.frameworkRelease,
   })
 }
-
 
 // --- Adopted frameworks state (page body) ---
 const adoptedFrameworks = ref<TenantFramework[]>([])
@@ -497,10 +496,7 @@ onMounted(async () => {
         </div>
 
         <!-- Success state -->
-        <div
-          v-if="newlyAdopted"
-          class="rounded-lg border border-success/30 bg-success/5 p-5"
-        >
+        <div v-if="newlyAdopted" class="rounded-lg border border-success/30 bg-success/5 p-5">
           <div class="flex gap-4">
             <!-- Large logo for the adopted framework -->
             <div
@@ -514,19 +510,26 @@ onMounted(async () => {
             </div>
             <div class="min-w-0 flex-1">
               <p class="font-medium text-foreground text-base">
-                {{ newlyAdopted.framework?.name || newlyAdopted.frameworkRelease?.title }} has been adopted
+                {{ newlyAdopted.framework?.name || newlyAdopted.frameworkRelease?.title }} has been
+                adopted
               </p>
               <p class="mt-1 text-sm text-muted-foreground">
-                Version {{ newlyAdopted.frameworkRelease?.version }} &middot; Publisher: {{ newlyAdopted.framework?.publisher }}
+                Version {{ newlyAdopted.frameworkRelease?.version }} &middot; Publisher:
+                {{ newlyAdopted.framework?.publisher }}
               </p>
-              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+              <div
+                class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground"
+              >
                 <span class="flex items-center gap-1">
                   <PhCalendar :size="13" />
                   Adopted on {{ formatDate(newlyAdopted.adoptedAt) }}
                 </span>
                 <span class="flex items-center gap-1">
                   <PhShieldCheck :size="13" />
-                  Status: <span class="capitalize text-success-emphasis font-medium">{{ newlyAdopted.status }}</span>
+                  Status:
+                  <span class="capitalize text-success-emphasis font-medium">{{
+                    newlyAdopted.status
+                  }}</span>
                 </span>
               </div>
             </div>
@@ -715,17 +718,11 @@ onMounted(async () => {
 
         <DialogFooter>
           <template v-if="newlyAdopted">
-            <Button variant="outline" @click="isAdoptionDialogOpen = false">
-              Close
-            </Button>
-            <Button @click="navigateToNewlyAdopted">
-              View requirements
-            </Button>
+            <Button variant="outline" @click="isAdoptionDialogOpen = false"> Close </Button>
+            <Button @click="navigateToNewlyAdopted"> View requirements </Button>
           </template>
           <template v-else>
-            <Button variant="outline" @click="isAdoptionDialogOpen = false">
-              Cancel
-            </Button>
+            <Button variant="outline" @click="isAdoptionDialogOpen = false"> Cancel </Button>
             <Button
               v-if="dialogStep === 'pick-release'"
               :disabled="!selectedRelease || isAdopting"
