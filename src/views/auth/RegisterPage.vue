@@ -45,7 +45,7 @@ const errors = reactive<Record<Field, string>>({
 function validateField(field: Field) {
   touched[field] = true
   const result = registerSchema.shape[field].safeParse(form[field])
-  errors[field] = result.success ? '' : result.error.issues[0].message
+  errors[field] = result.success ? '' : result.error.issues[0]?.message || ''
 }
 
 function hasError(field: Field) {

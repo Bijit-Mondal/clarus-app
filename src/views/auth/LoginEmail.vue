@@ -16,7 +16,7 @@ const { loginMutation } = useAuth()
 const submitError = ref('')
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
+  email: z.email().min(1, 'Email is required'),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -40,7 +40,7 @@ const errors = reactive<Record<keyof LoginForm, string>>({
 function validateField(field: keyof LoginForm) {
   touched[field] = true
   const result = loginSchema.shape[field].safeParse(form[field])
-  errors[field] = result.success ? '' : result.error.issues[0].message
+  errors[field] = result.success ? '' : result.error.issues[0]?.message || ''
 }
 
 function hasError(field: keyof LoginForm) {
