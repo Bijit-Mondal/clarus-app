@@ -470,7 +470,7 @@ function goToRequirement(map: ControlRequirementMap) {
       frameworkId: map.tenantRequirementAssessment.tenantFrameworkId,
     },
     query: {
-      selectedId: map.tenantRequirementAssessment.$id,
+      selectedAssessmentId: map.tenantRequirementAssessment.$id,
       name: map.tenantRequirementAssessment.frameworkNode.frameworkName,
       publisher: map.tenantRequirementAssessment.frameworkNode.frameworkPublisher,
     },

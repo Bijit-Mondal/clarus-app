@@ -1,10 +1,5 @@
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/vue-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   adoptFramework,
   getFrameworkReleases,
@@ -21,8 +16,14 @@ export const frameworkKeys = {
   catalog: () => [...frameworkKeys.all, 'catalog'] as const,
   releases: (frameworkId: string) => [...frameworkKeys.all, 'releases', frameworkId] as const,
   tenant: (tenantId: string) => [...frameworkKeys.all, 'tenant', tenantId] as const,
-  requirements: (tenantId: string, tenantFrameworkId: string) =>
-    [...frameworkKeys.all, 'requirements', tenantId, tenantFrameworkId] as const,
+  requirements: (tenantId: string, tenantFrameworkId: string, selectedAssessmentId: string) =>
+    [
+      ...frameworkKeys.all,
+      'requirements',
+      tenantId,
+      tenantFrameworkId,
+      { selectedAssessmentId },
+    ] as const,
   requirementControls: (tenantId: string, tenantFrameworkId: string, requirementId: string) =>
     [
       ...frameworkKeys.all,
@@ -87,17 +88,23 @@ const REQUIREMENTS_PAGE_SIZE = 20
 
 export function useTenantFrameworkRequirementsQuery(
   tenantFrameworkId: MaybeRefOrGetter<string | undefined>,
+  selectedAssessmentId: MaybeRefOrGetter<string | undefined> = '',
 ) {
   const tenantId = useFrameworkTenantId()
 
   return useInfiniteQuery({
     queryKey: computed(() =>
-      frameworkKeys.requirements(tenantId.value || '', toValue(tenantFrameworkId) || ''),
+      frameworkKeys.requirements(
+        tenantId.value || '',
+        toValue(tenantFrameworkId) || '',
+        toValue(selectedAssessmentId) || '',
+      ),
     ),
     queryFn: ({ pageParam }) =>
       getTenantFrameworkRequirements(tenantId.value!, toValue(tenantFrameworkId)!, {
         limit: REQUIREMENTS_PAGE_SIZE,
         offset: pageParam,
+        selectedAssessmentId: toValue(selectedAssessmentId) || undefined,
       }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -123,11 +130,7 @@ export function useRequirementControlsQuery(
       ),
     ),
     queryFn: () =>
-      getRequirementControls(
-        tenantId.value!,
-        toValue(tenantFrameworkId)!,
-        toValue(requirementId)!,
-      ),
+      getRequirementControls(tenantId.value!, toValue(tenantFrameworkId)!, toValue(requirementId)!),
     enabled: computed(
       () => !!tenantId.value && !!toValue(tenantFrameworkId) && !!toValue(requirementId),
     ),

@@ -118,7 +118,7 @@ export type TenantFrameworkRequirementsResponse = {
 export function getTenantFrameworkRequirements(
   tenantId: string,
   tenantFrameworkId: string,
-  options?: { limit?: number; offset?: number },
+  options?: { limit?: number; offset?: number; selectedAssessmentId?: string },
 ) {
   return apiRequest<TenantFrameworkRequirementsResponse>(
     `/v1/tenants/frameworks/${tenantFrameworkId}/requirements`,

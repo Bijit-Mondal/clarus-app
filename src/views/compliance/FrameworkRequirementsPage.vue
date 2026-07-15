@@ -22,12 +22,15 @@ const router = useRouter()
 const frameworkId = computed(() => route.params.frameworkId as string)
 const frameworkName = computed(() => (route.query.name as string) || 'Framework')
 const frameworkPublisher = computed(() => (route.query.publisher as string) || '')
+const selectedAssessmentId = computed(() =>
+  typeof route.query.selectedAssessmentId === 'string' ? route.query.selectedAssessmentId : '',
+)
 
 function goBack() {
   router.back()
 }
 
-const requirementsQuery = useTenantFrameworkRequirementsQuery(frameworkId)
+const requirementsQuery = useTenantFrameworkRequirementsQuery(frameworkId, selectedAssessmentId)
 
 const mapAssessmentToRequirement = (assessment: TenantRequirementAssessment): Requirement => {
   const code = assessment.frameworkNode?.externalId || ''
@@ -91,7 +94,7 @@ watch(
   requirements,
   (list) => {
     if (list.length === 0 || selectedId.value) return
-    const qId = route.query.selectedId as string
+    const qId = selectedAssessmentId.value
     if (qId && list.some((r) => r.id === qId)) {
       selectedId.value = qId
     } else {
@@ -109,7 +112,7 @@ watch(
 )
 
 watch(
-  () => route.query.selectedId,
+  () => selectedAssessmentId.value,
   (newVal) => {
     if (newVal && typeof newVal === 'string' && requirements.value.some((r) => r.id === newVal)) {
       selectedId.value = newVal
@@ -211,7 +214,8 @@ const activeLinkSectionConfig = computed(() => {
   return LINK_SECTIONS.find((s) => s.id === activeLinkSectionId.value) ?? null
 })
 
-function allItemsForSection(_sectionId: LinkSectionId): LinkItem[] {
+function allItemsForSection(sectionId: LinkSectionId): LinkItem[] {
+  void sectionId
   return []
 }
 

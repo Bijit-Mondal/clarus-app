@@ -23,7 +23,7 @@ describe('FrameworkRequirementsPage', () => {
     })
 
     router.push(
-      '/dashboard/compliance/frameworks/0283e924e4f00ffbed32/requirements?name=ISO+27001&publisher=ISO',
+      '/dashboard/compliance/frameworks/0283e924e4f00ffbed32/requirements?selectedAssessmentId=6a5674e8c4ccab78ba24&name=ISO+27001&publisher=ISO',
     )
     await router.isReady()
 
