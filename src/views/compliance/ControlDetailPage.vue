@@ -33,6 +33,8 @@ import {
   useControlRequirementsQuery,
   useTenantControlsQuery,
   useUpdateTenantControlMutation,
+  useLinkControlRequirementMutation,
+  useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
 import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
 import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
@@ -217,6 +219,8 @@ const editImplementationStatus =
 const editArchive = ref(false)
 
 const updateMutation = useUpdateTenantControlMutation()
+const linkRequirementMutation = useLinkControlRequirementMutation()
+const unlinkRequirementMutation = useUnlinkControlRequirementMutation()
 
 function openEditDialog() {
   if (control.value) {
@@ -406,19 +410,30 @@ function handleRequirementSearchQuery(query: string) {
 }
 
 function linkRequirement(item: LinkItem) {
-  if (!control.value) return
-  controlsStore.linkRequirement(control.value.code, {
-    id: item.id,
-    code: item.source || '',
-    framework: item.area || '',
-    title: item.name,
-    description: '',
-  })
-  isRequirementDialogOpen.value = false
+  if (!control.value || !control.value.id) return
+  linkRequirementMutation.mutate(
+    {
+      tenantControlId: control.value.id,
+      input: {
+        tenantRequirementAssessmentId: item.id,
+        coverage: 'full',
+        rationale: 'This tenant control addresses the requirement.',
+      },
+    },
+    {
+      onSuccess: () => {
+        isRequirementDialogOpen.value = false
+      },
+    },
+  )
 }
 
-function unlinkRequirement() {
-  alert('Unlink not implemented with real API yet')
+function unlinkRequirement(tenantRequirementAssessmentId: string) {
+  if (!control.value || !control.value.id) return
+  unlinkRequirementMutation.mutate({
+    tenantControlId: control.value.id,
+    tenantRequirementAssessmentId,
+  })
 }
 
 // Risk Linking Dialog
@@ -950,7 +965,7 @@ function goToRequirement(map: ControlRequirementMap) {
                     variant="outline"
                     size="sm"
                     class="h-7 text-xs border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 font-semibold"
-                    @click="unlinkRequirement()"
+                    @click="unlinkRequirement(map.tenantRequirementAssessmentId)"
                   >
                     Unlink
                   </Button>

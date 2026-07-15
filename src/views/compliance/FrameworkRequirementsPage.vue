@@ -8,7 +8,11 @@ import {
   useRequirementControlsQuery,
   useTenantFrameworkRequirementsQuery,
 } from '@/composables/useFrameworks'
-import { useTenantControlSearchQuery } from '@/composables/useControls'
+import {
+  useTenantControlSearchQuery,
+  useLinkControlRequirementMutation,
+  useUnlinkControlRequirementMutation,
+} from '@/composables/useControls'
 import { getApiErrorMessage } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import FrameworkHeader from '@/components/compliance/FrameworkHeader.vue'
@@ -166,6 +170,10 @@ const controlSearch = useTenantControlSearchQuery(
   debouncedControlSearchQuery,
   controlSearchEnabled,
 )
+const linkControlRequirementMutation = useLinkControlRequirementMutation()
+const unlinkControlRequirementMutation = useUnlinkControlRequirementMutation()
+
+
 
 const searchedControls = computed<LinkItem[]>(() =>
   (controlSearch.data.value?.tenantControls ?? []).map((control) => ({
@@ -254,6 +262,25 @@ function handleLinkItem(item: LinkItem) {
   const reqId = selectedId.value
   const section = activeLinkSectionId.value
 
+  if (section === 'controls') {
+    linkControlRequirementMutation.mutate(
+      {
+        tenantControlId: item.id,
+        input: {
+          tenantRequirementAssessmentId: reqId,
+          coverage: 'full',
+          rationale: 'This tenant control addresses the requirement.',
+        },
+      },
+      {
+        onSuccess: () => {
+          activeLinkSectionId.value = null
+        },
+      },
+    )
+    return
+  }
+
   if (!linkedItems.value[reqId]) {
     linkedItems.value[reqId] = { controls: [], documents: [], audits: [], obligations: [] }
   }
@@ -269,6 +296,15 @@ function handleLinkItem(item: LinkItem) {
 function handleUnlinkItem(sectionId: LinkSectionId, item: LinkItem) {
   if (!selectedId.value) return
   const reqId = selectedId.value
+
+  if (sectionId === 'controls') {
+    unlinkControlRequirementMutation.mutate({
+      tenantControlId: item.id,
+      tenantRequirementAssessmentId: reqId,
+    })
+    return
+  }
+
   if (!linkedItems.value[reqId]) return
   const existing = linkedItems.value[reqId][sectionId]
   const index = existing.findIndex((i) => i.id === item.id)

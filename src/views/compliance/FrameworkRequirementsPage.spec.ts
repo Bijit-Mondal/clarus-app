@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import FrameworkRequirementsPage from './FrameworkRequirementsPage.vue'
 
 describe('FrameworkRequirementsPage', () => {
@@ -29,7 +30,7 @@ describe('FrameworkRequirementsPage', () => {
 
     const wrapper = mount(FrameworkRequirementsPage, {
       global: {
-        plugins: [router, createPinia()],
+        plugins: [router, createPinia(), VueQueryPlugin],
       },
     })
 

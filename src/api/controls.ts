@@ -147,3 +147,44 @@ export function getControlRequirements(tenantId: string, controlKey: string) {
     },
   )
 }
+
+export type LinkControlRequirementInput = {
+  tenantRequirementAssessmentId: string
+  coverage: string
+  rationale: string
+}
+
+export function linkControlRequirement(
+  tenantId: string,
+  tenantControlId: string,
+  input: LinkControlRequirementInput,
+) {
+  return apiRequest<ControlRequirementMap>(
+    `/v1/tenants/frameworks/controls/${tenantControlId}/requirements/link`,
+    {
+      method: 'POST',
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+      body: input,
+    },
+  )
+}
+
+export function unlinkControlRequirement(
+  tenantId: string,
+  tenantControlId: string,
+  tenantRequirementAssessmentId: string,
+) {
+  return apiRequest<void>(
+    `/v1/tenants/frameworks/controls/${tenantControlId}/requirements/link/${tenantRequirementAssessmentId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+    },
+  )
+}
+
+

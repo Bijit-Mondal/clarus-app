@@ -6,6 +6,9 @@ import {
   getControlRequirements,
   updateTenantControl,
   type UpdateTenantControlInput,
+  linkControlRequirement,
+  type LinkControlRequirementInput,
+  unlinkControlRequirement,
 } from '@/api/controls'
 import { useOrganizationStore } from '@/stores/organization'
 
@@ -82,3 +85,45 @@ export function useUpdateTenantControlMutation() {
     },
   })
 }
+
+export function useLinkControlRequirementMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useMutation({
+    mutationFn: ({
+      tenantControlId,
+      input,
+    }: {
+      tenantControlId: string
+      input: LinkControlRequirementInput
+    }) => linkControlRequirement(tenantId.value!, tenantControlId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: controlKeys.all })
+      void queryClient.invalidateQueries({ queryKey: ['frameworks', 'requirement-controls'] })
+    },
+  })
+}
+
+export function useUnlinkControlRequirementMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useMutation({
+    mutationFn: ({
+      tenantControlId,
+      tenantRequirementAssessmentId,
+    }: {
+      tenantControlId: string
+      tenantRequirementAssessmentId: string
+    }) => unlinkControlRequirement(tenantId.value!, tenantControlId, tenantRequirementAssessmentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: controlKeys.all })
+      void queryClient.invalidateQueries({ queryKey: ['frameworks', 'requirement-controls'] })
+    },
+  })
+}
+
+
