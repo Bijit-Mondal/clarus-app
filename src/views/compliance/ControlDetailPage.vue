@@ -36,6 +36,7 @@ import {
 import { useTenantUsersQuery } from '@/composables/useTenants'
 import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/controls'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -72,7 +73,7 @@ const controlsStore = useControlsStore()
 const controlId = computed(() => route.params.controlId as string)
 const orgSlug = computed(() => route.params.organizationSlug as string)
 
-const { data: controlsData } = useTenantControlsQuery(ref(100), ref(0))
+const { data: controlsData, isPending: isControlLoading } = useTenantControlsQuery(ref(100), ref(0))
 const apiControl = computed(() => {
   const code = controlId.value
   const found = controlsData.value?.tenantControls?.find((c) => c.controlKey === code)
@@ -357,43 +358,8 @@ function unlinkRequirement() {
 // Risk Linking Dialog
 const isRiskDialogOpen = ref(false)
 const searchRisk = ref('')
-const mockAllRisks: Risk[] = [
-  {
-    id: 'RSK-01',
-    description: 'Unauthorized deployment of production infrastructure changes',
-    level: 'High',
-  },
-  {
-    id: 'RSK-02',
-    description: 'Compromised admin credentials via social engineering',
-    level: 'Critical',
-  },
-  {
-    id: 'RSK-03',
-    description: 'Data loss due to lack of verified backups and recovery plans',
-    level: 'High',
-  },
-  {
-    id: 'RSK-04',
-    description: 'Insecure data transmissions over public networks',
-    level: 'Medium',
-  },
-  {
-    id: 'RSK-05',
-    description: 'Unauthorized access via orphaned employee accounts',
-    level: 'High',
-  },
-]
 
-const availableRisks = computed(() => {
-  const linkedIds = control.value?.risks.map((r) => r.id) || []
-  return mockAllRisks
-    .filter((risk) => !linkedIds.includes(risk.id))
-    .filter((risk) => {
-      const q = searchRisk.value.toLowerCase()
-      return !q || `${risk.id} ${risk.description}`.toLowerCase().includes(q)
-    })
-})
+const availableRisks = computed((): Risk[] => [])
 
 function linkRisk(risk: Risk) {
   if (control.value) {
@@ -405,23 +371,8 @@ function linkRisk(risk: Risk) {
 // Document Linking Dialog
 const isDocDialogOpen = ref(false)
 const searchDoc = ref('')
-const mockAllDocs: Document[] = [
-  { id: 'doc-01', name: 'Information Security Policy', version: 'v3.2', status: 'Approved' },
-  { id: 'doc-02', name: 'Access Control Procedure', version: 'v1.4', status: 'Under Review' },
-  { id: 'doc-03', name: 'Disaster Recovery Plan', version: 'v2.0', status: 'Approved' },
-  { id: 'doc-04', name: 'Vulnerability Management Standard', version: 'v1.1', status: 'Approved' },
-  { id: 'doc-05', name: 'Data Classification Guide', version: 'v1.0', status: 'Draft' },
-]
 
-const availableDocs = computed(() => {
-  const linkedIds = control.value?.documents.map((d) => d.id) || []
-  return mockAllDocs
-    .filter((doc) => !linkedIds.includes(doc.id))
-    .filter((doc) => {
-      const q = searchDoc.value.toLowerCase()
-      return !q || `${doc.name}`.toLowerCase().includes(q)
-    })
-})
+const availableDocs = computed((): Document[] => [])
 
 function linkDoc(doc: Document) {
   if (control.value) {
@@ -433,33 +384,8 @@ function linkDoc(doc: Document) {
 // Vendor Linking Dialog
 const isVendorDialogOpen = ref(false)
 const searchVendor = ref('')
-const mockAllVendors: ThirdParty[] = [
-  {
-    id: 'tp-01',
-    name: 'Amazon Web Services',
-    service: 'Infrastructure Hosting',
-    status: 'Approved',
-  },
-  { id: 'tp-02', name: 'Okta Identity', service: 'Single Sign On & MFA', status: 'Approved' },
-  {
-    id: 'tp-03',
-    name: 'Slack Technologies',
-    service: 'Internal Communications',
-    status: 'Approved',
-  },
-  { id: 'tp-04', name: 'GitHub Inc', service: 'Source Code Hosting', status: 'Approved' },
-  { id: 'tp-05', name: 'Zoom Video', service: 'Video Conferencing', status: 'Pending Review' },
-]
 
-const availableVendors = computed(() => {
-  const linkedIds = control.value?.thirdParties.map((t) => t.id) || []
-  return mockAllVendors
-    .filter((v) => !linkedIds.includes(v.id))
-    .filter((v) => {
-      const q = searchVendor.value.toLowerCase()
-      return !q || `${v.name} ${v.service}`.toLowerCase().includes(q)
-    })
-})
+const availableVendors = computed((): ThirdParty[] => [])
 
 function linkVendor(v: ThirdParty) {
   if (control.value) {
@@ -542,7 +468,12 @@ function goToRequirement(map: ControlRequirementMap) {
 </script>
 
 <template>
-  <div v-if="control">
+  <ClarusLoadingState
+    v-if="isControlLoading && !apiControl"
+    variant="control-header"
+    label="Loading control"
+  />
+  <div v-else-if="control">
     <!-- Breadcrumb -->
     <div
       class="mb-5 flex items-center gap-1.5 text-xs text-muted-foreground"
@@ -962,12 +893,12 @@ function goToRequirement(map: ControlRequirementMap) {
               </tr>
             </tbody>
           </table>
-          <div
+          <ClarusLoadingState
             v-else-if="reqIsPending"
-            class="py-14 flex flex-col items-center justify-center text-center"
-          >
-            <p class="text-sm font-medium text-muted-foreground">Loading requirements...</p>
-          </div>
+            variant="table-rows"
+            :rows="3"
+            label="Loading requirements"
+          />
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
             <span
               class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
@@ -1505,7 +1436,7 @@ function goToRequirement(map: ControlRequirementMap) {
               v-if="!availableRisks.length"
               class="p-8 text-center text-xs text-muted-foreground"
             >
-              No matching risks found.
+              No risks available to link yet.
             </div>
           </div>
         </div>
@@ -1553,7 +1484,7 @@ function goToRequirement(map: ControlRequirementMap) {
               >
             </div>
             <div v-if="!availableDocs.length" class="p-8 text-center text-xs text-muted-foreground">
-              No matching documents found.
+              No documents available to link yet.
             </div>
           </div>
         </div>
@@ -1604,7 +1535,7 @@ function goToRequirement(map: ControlRequirementMap) {
               v-if="!availableVendors.length"
               class="p-8 text-center text-xs text-muted-foreground"
             >
-              No matching vendors found.
+              No vendors available to link yet.
             </div>
           </div>
         </div>

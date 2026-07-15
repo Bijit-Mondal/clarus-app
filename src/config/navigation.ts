@@ -136,6 +136,11 @@ export const appModules: AppModule[] = [
         description: 'Your name, avatar, and contact preferences.',
       },
       {
+        id: 'account',
+        label: 'Account',
+        description: 'Security settings, active sessions, and account recovery.',
+      },
+      {
         id: 'billing',
         label: 'Billing',
         description: 'Plan, payment method, and invoice history.',

@@ -12,6 +12,9 @@ const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'compliance-frameworks': () => import('@/views/compliance/FrameworksPage.vue'),
   'compliance-framework-requirements': () =>
     import('@/views/compliance/FrameworkRequirementsPage.vue'),
+  'settings-profile': () => import('@/views/settings/ProfileSettings.vue'),
+  'settings-account': () => import('@/views/settings/AccountSettings.vue'),
+  'workspace-team': () => import('@/views/workspace/TeamPage.vue'),
 }
 
 const dashboardChildren = appModules.flatMap((module) =>

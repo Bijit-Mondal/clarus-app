@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getCurrentTenant } from '@/api/tenants'
 import { getApiErrorStatus } from '@/lib/api'
 import { queryClient } from '@/lib/query-client'
 import { useOrganizationStore } from '@/stores/organization'
@@ -33,7 +32,9 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      const currentTenant = await getCurrentTenant(activeTenantId)
+      // Dynamic import avoids a circular dep with useTenants → useAuthStore.
+      const { fetchCurrentTenant } = await import('@/composables/useTenants')
+      const currentTenant = await fetchCurrentTenant(activeTenantId)
       if (currentTenant) {
         organizationStore.setOrganizations([currentTenant])
         queryClient.setQueryData(['tenants'], [currentTenant])

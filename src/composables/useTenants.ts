@@ -1,11 +1,27 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { createTenant, getTenants, getTenantUsers, type CreateTenantInput } from '@/api/tenants'
+import {
+  createTenant,
+  getCurrentTenant,
+  getTenants,
+  getTenantUsers,
+  type CreateTenantInput,
+} from '@/api/tenants'
+import { queryClient } from '@/lib/query-client'
 import { useAuthStore } from '@/stores/auth'
 import { useOrganizationStore } from '@/stores/organization'
 
 export const tenantKeys = {
   all: ['tenants'] as const,
+  current: (tenantId: string) => [...tenantKeys.all, 'current', tenantId] as const,
+}
+
+/** Fetch the current tenant outside of component setup (e.g. auth router guards). */
+export function fetchCurrentTenant(tenantId: string) {
+  return queryClient.fetchQuery({
+    queryKey: tenantKeys.current(tenantId),
+    queryFn: () => getCurrentTenant(tenantId),
+  })
 }
 
 export function useTenantsQuery() {

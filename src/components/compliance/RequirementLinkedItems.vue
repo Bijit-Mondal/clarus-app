@@ -12,6 +12,7 @@ import {
   PhTrash,
 } from '@phosphor-icons/vue'
 import { Button } from '@/components/ui/button'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { LinkItem, LinkSectionId, LinkSectionConfig } from './types'
 
@@ -273,18 +274,7 @@ const LINK_SECTIONS: Omit<LinkSectionConfig, 'searchPlaceholder' | 'columns'>[] 
       <template v-if="section.id === 'controls'">
         <div class="overflow-hidden rounded-lg border border-border bg-card">
           <template v-if="isLoadingControls">
-            <div v-for="n in 3" :key="n" class="border-b border-border/50 last:border-0 p-4">
-              <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-3 w-2/3">
-                  <div class="h-5 w-16 animate-pulse rounded bg-muted"></div>
-                  <div class="h-5 w-full animate-pulse rounded bg-muted"></div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <div class="h-5 w-16 animate-pulse rounded bg-muted"></div>
-                  <div class="h-5 w-20 animate-pulse rounded bg-muted"></div>
-                </div>
-              </div>
-            </div>
+            <ClarusLoadingState variant="control-links" :rows="3" label="Loading linked controls" />
           </template>
           <template v-else-if="controlsError">
             <div class="py-8 text-center">

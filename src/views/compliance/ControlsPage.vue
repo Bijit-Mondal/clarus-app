@@ -18,6 +18,7 @@ import {
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import EvidenceIndicator from '@/components/compliance/EvidenceIndicator.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -378,7 +379,7 @@ function simulateImport() {
           class="gap-1.5 font-semibold text-xs bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <PhPlus :size="15" weight="bold" aria-hidden="true" />
-          New control
+          Add control
         </Button>
       </template>
     </PageHeader>
@@ -579,8 +580,8 @@ function simulateImport() {
           </tbody>
           <tbody v-else>
             <tr>
-              <td colspan="6" class="px-5 py-16 text-center text-muted-foreground">
-                Loading controls...
+              <td colspan="6" class="p-0">
+                <ClarusLoadingState variant="table-rows" :rows="5" label="Loading controls" />
               </td>
             </tr>
           </tbody>
@@ -647,7 +648,7 @@ function simulateImport() {
     <Dialog :open="isAddDialogOpen" @update:open="isAddDialogOpen = $event">
       <DialogContent class="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>New Control</DialogTitle>
+          <DialogTitle>Add Control</DialogTitle>
           <DialogDescription>
             Define an internal control procedure to satisfy compliance requirements.
           </DialogDescription>

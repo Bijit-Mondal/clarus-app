@@ -106,7 +106,13 @@ const filteredItems = computed(() => {
             </Button>
           </li>
           <li
-            v-if="!filteredItems.length"
+            v-if="!availableItems.length"
+            class="px-5 py-8 text-center text-sm text-muted-foreground"
+          >
+            No items available to link yet.
+          </li>
+          <li
+            v-else-if="!filteredItems.length"
             class="px-5 py-8 text-center text-sm text-muted-foreground"
           >
             No results for "{{ searchQuery }}"

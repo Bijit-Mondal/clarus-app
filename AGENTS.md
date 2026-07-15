@@ -64,6 +64,14 @@
   { path: '/dashboard', component: () => import('@/views/Dashboard.vue') }
   ```
 
+### Data Fetching (TanStack Query)
+- **Never call `src/api/*` directly from views or components.** API modules are transport-only.
+- Wrap every API surface in a composable under `src/composables/` using `@tanstack/vue-query`:
+  - `useQuery` for reads — export stable `queryKey` factories (e.g. `membershipKeys.list(tenantId)`).
+  - `useMutation` for writes — invalidate related query keys in `onSuccess`.
+- Views and components import composables only. Importing **types** from `src/api/*` is fine when needed for props or local state.
+- One composable file per API domain (e.g. `useMemberships.ts` for `memberships.ts`).
+
 ### Linting & Formatting
 - `yarn lint` — runs oxlint + ESLint
 - `yarn format` — runs oxfmt

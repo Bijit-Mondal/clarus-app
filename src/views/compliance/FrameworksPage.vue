@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   PhArrowClockwise,
@@ -19,15 +19,14 @@ import GDPRLogo from '@/components/brand/GDPRLogo.vue'
 import HIPAALogo from '@/components/brand/HIPAALogo.vue'
 import ISOLogo from '@/components/brand/ISOLogo.vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
+import type { Framework, TenantFramework } from '@/api/frameworks'
 import {
-  adoptFramework,
-  getFrameworkReleases,
-  getFrameworks,
-  getTenantFrameworks,
-  type Framework,
-  type FrameworkRelease,
-  type TenantFramework,
-} from '@/api/frameworks'
+  useAdoptFrameworkMutation,
+  useFrameworkReleasesQuery,
+  useFrameworksCatalogQuery,
+  useTenantFrameworksQuery,
+} from '@/composables/useFrameworks'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -47,7 +46,6 @@ import {
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { getApiErrorMessage } from '@/lib/api'
-import { useOrganizationStore } from '@/stores/organization'
 
 // --- Enriched type for display ---
 type AdoptedFrameworkDisplay = {
@@ -56,7 +54,6 @@ type AdoptedFrameworkDisplay = {
   release: FrameworkRelease | undefined
 }
 
-const organizationStore = useOrganizationStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -84,27 +81,64 @@ function navigateToNewlyAdopted() {
   })
 }
 
-// --- Adopted frameworks state (page body) ---
-const adoptedFrameworks = ref<TenantFramework[]>([])
-const isLoadingAdopted = ref(true)
-const adoptedError = ref('')
+// --- Adopted frameworks (page body) ---
+const {
+  data: tenantFrameworksData,
+  isPending: isLoadingAdopted,
+  isFetching: isFetchingAdopted,
+  error: adoptedQueryError,
+  refetch: refetchAdopted,
+} = useTenantFrameworksQuery()
 
-// --- Catalog data for enrichment ---
-const frameworks = ref<Framework[]>([])
-const isLoadingFrameworks = ref(false)
-const frameworksError = ref('')
+const adoptedFrameworks = computed(() => tenantFrameworksData.value?.tenantFrameworks ?? [])
+const adoptedError = computed(() =>
+  adoptedQueryError.value
+    ? getApiErrorMessage(adoptedQueryError.value, 'Unable to load adopted frameworks. Try again.')
+    : '',
+)
 
 // --- Adoption dialog state ---
 const isAdoptionDialogOpen = ref(false)
 const selectedFramework = ref<Framework>()
-const dialogReleases = ref<FrameworkRelease[]>([])
-const isLoadingReleases = ref(false)
-const releasesError = ref('')
 const selectedReleaseId = ref('')
 const mapControls = ref(true)
-const isAdopting = ref(false)
 const adoptionError = ref('')
 const newlyAdopted = ref<TenantFramework | null>(null)
+
+const {
+  data: frameworksCatalogData,
+  isPending: isLoadingFrameworks,
+  error: frameworksQueryError,
+  refetch: refetchFrameworksCatalog,
+} = useFrameworksCatalogQuery(isAdoptionDialogOpen)
+
+const frameworks = computed(() => frameworksCatalogData.value?.frameworks ?? [])
+const frameworksError = computed(() =>
+  frameworksQueryError.value
+    ? getApiErrorMessage(frameworksQueryError.value, 'Unable to load frameworks. Try again.')
+    : '',
+)
+
+const selectedFrameworkId = computed(() => selectedFramework.value?.$id)
+const {
+  data: releasesData,
+  isPending: isLoadingReleases,
+  error: releasesQueryError,
+} = useFrameworkReleasesQuery(selectedFrameworkId)
+
+const dialogReleases = computed(() =>
+  (releasesData.value?.frameworkReleases ?? []).filter(
+    (release) => release.status === 'published',
+  ),
+)
+const releasesError = computed(() =>
+  releasesQueryError.value
+    ? getApiErrorMessage(releasesQueryError.value, 'Unable to load framework releases. Try again.')
+    : '',
+)
+
+const adoptFrameworkMutation = useAdoptFrameworkMutation()
+const isAdopting = computed(() => adoptFrameworkMutation.isPending.value)
 
 const selectedRelease = computed(() =>
   dialogReleases.value.find((release) => release.$id === selectedReleaseId.value),
@@ -140,6 +174,12 @@ const adoptedDisplay = computed<AdoptedFrameworkDisplay[]>(() => {
   })
 })
 
+watch(dialogReleases, (releases) => {
+  if (!releases.some((release) => release.$id === selectedReleaseId.value)) {
+    selectedReleaseId.value = releases[0]?.$id ?? ''
+  }
+})
+
 function frameworkLogo(framework: Framework): Component {
   if (framework.publisher === 'AICPA') return AICPALogo
   if (framework.publisher === 'ISO') return ISOLogo
@@ -161,79 +201,34 @@ function formatDate(value: string) {
   }).format(date)
 }
 
-// --- Data loading ---
-
-async function loadAdopted() {
-  const tenantId = organizationStore.activeOrganization?.id
-  if (!tenantId) return
-
-  isLoadingAdopted.value = true
-  adoptedError.value = ''
-
-  try {
-    const response = await getTenantFrameworks(tenantId)
-    adoptedFrameworks.value = response.tenantFrameworks
-  } catch (error: unknown) {
-    adoptedError.value = getApiErrorMessage(error, 'Unable to load adopted frameworks. Try again.')
-  } finally {
-    isLoadingAdopted.value = false
-  }
+function loadAdopted() {
+  void refetchAdopted()
 }
 
-async function loadFrameworksCatalog() {
-  isLoadingFrameworks.value = true
-  frameworksError.value = ''
-
-  try {
-    const response = await getFrameworks()
-    frameworks.value = response.frameworks
-  } catch (error: unknown) {
-    frameworksError.value = getApiErrorMessage(error, 'Unable to load frameworks. Try again.')
-  } finally {
-    isLoadingFrameworks.value = false
-  }
+function loadFrameworksCatalog() {
+  void refetchFrameworksCatalog()
 }
 
-async function selectFramework(framework: Framework) {
+function selectFramework(framework: Framework) {
   selectedFramework.value = framework
-  dialogReleases.value = []
   selectedReleaseId.value = ''
-  releasesError.value = ''
   adoptionError.value = ''
   newlyAdopted.value = null
-  isLoadingReleases.value = true
-
-  try {
-    const response = await getFrameworkReleases(framework.$id)
-    dialogReleases.value = response.frameworkReleases.filter(
-      (release) => release.status === 'published',
-    )
-    selectedReleaseId.value = dialogReleases.value[0]?.$id ?? ''
-  } catch (error: unknown) {
-    releasesError.value = getApiErrorMessage(error, 'Unable to load framework releases. Try again.')
-  } finally {
-    isLoadingReleases.value = false
-  }
 }
 
 function openAdoptionDialog() {
   isAdoptionDialogOpen.value = true
-  if (!frameworks.value.length) void loadFrameworksCatalog()
 }
 
 function goBackToFrameworks() {
   selectedFramework.value = undefined
-  dialogReleases.value = []
   selectedReleaseId.value = ''
-  releasesError.value = ''
   adoptionError.value = ''
 }
 
 function resetAdoptionFlow() {
   selectedFramework.value = undefined
-  dialogReleases.value = []
   selectedReleaseId.value = ''
-  releasesError.value = ''
   adoptionError.value = ''
   newlyAdopted.value = null
   mapControls.value = true
@@ -242,36 +237,19 @@ function resetAdoptionFlow() {
 async function adoptSelectedFramework() {
   if (!selectedRelease.value) return
 
-  const tenantId = organizationStore.activeOrganization?.id
-  if (!tenantId) {
-    adoptionError.value = 'Select an organization before adopting a framework.'
-    return
-  }
-
-  isAdopting.value = true
   adoptionError.value = ''
   try {
-    const response = await adoptFramework(tenantId, {
+    newlyAdopted.value = await adoptFrameworkMutation.mutateAsync({
       frameworkReleaseId: selectedRelease.value.$id,
       mappingMode: mappingMode.value,
     })
-    newlyAdopted.value = response
-    // Refresh adopted list so the page shows the new framework
-    void loadAdopted()
   } catch (error: unknown) {
     adoptionError.value = getApiErrorMessage(error, 'Unable to adopt this framework. Try again.')
-  } finally {
-    isAdopting.value = false
   }
 }
 
 watch(isAdoptionDialogOpen, (isOpen) => {
   if (!isOpen) resetAdoptionFlow()
-})
-
-onMounted(async () => {
-  // Only load adopted frameworks on mount. The catalog is loaded on-demand when the dialog opens.
-  await loadAdopted()
 })
 </script>
 
@@ -289,17 +267,12 @@ onMounted(async () => {
     <!-- Adopted frameworks -->
     <section aria-labelledby="adopted-heading">
       <!-- Loading -->
-      <div
+      <ClarusLoadingState
         v-if="isLoadingAdopted"
-        class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-        aria-label="Loading adopted frameworks"
-      >
-        <div
-          v-for="item in 3"
-          :key="item"
-          class="h-36 animate-pulse rounded-lg border border-border bg-muted/50"
-        />
-      </div>
+        variant="framework-cards"
+        :rows="3"
+        label="Loading adopted frameworks"
+      />
 
       <!-- Error -->
       <div
@@ -323,10 +296,10 @@ onMounted(async () => {
             {{ adoptedDisplay.length }}
             {{ adoptedDisplay.length === 1 ? 'framework' : 'frameworks' }} adopted
           </p>
-          <Button variant="ghost" size="sm" :disabled="isLoadingAdopted" @click="loadAdopted">
+          <Button variant="ghost" size="sm" :disabled="isFetchingAdopted" @click="loadAdopted">
             <PhArrowClockwise
               :size="16"
-              :class="{ 'animate-spin': isLoadingAdopted }"
+              :class="{ 'animate-spin': isFetchingAdopted }"
               aria-hidden="true"
             />
             Refresh
@@ -538,13 +511,11 @@ onMounted(async () => {
 
         <!-- Step 1: Pick a framework -->
         <template v-else-if="!selectedFramework">
-          <div
+          <ClarusLoadingState
             v-if="isLoadingFrameworks"
-            class="grid grid-cols-1 gap-2 sm:grid-cols-2"
-            aria-label="Loading frameworks"
-          >
-            <div v-for="item in 4" :key="item" class="h-16 animate-pulse rounded-lg bg-muted" />
-          </div>
+            variant="compact"
+            label="Loading framework catalog"
+          />
 
           <div
             v-else-if="frameworksError"
@@ -619,9 +590,11 @@ onMounted(async () => {
 
         <!-- Step 2: Pick a release -->
         <template v-else-if="!newlyAdopted">
-          <div v-if="isLoadingReleases" class="space-y-3" aria-label="Loading releases">
-            <div v-for="item in 2" :key="item" class="h-20 animate-pulse rounded-lg bg-muted" />
-          </div>
+          <ClarusLoadingState
+            v-if="isLoadingReleases"
+            variant="compact"
+            label="Loading framework releases"
+          />
 
           <div
             v-else-if="releasesError"
