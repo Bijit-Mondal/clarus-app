@@ -25,15 +25,42 @@ export type TenantControlsResponse = {
   tenantControls: TenantControl[]
 }
 
-export function getTenantControls(
-  tenantId: string,
-  options?: { limit?: number; offset?: number }
-) {
+export function getTenantControls(tenantId: string, options?: { limit?: number; offset?: number }) {
   return apiRequest<TenantControlsResponse>('/v1/tenants/frameworks/controls', {
     headers: {
       'x-tenant-id': tenantId,
     },
     query: options,
+  })
+}
+
+export type UpdateTenantControlInput = {
+  statement?: string | null
+  implementationDescription?: string | null
+  implementationStatus?:
+    | 'not_started'
+    | 'in_progress'
+    | 'implemented'
+    | 'partially_implemented'
+    | 'not_applicable'
+    | 'needs_review'
+    | null
+  ownerId?: string | null
+  reviewFrequency?: string | null
+  archive?: boolean | null
+}
+
+export function updateTenantControl(
+  tenantId: string,
+  tenantControlId: string,
+  updates: UpdateTenantControlInput,
+) {
+  return apiRequest<TenantControl>(`/v1/tenants/frameworks/controls/${tenantControlId}`, {
+    method: 'PATCH',
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    body: updates,
   })
 }
 
@@ -75,9 +102,12 @@ export type ControlRequirementsResponse = {
 }
 
 export function getControlRequirements(tenantId: string, controlKey: string) {
-  return apiRequest<ControlRequirementsResponse>(`/v1/tenants/frameworks/controls/${controlKey}/requirements`, {
-    headers: {
-      'x-tenant-id': tenantId
-    }
-  })
+  return apiRequest<ControlRequirementsResponse>(
+    `/v1/tenants/frameworks/controls/${controlKey}/requirements`,
+    {
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+    },
+  )
 }

@@ -1,11 +1,16 @@
 import { computed, type Ref } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
-import { getTenantControls, getControlRequirements } from '@/api/controls'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import {
+  getTenantControls,
+  getControlRequirements,
+  updateTenantControl,
+  type UpdateTenantControlInput,
+} from '@/api/controls'
 import { useOrganizationStore } from '@/stores/organization'
 
 export const controlKeys = {
   all: ['controls'] as const,
-  list: (tenantId: string, limit: number, offset: number) => 
+  list: (tenantId: string, limit: number, offset: number) =>
     [...controlKeys.all, tenantId, { limit, offset }] as const,
   requirements: (tenantId: string, controlKey: string) =>
     [...controlKeys.all, 'requirements', tenantId, controlKey] as const,
@@ -36,5 +41,24 @@ export function useControlRequirementsQuery(controlKey: Ref<string>) {
     }),
     queryFn: () => getControlRequirements(tenantId.value!, controlKey.value),
     enabled: computed(() => !!tenantId.value && !!controlKey.value),
+  })
+}
+
+export function useUpdateTenantControlMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useMutation({
+    mutationFn: ({
+      tenantControlId,
+      updates,
+    }: {
+      tenantControlId: string
+      updates: UpdateTenantControlInput
+    }) => updateTenantControl(tenantId.value!, tenantControlId, updates),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: controlKeys.all })
+    },
   })
 }

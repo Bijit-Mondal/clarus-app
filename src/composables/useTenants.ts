@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { createTenant, getTenants, type CreateTenantInput } from '@/api/tenants'
+import { createTenant, getTenants, getTenantUsers, type CreateTenantInput } from '@/api/tenants'
 import { useAuthStore } from '@/stores/auth'
 import { useOrganizationStore } from '@/stores/organization'
 
@@ -44,5 +44,24 @@ export function useCreateTenantMutation() {
       await queryClient.invalidateQueries({ queryKey: tenantKeys.all })
       if (tenant) organizationStore.addOrganization(tenant)
     },
+  })
+}
+
+export const tenantUserKeys = {
+  all: ['tenant-users'] as const,
+  list: (tenantId: string) => [...tenantUserKeys.all, tenantId] as const,
+}
+
+export function useTenantUsersQuery() {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useQuery({
+    queryKey: computed(() => {
+      const tId = tenantId.value || ''
+      return tenantUserKeys.list(tId)
+    }),
+    queryFn: () => getTenantUsers(tenantId.value!),
+    enabled: computed(() => !!tenantId.value),
   })
 }

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PhCheckCircle, PhWarningCircle, PhXCircle, PhCircle, PhMinusCircle } from '@phosphor-icons/vue'
+import {
+  PhCheckCircle,
+  PhWarningCircle,
+  PhXCircle,
+  PhCircle,
+  PhMinusCircle,
+} from '@phosphor-icons/vue'
 import type { ControlStatus } from '@/data/controls'
 
 const props = defineProps<{ status: ControlStatus }>()

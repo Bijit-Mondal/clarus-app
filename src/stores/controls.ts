@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { controls as initialControls, type Control, type ControlStatus, type EvidenceState } from '@/data/controls'
+import {
+  controls as initialControls,
+  type Control,
+  type ControlStatus,
+  type EvidenceState,
+} from '@/data/controls'
 
 export interface Evidence {
   id: string
@@ -62,75 +67,206 @@ export interface ControlDetail extends Control {
 // Initial mock details for controls
 const initialDetails: Record<string, Partial<ControlDetail>> = {
   'CC6.1': {
-    description: 'Logical access permissions to systems and data are granted based on business needs and approved access requests. Access is periodically reviewed and revoked upon termination of role.',
+    description:
+      'Logical access permissions to systems and data are granted based on business needs and approved access requests. Access is periodically reviewed and revoked upon termination of role.',
     evidences: [
-      { id: 'ev-101', description: 'Access request forms sample Q2', fileType: 'PDF', fileSize: '1.4 MB', createdAt: '2026-06-10' },
-      { id: 'ev-102', description: 'AD user list and authorization matrix', fileType: 'Spreadsheet', fileSize: '850 KB', createdAt: '2026-07-02' }
+      {
+        id: 'ev-101',
+        description: 'Access request forms sample Q2',
+        fileType: 'PDF',
+        fileSize: '1.4 MB',
+        createdAt: '2026-06-10',
+      },
+      {
+        id: 'ev-102',
+        description: 'AD user list and authorization matrix',
+        fileType: 'Spreadsheet',
+        fileSize: '850 KB',
+        createdAt: '2026-07-02',
+      },
     ],
     tasks: [
-      { id: 'task-101', description: 'Conduct quarterly user access review', dueDate: '2026-07-31', assignee: { name: 'Maya Chen', initials: 'MC' }, status: 'in_progress' }
+      {
+        id: 'task-101',
+        description: 'Conduct quarterly user access review',
+        dueDate: '2026-07-31',
+        assignee: { name: 'Maya Chen', initials: 'MC' },
+        status: 'in_progress',
+      },
     ],
     requirements: [
-      { id: 'req-101', code: 'CC6.1', framework: 'SOC 2', title: 'Access Authorization', description: 'The entity authorizes, modifies, and terminates access to resources based on roles and permissions.' }
+      {
+        id: 'req-101',
+        code: 'CC6.1',
+        framework: 'SOC 2',
+        title: 'Access Authorization',
+        description:
+          'The entity authorizes, modifies, and terminates access to resources based on roles and permissions.',
+      },
     ],
     risks: [
-      { id: 'rsk-101', description: 'Orphaned accounts with active access to sensitive codebases', level: 'High' }
+      {
+        id: 'rsk-101',
+        description: 'Orphaned accounts with active access to sensitive codebases',
+        level: 'High',
+      },
     ],
     documents: [
-      { id: 'doc-101', name: 'Access Control Policy', version: 'v3.2', status: 'Approved' }
+      { id: 'doc-101', name: 'Access Control Policy', version: 'v3.2', status: 'Approved' },
     ],
     thirdParties: [
-      { id: 'tp-101', name: 'Okta Identity Cloud', service: 'Access Provisioning & Identity', status: 'Approved' }
-    ]
+      {
+        id: 'tp-101',
+        name: 'Okta Identity Cloud',
+        service: 'Access Provisioning & Identity',
+        status: 'Approved',
+      },
+    ],
   },
   'CC6.2': {
-    description: 'Multi-factor authentication (MFA) is enforced for all administrative and user access to production databases, cloud management consoles, and corporate network access.',
+    description:
+      'Multi-factor authentication (MFA) is enforced for all administrative and user access to production databases, cloud management consoles, and corporate network access.',
     evidences: [
-      { id: 'ev-201', description: 'Okta MFA global policy settings report', fileType: 'PDF', fileSize: '2.1 MB', createdAt: '2026-07-05' },
-      { id: 'ev-202', description: 'AWS IAM MFA enforcement configuration', fileType: 'JSON', fileSize: '12 KB', createdAt: '2026-07-10' },
-      { id: 'ev-203', description: 'MFA compliance report - Github organizations', fileType: 'Screenshot', fileSize: '450 KB', createdAt: '2026-07-12' }
+      {
+        id: 'ev-201',
+        description: 'Okta MFA global policy settings report',
+        fileType: 'PDF',
+        fileSize: '2.1 MB',
+        createdAt: '2026-07-05',
+      },
+      {
+        id: 'ev-202',
+        description: 'AWS IAM MFA enforcement configuration',
+        fileType: 'JSON',
+        fileSize: '12 KB',
+        createdAt: '2026-07-10',
+      },
+      {
+        id: 'ev-203',
+        description: 'MFA compliance report - Github organizations',
+        fileType: 'Screenshot',
+        fileSize: '450 KB',
+        createdAt: '2026-07-12',
+      },
     ],
     tasks: [
-      { id: 'task-201', description: 'Verify all guest developer accounts have MFA enabled', dueDate: '2026-07-18', assignee: { name: 'Daniel Kim', initials: 'DK' }, status: 'in_progress' },
-      { id: 'task-202', description: 'Audit MFA bypass group configurations in Okta', dueDate: '2026-08-01', assignee: { name: 'Daniel Kim', initials: 'DK' }, status: 'not_started' }
+      {
+        id: 'task-201',
+        description: 'Verify all guest developer accounts have MFA enabled',
+        dueDate: '2026-07-18',
+        assignee: { name: 'Daniel Kim', initials: 'DK' },
+        status: 'in_progress',
+      },
+      {
+        id: 'task-202',
+        description: 'Audit MFA bypass group configurations in Okta',
+        dueDate: '2026-08-01',
+        assignee: { name: 'Daniel Kim', initials: 'DK' },
+        status: 'not_started',
+      },
     ],
     requirements: [
-      { id: 'req-201', code: 'CC6.2', framework: 'SOC 2', title: 'User Registration & Access', description: 'Prior to issuing credentials and granting access, the entity establishes the identity of authorized users.' },
-      { id: 'req-202', code: 'A.9.4.2', framework: 'ISO 27001', title: 'Secure Log-on Procedures', description: 'Access to systems and applications shall be controlled by a secure log-on procedure.' },
-      { id: 'req-203', code: 'Art.32', framework: 'GDPR', title: 'Security of Processing', description: 'Implement appropriate technical and organizational measures to ensure a level of security appropriate to the risk.' }
+      {
+        id: 'req-201',
+        code: 'CC6.2',
+        framework: 'SOC 2',
+        title: 'User Registration & Access',
+        description:
+          'Prior to issuing credentials and granting access, the entity establishes the identity of authorized users.',
+      },
+      {
+        id: 'req-202',
+        code: 'A.9.4.2',
+        framework: 'ISO 27001',
+        title: 'Secure Log-on Procedures',
+        description:
+          'Access to systems and applications shall be controlled by a secure log-on procedure.',
+      },
+      {
+        id: 'req-203',
+        code: 'Art.32',
+        framework: 'GDPR',
+        title: 'Security of Processing',
+        description:
+          'Implement appropriate technical and organizational measures to ensure a level of security appropriate to the risk.',
+      },
     ],
     risks: [
-      { id: 'rsk-201', description: 'Compromised admin credentials via phishing attacks', level: 'Critical' }
+      {
+        id: 'rsk-201',
+        description: 'Compromised admin credentials via phishing attacks',
+        level: 'Critical',
+      },
     ],
     documents: [
       { id: 'doc-201', name: 'Information Security Policy', version: 'v3.2', status: 'Approved' },
-      { id: 'doc-202', name: 'Password and Credentials Procedure', version: 'v1.4', status: 'Under Review' }
+      {
+        id: 'doc-202',
+        name: 'Password and Credentials Procedure',
+        version: 'v1.4',
+        status: 'Under Review',
+      },
     ],
     thirdParties: [
-      { id: 'tp-201', name: 'Okta Identity Cloud', service: 'Access Provisioning & Identity', status: 'Approved' },
-      { id: 'tp-202', name: 'Duo Security', service: 'Backup MFA Provider', status: 'Approved' }
-    ]
+      {
+        id: 'tp-201',
+        name: 'Okta Identity Cloud',
+        service: 'Access Provisioning & Identity',
+        status: 'Approved',
+      },
+      { id: 'tp-202', name: 'Duo Security', service: 'Backup MFA Provider', status: 'Approved' },
+    ],
   },
   'CC6.3': {
-    description: 'Privileged access credentials (admin, root, superuser) are strictly limited, monitored, and require a formal authorization flow. Shared admin accounts are strictly prohibited.',
+    description:
+      'Privileged access credentials (admin, root, superuser) are strictly limited, monitored, and require a formal authorization flow. Shared admin accounts are strictly prohibited.',
     evidences: [
-      { id: 'ev-301', description: 'PAM tool access logs for production databases', fileType: 'JSON', fileSize: '3.4 MB', createdAt: '2026-07-01' }
+      {
+        id: 'ev-301',
+        description: 'PAM tool access logs for production databases',
+        fileType: 'JSON',
+        fileSize: '3.4 MB',
+        createdAt: '2026-07-01',
+      },
     ],
     tasks: [
-      { id: 'task-301', description: 'Renew PAM licenses and configure just-in-time access roles', dueDate: '2026-07-15', assignee: { name: 'Aisha Patel', initials: 'AP' }, status: 'in_progress' }
+      {
+        id: 'task-301',
+        description: 'Renew PAM licenses and configure just-in-time access roles',
+        dueDate: '2026-07-15',
+        assignee: { name: 'Aisha Patel', initials: 'AP' },
+        status: 'in_progress',
+      },
     ],
     requirements: [
-      { id: 'req-301', code: 'CC6.3', framework: 'SOC 2', title: 'Privileged Access Control', description: 'The entity restricts privileged access rights and manages credentials.' },
-      { id: 'req-302', code: 'A.9.2.3', framework: 'ISO 27001', title: 'Management of Privileged Access Rights', description: 'The allocation and use of privileged access rights shall be restricted and controlled.' }
+      {
+        id: 'req-301',
+        code: 'CC6.3',
+        framework: 'SOC 2',
+        title: 'Privileged Access Control',
+        description: 'The entity restricts privileged access rights and manages credentials.',
+      },
+      {
+        id: 'req-302',
+        code: 'A.9.2.3',
+        framework: 'ISO 27001',
+        title: 'Management of Privileged Access Rights',
+        description:
+          'The allocation and use of privileged access rights shall be restricted and controlled.',
+      },
     ],
     risks: [
-      { id: 'rsk-301', description: 'Abuse of administrative accounts leading to data leakage', level: 'High' }
+      {
+        id: 'rsk-301',
+        description: 'Abuse of administrative accounts leading to data leakage',
+        level: 'High',
+      },
     ],
     documents: [
-      { id: 'doc-301', name: 'Access Control Policy', version: 'v3.2', status: 'Approved' }
+      { id: 'doc-301', name: 'Access Control Policy', version: 'v3.2', status: 'Approved' },
     ],
-    thirdParties: []
-  }
+    thirdParties: [],
+  },
 }
 
 export const useControlsStore = defineStore('controls', () => {
@@ -139,15 +275,17 @@ export const useControlsStore = defineStore('controls', () => {
       const details = initialDetails[c.code] || {}
       return {
         ...c,
-        description: details.description || `${c.name} control implemented to comply with ${c.frameworks.map(f => f.toUpperCase()).join(', ')}.`,
+        description:
+          details.description ||
+          `${c.name} control implemented to comply with ${c.frameworks.map((f) => f.toUpperCase()).join(', ')}.`,
         evidences: details.evidences || [],
         tasks: details.tasks || [],
         requirements: details.requirements || [],
         risks: details.risks || [],
         documents: details.documents || [],
-        thirdParties: details.thirdParties || []
+        thirdParties: details.thirdParties || [],
       }
-    })
+    }),
   )
 
   function getControlByCode(code: string): ControlDetail | undefined {
@@ -180,7 +318,7 @@ export const useControlsStore = defineStore('controls', () => {
       requirements: [],
       risks: [],
       documents: [],
-      thirdParties: []
+      thirdParties: [],
     }
 
     list.value.unshift(fullControl)
@@ -209,7 +347,10 @@ export const useControlsStore = defineStore('controls', () => {
     }
   }
 
-  function updateControlDetails(code: string, updated: { name: string; description: string; ownerId: string }) {
+  function updateControlDetails(
+    code: string,
+    updated: { name: string; description: string; ownerId: string },
+  ) {
     const ctrl = getControlByCode(code)
     if (ctrl) {
       ctrl.name = updated.name
@@ -249,7 +390,7 @@ export const useControlsStore = defineStore('controls', () => {
         description: evidence.description,
         fileType: evidence.fileType,
         fileSize: evidence.fileSize,
-        createdAt: new Date().toISOString().split('T')[0] || ''
+        createdAt: new Date().toISOString().split('T')[0] || '',
       }
       ctrl.evidences.push(newEv)
       ctrl.evidence = 'fresh' // reset evidence to fresh on new upload
@@ -275,7 +416,7 @@ export const useControlsStore = defineStore('controls', () => {
         description: task.description,
         dueDate: task.dueDate,
         assignee: task.assignee,
-        status: 'not_started'
+        status: 'not_started',
       }
       ctrl.tasks.push(newT)
     }
@@ -304,7 +445,11 @@ export const useControlsStore = defineStore('controls', () => {
   function linkRequirement(code: string, req: ControlRequirement) {
     const ctrl = getControlByCode(code)
     if (ctrl) {
-      if (!ctrl.requirements.some((r) => r.id === req.id || (r.code === req.code && r.framework === req.framework))) {
+      if (
+        !ctrl.requirements.some(
+          (r) => r.id === req.id || (r.code === req.code && r.framework === req.framework),
+        )
+      ) {
         ctrl.requirements.push(req)
       }
     }
@@ -388,6 +533,6 @@ export const useControlsStore = defineStore('controls', () => {
     linkDocument,
     unlinkDocument,
     linkThirdParty,
-    unlinkThirdParty
+    unlinkThirdParty,
   }
 })

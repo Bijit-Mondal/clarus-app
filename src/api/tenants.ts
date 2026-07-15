@@ -87,3 +87,23 @@ export async function createTenant(input: CreateTenantInput) {
   })
   return normalizeTenant(asRecord(response)?.tenant ?? asRecord(response)?.data ?? response)
 }
+
+export type TenantUser = {
+  $id: string
+  name: string
+  role: string
+  status: string
+}
+
+export type TenantUsersResponse = {
+  total: number
+  users: TenantUser[]
+}
+
+export function getTenantUsers(tenantId: string) {
+  return apiRequest<TenantUsersResponse>('/v1/tenants/users', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}

@@ -474,8 +474,8 @@ function goToControlDetail(item: LinkItem) {
         name: item.name,
         implementationStatus: item.implementationStatus || 'not_started',
         statement: item.statement || '',
-      }
-    }
+      },
+    },
   })
 }
 </script>

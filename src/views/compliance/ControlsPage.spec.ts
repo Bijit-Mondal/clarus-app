@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import ControlsPage from './ControlsPage.vue'
 
 describe('ControlsPage', () => {
@@ -22,7 +23,7 @@ describe('ControlsPage', () => {
 
     const wrapper = mount(ControlsPage, {
       global: {
-        plugins: [router, createPinia()],
+        plugins: [router, createPinia(), VueQueryPlugin],
       },
     })
 

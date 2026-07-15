@@ -169,7 +169,7 @@ const formatStateLabel = (state: string | undefined) => {
 }
 
 const shouldShowControlKey = (_item: LinkItem) => {
-  return false;
+  return false
   // if (!item.controlKey) return false
   // const cleanKey = item.controlKey.toLowerCase().replace(/[^a-z0-9]/g, '')
   // const cleanName = item.name.toLowerCase().replace(/[^a-z0-9]/g, '')
