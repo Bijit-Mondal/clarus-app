@@ -1,0 +1,293 @@
+/* This style sheet for special days*/
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Consolas';
+  src: url('/assets/fonts/consolas.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: hsl(78.2601 92.8436% 95.1376%);
+  --foreground: hsl(90 50.0000% 0.7843%);
+  --card: hsl(0 0% 94.9020%);
+  --card-foreground: hsl(0 0% 0%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 0%);
+  --primary: hsl(66.7606 62.8319% 44.3137%);
+  --primary-foreground: hsl(90 50.0000% 0.7843%);
+  --secondary: hsl(0 0% 90.1961%);
+  --secondary-foreground: hsl(90 50.0000% 0.7843%);
+  --muted: hsl(0 0% 94.9020%);
+  --muted-foreground: hsl(0 0% 40%);
+  --accent: hsl(0 0% 90.1961%);
+  --accent-foreground: hsl(90 50.0000% 0.7843%);
+  --destructive: hsl(354.9767 86.3454% 48.8235%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --success: hsl(66.7606 62.8319% 44.3137%);
+  --success-foreground: hsl(90 50.0000% 0.7843%);
+  --warning: hsl(38 92% 50%);
+  --warning-foreground: hsl(90 50.0000% 0.7843%);
+  --info: hsl(205.8228 100% 41.5686%);
+  --info-foreground: hsl(0 0% 100%);
+  --success-emphasis: hsl(66.7606 70% 22%);
+  --warning-emphasis: hsl(35 90% 32%);
+  --destructive-emphasis: hsl(354.9767 86.3454% 35%);
+  --border: hsl(0 0% 80%);
+  --input: hsl(0 0% 100%);
+  --ring: hsl(66.7606 62.8319% 44.3137%);
+  --chart-1: hsl(205.8228 100% 30.9804%);
+  --chart-2: hsl(16.1860 99.0783% 42.5490%);
+  --chart-3: hsl(10.0000 2.5210% 46.6667%);
+  --chart-4: hsl(268.2000 52.6316% 37.2549%);
+  --chart-5: hsl(183.6923 100% 38.2353%);
+  --sidebar: hsl(0 0% 94.9020%);
+  --sidebar-foreground: hsl(0 0% 0%);
+  --sidebar-primary: hsl(66.7606 62.8319% 44.3137%);
+  --sidebar-primary-foreground: hsl(0 0% 0%);
+  --sidebar-accent: hsl(0 0% 90.1961%);
+  --sidebar-accent-foreground: hsl(0 0% 0%);
+  --sidebar-border: hsl(0 0% 80%);
+  --sidebar-ring: hsl(66.7606 62.8319% 44.3137%);
+  --font-sans: 'Segoe UI', sans-serif;
+  --font-serif: 'Georgia', serif;
+  --font-mono: 'Consolas', monospace;
+  --radius: 0rem;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-2xs: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(90 50.0000% 0.7843%);
+  --foreground: hsl(0 0% 100%);
+  --card: hsl(0 0% 11.7647%);
+  --card-foreground: hsl(0 0% 100%);
+  --popover: hsl(0 0% 16.8627%);
+  --popover-foreground: hsl(0 0% 100%);
+  --primary: hsl(75.3695 99.0244% 59.8039%);
+  --primary-foreground: hsl(90 50.0000% 0.7843%);
+  --secondary: hsl(0 0% 16.8627%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 11.7647%);
+  --muted-foreground: hsl(0 0% 62.7451%);
+  --accent: hsl(67.5000 24.4898% 19.2157%);
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(354.4828 100% 65.8824%);
+  --destructive-foreground: hsl(0 0% 0%);
+  --success: hsl(75.3695 99.0244% 59.8039%);
+  --success-foreground: hsl(90 50.0000% 0.7843%);
+  --warning: hsl(43 95% 60%);
+  --warning-foreground: hsl(90 50.0000% 0.7843%);
+  --info: hsl(206.0377 100% 41.5686%);
+  --info-foreground: hsl(0 0% 100%);
+  --success-emphasis: hsl(75.3695 99.0244% 65%);
+  --warning-emphasis: hsl(43 95% 65%);
+  --destructive-emphasis: hsl(354.4828 100% 70%);
+  --border: hsl(0 0% 26.6667%);
+  --input: hsl(0 0% 16.8627%);
+  --ring: hsl(75.3695 99.0244% 59.8039%);
+  --chart-1: hsl(206.0377 100% 41.5686%);
+  --chart-2: hsl(22.2128 93.6255% 50.7843%);
+  --chart-3: hsl(0 0% 55.6863%);
+  --chart-4: hsl(262.2000 46.2963% 57.6471%);
+  --chart-5: hsl(183.4061 100% 44.9020%);
+  --sidebar: hsl(0 0% 11.7647%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-primary: hsl(75.3695 99.0244% 59.8039%);
+  --sidebar-primary-foreground: hsl(0 0% 0%);
+  --sidebar-accent: hsl(0 0% 16.8627%);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
+  --sidebar-border: hsl(0 0% 26.6667%);
+  --sidebar-ring: hsl(75.3695 99.0244% 59.8039%);
+  --font-sans: 'Segoe UI', sans-serif;
+  --font-serif: 'Georgia', serif;
+  --font-mono: 'Consolas', monospace;
+  --radius: 0rem;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-2xs: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0px 0px 0px 0px hsl(0 0% 0% / 0.00);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /*
+   * Smooth light/dark handoff: elements without their own explicit
+   * transition utility (buttons, links, etc. already declare
+   * transition-colors/transition-shadow themselves and win via the
+   * utilities layer) still cross-fade their theme-driven colors instead
+   * of snapping when `.dark` toggles on <html>.
+   */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Fluent-style navigation selection pill — the accent indicator on the
+ * active module in the rail grows in vertically when selected, echoing the
+ * Windows 11 NavigationView selection behavior. Reduced-motion users get
+ * the resting state instantly via the global reduce rule above.
+ */
+@keyframes clarus-rail-pill-in {
+  from {
+    transform: translateY(-50%) scaleY(0.35);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) scaleY(1);
+    opacity: 1;
+  }
+}
+
+.clarus-rail-pill {
+  animation: clarus-rail-pill-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Calm, restrained scroll region — a thin native overlay scrollbar that
+ * stays out of the way until content actually overflows. Used in the
+ * Clarus AI panel so the copilot reads as a clean, quiet surface rather
+ * than a boxed-in list with a heavy always-on bar.
+ */
+.clarus-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+  transition: scrollbar-color 200ms ease;
+}
+
+.clarus-scroll:hover,
+.clarus-scroll:focus-within {
+  scrollbar-color: color-mix(in oklch, var(--border) 85%, transparent) transparent;
+}
+
+.clarus-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.clarus-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.clarus-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  transition: background-color 200ms ease;
+}
+
+.clarus-scroll:hover::-webkit-scrollbar-thumb,
+.clarus-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--border) 85%, transparent);
+}
+
+.clarus-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}

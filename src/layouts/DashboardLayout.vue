@@ -24,8 +24,8 @@ const activeModule = computed(() =>
 
 <template>
   <TooltipProvider :delay-duration="300">
-    <div class="flex h-svh min-h-0 bg-background text-foreground">
-      <div class="flex shrink-0 border-r border-sidebar-border">
+    <div class="flex h-svh min-h-0 bg-background text-foreground clarus-dashboard-shell">
+      <div class="flex shrink-0 overflow-hidden border-r border-sidebar-border">
         <ModuleRail :active-module-id="activeModuleId" />
 
         <ModuleSidebar v-if="activeModule" :module="activeModule" :active-page-id="activePageId" />

@@ -5,10 +5,12 @@ import PageHeader from '@/components/shell/PageHeader.vue'
 import ReadinessRing from '@/components/compliance/ReadinessRing.vue'
 import ControlsTable from '@/components/compliance/ControlsTable.vue'
 import { Button } from '@/components/ui/button'
-import { controls, frameworkProgress, summarize } from '@/data/controls'
+import { useControlsStore } from '@/stores/controls'
+import { frameworkProgress, summarize } from '@/data/controls'
 
-const summary = computed(() => summarize(controls))
-const frameworks = computed(() => frameworkProgress(controls))
+const controlsStore = useControlsStore()
+const summary = computed(() => summarize(controlsStore.list))
+const frameworks = computed(() => frameworkProgress(controlsStore.list))
 
 const legend = computed(() => [
   { key: 'passing', label: 'Passing', count: summary.value.passing, color: 'var(--success)' },
@@ -120,7 +122,7 @@ function pct(part: number, total: number) {
     </div>
 
     <div class="mt-4">
-      <ControlsTable :controls="controls" />
+      <ControlsTable :controls="controlsStore.list" />
     </div>
   </div>
 </template>

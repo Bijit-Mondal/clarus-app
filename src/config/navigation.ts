@@ -31,6 +31,12 @@ export const appModules: AppModule[] = [
           'Track control readiness across every framework, and find what needs attention before your next review.',
       },
       {
+        id: 'controls',
+        label: 'Controls',
+        description:
+          'Internal security controls, ownership, status, and mapped compliance requirements.',
+      },
+      {
         id: 'frameworks',
         label: 'Frameworks',
         description: 'SOC 2, ISO 27001, and GDPR — scope, progress, and requirement coverage.',

@@ -167,11 +167,12 @@ const formatStateLabel = (state: string | undefined) => {
     .join(' ')
 }
 
-const shouldShowControlKey = (item: LinkItem) => {
-  if (!item.controlKey) return false
-  const cleanKey = item.controlKey.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const cleanName = item.name.toLowerCase().replace(/[^a-z0-9]/g, '')
-  return cleanKey !== cleanName
+const shouldShowControlKey = (_item: LinkItem) => {
+  return false;
+  // if (!item.controlKey) return false
+  // const cleanKey = item.controlKey.toLowerCase().replace(/[^a-z0-9]/g, '')
+  // const cleanName = item.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+  // return cleanKey !== cleanName
 }
 
 const LINK_SECTIONS: Omit<LinkSectionConfig, 'searchPlaceholder' | 'columns'>[] = [

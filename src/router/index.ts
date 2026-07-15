@@ -8,6 +8,7 @@ const placeholderPage = () => import('@/views/dashboard/DashboardPage.vue')
 /** Pages with a real, built-out view. Everything else falls back to the shell placeholder. */
 const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'compliance-overview': () => import('@/views/compliance/ComplianceOverview.vue'),
+  'compliance-controls': () => import('@/views/compliance/ControlsPage.vue'),
   'compliance-frameworks': () => import('@/views/compliance/FrameworksPage.vue'),
   'compliance-framework-requirements': () =>
     import('@/views/compliance/FrameworkRequirementsPage.vue'),
@@ -96,6 +97,15 @@ const router = createRouter({
           meta: {
             module: 'compliance',
             title: 'Requirements',
+          },
+        },
+        {
+          path: 'compliance/controls/:controlId',
+          name: 'compliance-control-detail',
+          component: () => import('@/views/compliance/ControlDetailPage.vue'),
+          meta: {
+            module: 'compliance',
+            title: 'Control Details',
           },
         },
       ],
