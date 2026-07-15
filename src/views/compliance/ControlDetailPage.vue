@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhCaretRight,
@@ -19,7 +19,8 @@ import {
   PhChecks,
   PhMagnifyingGlass,
 } from '@phosphor-icons/vue'
-import { useControlsStore, type ControlRequirement, type Risk, type Document, type ThirdParty } from '@/stores/controls'
+import { useControlsStore, type Evidence, type Task, type ControlRequirement, type Risk, type Document, type ThirdParty } from '@/stores/controls'
+import { useControlRequirementsQuery } from '@/composables/useControls'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -54,8 +55,52 @@ const router = useRouter()
 const controlsStore = useControlsStore()
 
 const controlId = computed(() => route.params.controlId as string)
-const control = computed(() => controlsStore.getControlByCode(controlId.value))
 const orgSlug = computed(() => route.params.organizationSlug as string)
+
+const apiControl = computed(() => window.history.state?.controlData || null)
+
+function mapStatus(apiStatus: string): ControlStatus {
+  if (apiStatus === 'implemented') return 'passing'
+  if (apiStatus === 'in_progress' || apiStatus === 'partially_implemented') return 'attention'
+  if (apiStatus === 'not_started') return 'not_started'
+  if (apiStatus === 'not_applicable') return 'not_applicable'
+  return 'failing'
+}
+
+const control = computed(() => {
+  if (apiControl.value) {
+    return {
+      code: apiControl.value.controlKey,
+      name: apiControl.value.name,
+      description: apiControl.value.statement || apiControl.value.implementationDescription || '',
+      owner: apiControl.value.owner || { name: 'Unassigned', id: '' },
+      frameworks: [] as string[], // Can map this later if API provides it
+      status: mapStatus(apiControl.value.implementationStatus),
+      nextReview: apiControl.value.nextReviewAt || '',
+      evidences: [] as Evidence[],
+      tasks: [] as Task[],
+      requirements: [] as ControlRequirement[],
+      risks: [] as Risk[],
+      documents: [] as Document[],
+      thirdParties: [] as ThirdParty[]
+    }
+  }
+  return {
+    code: controlId.value,
+    name: controlId.value,
+    description: '',
+    owner: { name: 'Unassigned', id: '' },
+    frameworks: [] as string[],
+    status: 'not_started' as ControlStatus,
+    nextReview: '',
+    evidences: [] as Evidence[],
+    tasks: [] as Task[],
+    requirements: [] as ControlRequirement[],
+    risks: [] as Risk[],
+    documents: [] as Document[],
+    thirdParties: [] as ThirdParty[]
+  }
+})
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -63,11 +108,17 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 })
 function formatDate(iso: string) {
-  return dateFormatter.format(new Date(iso))
+  if (!iso) return 'N/A'
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return 'N/A'
+  return dateFormatter.format(date)
 }
 
 // Active Tab
-const activeTab = ref<'evidences' | 'tasks' | 'requirements' | 'risks' | 'documents' | 'thirdParties'>('evidences')
+const activeTab = ref<'evidences' | 'tasks' | 'requirements' | 'risks' | 'documents' | 'thirdParties'>('requirements')
+
+const { data: reqData, isPending: reqIsPending } = useControlRequirementsQuery(controlId)
+const requirements = computed(() => reqData.value?.tenantRequirementControlMaps || [])
 
 // Back navigation
 function goBack() {
@@ -173,39 +224,9 @@ function submitTask() {
   }
 }
 
-// Requirement Linking Dialog
-const isReqDialogOpen = ref(false)
-const searchReq = ref('')
-const mockAllRequirements: Omit<ControlRequirement, 'id'>[] = [
-  { code: 'CC6.1', framework: 'SOC 2', title: 'Logical Access Authorization', description: 'The entity authorizes, modifies, and terminates access to resources based on roles.' },
-  { code: 'CC6.3', framework: 'SOC 2', title: 'Privileged Access Management', description: 'The entity restricts privileged access rights and manages credentials.' },
-  { code: 'CC6.4', framework: 'SOC 2', title: 'Physical Access Control', description: 'The entity restricts physical access to facilities containing system resources.' },
-  { code: 'CC6.6', framework: 'SOC 2', title: 'Data Transmission Protection', description: 'The entity protects data in transit using encryption algorithms.' },
-  { code: 'CC6.7', framework: 'SOC 2', title: 'Data Storage Protection', description: 'The entity protects data at rest using encryption and access controls.' },
-  { code: 'A.9.2.1', framework: 'ISO 27001', title: 'User Registration and De-registration', description: 'A formal user registration and de-registration process shall be implemented.' },
-  { code: 'A.12.6.1', framework: 'ISO 27001', title: 'Technical Vulnerability Management', description: 'Information about technical vulnerabilities of information systems shall be obtained.' },
-  { code: 'Art.17', framework: 'GDPR', title: 'Right to Erasure (Forgotten)', description: 'The data subject shall have the right to obtain from the controller the erasure of personal data.' },
-  { code: 'Art.30', framework: 'GDPR', title: 'Records of Processing Activities', description: 'Each controller shall maintain a record of processing activities under its responsibility.' }
-]
-
-const availableRequirements = computed(() => {
-  const linkedCodes = control.value?.requirements.map((r) => `${r.framework}-${r.code}`) || []
-  return mockAllRequirements
-    .filter((req) => !linkedCodes.includes(`${req.framework}-${req.code}`))
-    .filter((req) => {
-      const q = searchReq.value.toLowerCase()
-      return !q || `${req.framework} ${req.code} ${req.title}`.toLowerCase().includes(q)
-    })
-})
-
-function linkRequirement(req: Omit<ControlRequirement, 'id'>) {
-  if (control.value) {
-    controlsStore.linkRequirement(control.value.code, {
-      ...req,
-      id: `req-${Date.now()}`
-    })
-    isReqDialogOpen.value = false
-  }
+// Requirement Linking Dialog (Removed mock implementations)
+function unlinkRequirement(mapId: string) {
+  alert('Unlink not implemented with real API yet')
 }
 
 // Risk Linking Dialog
@@ -314,6 +335,41 @@ const getDocStatusClass = (status: string) => {
   if (status === 'Under Review') return 'bg-warning/10 text-warning-emphasis border-warning/20'
   return 'bg-muted text-muted-foreground border-border'
 }
+
+function handleNotImplemented() {
+  alert('Not implemented')
+}
+
+const isDescriptionExpanded = ref(false)
+const expandedRequirementIds = ref<Set<string>>(new Set())
+
+watch(controlId, () => {
+  isDescriptionExpanded.value = false
+  expandedRequirementIds.value.clear()
+  expandedRequirementIds.value = new Set(expandedRequirementIds.value)
+})
+
+function toggleRequirementDescription(id: string) {
+  if (expandedRequirementIds.value.has(id)) {
+    expandedRequirementIds.value.delete(id)
+  } else {
+    expandedRequirementIds.value.add(id)
+  }
+  expandedRequirementIds.value = new Set(expandedRequirementIds.value)
+}
+
+function goToRequirement(map: any) {
+  void router.push({
+    name: 'compliance-framework-requirements',
+    params: {
+      organizationSlug: orgSlug.value,
+      frameworkId: map.tenantRequirementAssessment.tenantFrameworkId,
+    },
+    query: {
+      selectedId: map.tenantRequirementAssessment.$id
+    }
+  })
+}
 </script>
 
 <template>
@@ -339,9 +395,20 @@ const getDocStatusClass = (status: string) => {
         <h1 class="text-xl font-semibold tracking-tight text-foreground sm:text-2xl" style="text-wrap: balance">
           {{ control.name }}
         </h1>
-        <p class="text-sm leading-relaxed text-muted-foreground max-w-3xl">
+        <p
+          class="text-sm leading-relaxed text-muted-foreground max-w-3xl"
+          :class="{ 'line-clamp-3': !isDescriptionExpanded }"
+        >
           {{ control.description }}
         </p>
+        <button
+          v-if="control.description && control.description.length > 240"
+          type="button"
+          class="mt-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors focus-visible:outline-none focus-visible:underline cursor-pointer"
+          @click="isDescriptionExpanded = !isDescriptionExpanded"
+        >
+          {{ isDescriptionExpanded ? 'Show less' : 'Show more' }}
+        </button>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">
@@ -408,7 +475,7 @@ const getDocStatusClass = (status: string) => {
           v-for="t in [
             { id: 'evidences', label: 'Evidences', count: control.evidences.length },
             { id: 'tasks', label: 'Tasks', count: control.tasks.length },
-            { id: 'requirements', label: 'Requirements', count: control.requirements.length },
+            { id: 'requirements', label: 'Requirements', count: requirements.length },
             { id: 'risks', label: 'Risks', count: control.risks.length },
             { id: 'documents', label: 'Documents', count: control.documents.length },
             { id: 'thirdParties', label: 'Third parties', count: control.thirdParties.length }
@@ -551,9 +618,9 @@ const getDocStatusClass = (status: string) => {
           </div>
         </div>
 
-        <!-- Requirements Tab (Matches 10.png Controls tab logic) -->
+        <!-- Requirements Tab -->
         <div v-if="activeTab === 'requirements'">
-          <table v-if="control.requirements.length" class="w-full text-left border-collapse text-sm">
+          <table v-if="requirements.length" class="w-full text-left border-collapse text-sm">
             <thead>
               <tr class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium">
                 <th class="px-5 py-2.5 w-[20%]">Reference</th>
@@ -562,27 +629,47 @@ const getDocStatusClass = (status: string) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in control.requirements" :key="r.id" class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors">
-                <td class="px-5 py-3.5">
+              <tr v-for="map in requirements" :key="map.$id" class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors">
+                <td class="px-5 py-3.5 align-top">
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold text-foreground bg-muted border border-border px-1.5 py-0.5 rounded font-mono">
-                      {{ r.code }}
+                      {{ map.tenantRequirementAssessment.frameworkNode.externalId }}
                     </span>
-                    <span class="text-xs text-muted-foreground">{{ r.framework }}</span>
                   </div>
                 </td>
                 <td class="px-5 py-3.5">
-                  <p class="font-medium text-foreground text-xs leading-normal">{{ r.title }}</p>
-                  <p class="text-xs text-muted-foreground mt-0.5 leading-normal">{{ r.description }}</p>
+                  <p
+                    class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline cursor-pointer"
+                    @click="goToRequirement(map)"
+                  >
+                    {{ map.tenantRequirementAssessment.frameworkNode.title }}
+                  </p>
+                  <p
+                    class="text-xs text-muted-foreground mt-1 leading-relaxed"
+                    :class="{ 'line-clamp-2': !expandedRequirementIds.has(map.$id) }"
+                  >
+                    {{ map.tenantRequirementAssessment.frameworkNode.description }}
+                  </p>
+                  <button
+                    v-if="map.tenantRequirementAssessment.frameworkNode.description && map.tenantRequirementAssessment.frameworkNode.description.length > 160"
+                    type="button"
+                    class="mt-1 text-[10px] font-semibold text-primary hover:text-primary/85 transition-colors focus-visible:outline-none focus-visible:underline cursor-pointer"
+                    @click="toggleRequirementDescription(map.$id)"
+                  >
+                    {{ expandedRequirementIds.has(map.$id) ? 'Show less' : 'Show more' }}
+                  </button>
                 </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button variant="outline" size="sm" class="h-7 text-xs border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 font-semibold" @click="controlsStore.unlinkRequirement(control.code, r.id)">
+                <td class="px-5 py-3.5 text-right align-top">
+                  <Button variant="outline" size="sm" class="h-7 text-xs border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 font-semibold" @click="unlinkRequirement(map.$id)">
                     Unlink
                   </Button>
                 </td>
               </tr>
             </tbody>
           </table>
+          <div v-else-if="reqIsPending" class="py-14 flex flex-col items-center justify-center text-center">
+            <p class="text-sm font-medium text-muted-foreground">Loading requirements...</p>
+          </div>
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
             <span class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3">
               <PhGavel :size="22" />
@@ -591,7 +678,7 @@ const getDocStatusClass = (status: string) => {
             <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">Map this control to framework requirements to prove compliance coverage.</p>
           </div>
           <div class="border-t border-border p-3 flex justify-center">
-            <Button size="sm" variant="ghost" class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5" @click="isReqDialogOpen = true">
+            <Button size="sm" variant="ghost" class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5" @click="handleNotImplemented">
               <PhPlus :size="14" weight="bold" />
               Link requirement
             </Button>
@@ -863,44 +950,6 @@ const getDocStatusClass = (status: string) => {
       </DialogContent>
     </Dialog>
 
-    <!-- Link Requirement Dialog -->
-    <Dialog :open="isReqDialogOpen" @update:open="isReqDialogOpen = $event">
-      <DialogContent class="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Link Compliance Requirement</DialogTitle>
-          <DialogDescription>Search and select framework requirements to link to control {{ control.code }}.</DialogDescription>
-        </DialogHeader>
-        <div class="space-y-4 py-3">
-          <div class="relative">
-            <PhMagnifyingGlass :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input v-model="searchReq" class="pl-9" placeholder="Search requirements..." />
-          </div>
-          <div class="max-h-[280px] overflow-y-auto border border-border rounded-md divide-y divide-border">
-            <div
-              v-for="req in availableRequirements"
-              :key="`${req.framework}-${req.code}`"
-              class="p-3 hover:bg-muted/30 transition-colors flex items-start justify-between gap-3 cursor-pointer"
-              @click="linkRequirement(req)"
-            >
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <span class="font-mono text-[10px] font-bold text-muted-foreground bg-muted border border-border px-1 py-0.5 rounded leading-none">
-                    {{ req.code }}
-                  </span>
-                  <span class="text-[10px] text-muted-foreground font-medium">{{ req.framework }}</span>
-                </div>
-                <h4 class="text-xs font-semibold text-foreground mt-1.5 truncate">{{ req.title }}</h4>
-                <p class="text-[11px] text-muted-foreground leading-normal mt-0.5 line-clamp-2">{{ req.description }}</p>
-              </div>
-              <Button size="sm" variant="outline" class="shrink-0 text-[10px] font-semibold border-border">Link</Button>
-            </div>
-            <div v-if="!availableRequirements.length" class="p-8 text-center text-xs text-muted-foreground">
-              No matching requirements found.
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
 
     <!-- Link Risk Dialog -->
     <Dialog :open="isRiskDialogOpen" @update:open="isRiskDialogOpen = $event">

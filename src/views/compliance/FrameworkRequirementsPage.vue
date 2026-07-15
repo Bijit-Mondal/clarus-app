@@ -246,7 +246,12 @@ async function loadNextPage() {
     offset.value += mapped.length
 
     if (requirements.value.length > 0 && !selectedId.value) {
-      selectedId.value = requirements.value[0]?.id ?? ''
+      const qId = route.query.selectedId as string
+      if (qId && requirements.value.some((r) => r.id === qId)) {
+        selectedId.value = qId
+      } else {
+        selectedId.value = requirements.value[0]?.id ?? ''
+      }
     }
   } catch (err: unknown) {
     isError.value = getApiErrorMessage(err, 'Failed to load requirements.')
@@ -269,6 +274,15 @@ watch(
     resetAndLoad()
   },
   { immediate: true },
+)
+
+watch(
+  () => route.query.selectedId,
+  (newVal) => {
+    if (newVal && typeof newVal === 'string' && requirements.value.some((r) => r.id === newVal)) {
+      selectedId.value = newVal
+    }
+  },
 )
 
 // ---------------------------------------------------------------------------
@@ -445,6 +459,25 @@ function handleUnlinkItem(sectionId: LinkSectionId, item: LinkItem) {
     existing.splice(index, 1)
   }
 }
+
+function goToControlDetail(item: LinkItem) {
+  const controlIdVal = item.controlKey || item.id
+  void router.push({
+    name: 'compliance-control-detail',
+    params: {
+      organizationSlug: route.params.organizationSlug as string,
+      controlId: controlIdVal,
+    },
+    state: {
+      controlData: {
+        controlKey: controlIdVal,
+        name: item.name,
+        implementationStatus: item.implementationStatus || 'not_started',
+        statement: item.statement || '',
+      }
+    }
+  })
+}
 </script>
 
 <template>
@@ -480,6 +513,7 @@ function handleUnlinkItem(sectionId: LinkSectionId, item: LinkItem) {
             @open-link-dialog="(sectionId) => (activeLinkSectionId = sectionId)"
             @retry-controls="fetchControls"
             @unlink-item="handleUnlinkItem"
+            @click-control="goToControlDetail"
           />
         </div>
       </div>

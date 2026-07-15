@@ -18,7 +18,6 @@ import {
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
 import EvidenceIndicator from '@/components/compliance/EvidenceIndicator.vue'
-import { useControlsStore } from '@/stores/controls'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,10 +51,14 @@ import {
   type ControlStatus,
   type FrameworkId,
 } from '@/data/controls'
+import { useOrganizationStore } from '@/stores/organization'
+import { useTenantControlsQuery } from '@/composables/useControls'
 
-const controlsStore = useControlsStore()
 const router = useRouter()
 const route = useRoute()
+
+const organizationStore = useOrganizationStore()
+const tenantId = computed(() => organizationStore.activeOrganization?.id)
 
 const organizationSlug = computed(() => route.params.organizationSlug as string)
 
@@ -70,43 +73,29 @@ type SortKey = 'code' | 'nextReview'
 const sortKey = ref<SortKey>('code')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const page = ref(1)
+const limit = ref(PAGE_SIZE)
+const offset = computed(() => (page.value - 1) * PAGE_SIZE)
 
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  return controlsStore.list.filter((c) => {
-    if (q && !`${c.code} ${c.name}`.toLowerCase().includes(q)) return false
-    if (statusFilter.value !== 'all' && c.status !== statusFilter.value) return false
-    if (frameworkFilter.value !== 'all' && !c.frameworks.includes(frameworkFilter.value)) return false
-    if (ownerFilter.value !== 'all' && c.owner.id !== ownerFilter.value) return false
-    return true
-  })
-})
+const { data, isPending: isLoading } = useTenantControlsQuery(limit, offset)
 
-const sorted = computed(() => {
-  const list = [...filtered.value]
-  const dir = sortDir.value === 'asc' ? 1 : -1
-  list.sort((a, b) => {
-    const av = a[sortKey.value]
-    const bv = b[sortKey.value]
-    return av < bv ? -dir : av > bv ? dir : 0
-  })
-  return list
-})
+const controls = computed(() => data.value?.tenantControls || [])
+const totalControls = computed(() => data.value?.total || 0)
 
-const pageCount = computed(() => Math.max(1, Math.ceil(sorted.value.length / PAGE_SIZE)))
-const paged = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE
-  return sorted.value.slice(start, start + PAGE_SIZE)
-})
+const paged = computed(() => controls.value)
+const pageCount = computed(() => Math.max(1, Math.ceil(totalControls.value / PAGE_SIZE)))
 
 const rangeStart = computed(() =>
-  sorted.value.length === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1,
+  totalControls.value === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1,
 )
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, sorted.value.length))
+const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, totalControls.value))
 
-watch([search, statusFilter, frameworkFilter, ownerFilter, sortKey, sortDir], () => {
-  page.value = 1
-})
+function mapStatus(apiStatus: string): ControlStatus {
+  if (apiStatus === 'implemented') return 'passing'
+  if (apiStatus === 'in_progress' || apiStatus === 'partially_implemented') return 'attention'
+  if (apiStatus === 'not_started') return 'not_started'
+  if (apiStatus === 'not_applicable') return 'not_applicable'
+  return 'failing'
+}
 
 function toggleSort(key: SortKey) {
   if (sortKey.value === key) {
@@ -124,17 +113,18 @@ function resetFilters() {
   ownerFilter.value = 'all'
 }
 
-function goToDetail(code: string) {
+function goToDetail(control: any) {
   void router.push({
     name: 'compliance-control-detail',
     params: {
       organizationSlug: organizationSlug.value,
-      controlId: code
+      controlId: control.controlKey
+    },
+    state: {
+      controlData: JSON.parse(JSON.stringify(control))
     }
   })
 }
-
-
 
 // Add Control Dialog State
 const isAddDialogOpen = ref(false)
@@ -160,30 +150,8 @@ function openAddDialog() {
 }
 
 function submitAddControl() {
-  if (!newCode.value.trim() || !newName.value.trim()) return
-
-  const frameworksList = (Object.keys(selectedFws.value) as FrameworkId[]).filter(
-    (key) => selectedFws.value[key]
-  )
-
-  const fallbackOwner = { id: 'maya', name: 'Maya Chen', initials: 'MC' }
-  const owner = OWNER_LIST.find((o) => o.id === newOwnerId.value) || OWNER_LIST[0] || fallbackOwner
-
-  const success = controlsStore.addControl({
-    code: newCode.value.trim(),
-    name: newName.value.trim(),
-    description: newDescription.value.trim(),
-    frameworks: frameworksList,
-    owner,
-    status: newStatus.value,
-    evidence: newStatus.value === 'passing' ? 'fresh' : newStatus.value === 'attention' ? 'expiring' : 'expired'
-  })
-
-  if (success) {
-    isAddDialogOpen.value = false
-  } else {
-    alert('A control with this code already exists.')
-  }
+  alert('Not implemented with real API yet')
+  isAddDialogOpen.value = false
 }
 
 // Edit Control Dialog State
@@ -194,30 +162,18 @@ const editDescription = ref('')
 const editOwnerId = ref('')
 
 function openEditDialog(code: string) {
-  const ctrl = controlsStore.getControlByCode(code)
-  if (ctrl) {
-    editCode.value = ctrl.code
-    editName.value = ctrl.name
-    editDescription.value = ctrl.description
-    editOwnerId.value = ctrl.owner.id
-    isEditDialogOpen.value = true
-  }
+  alert('Not implemented with real API yet')
 }
 
 function submitEditControl() {
-  if (!editName.value.trim()) return
-  controlsStore.updateControlDetails(editCode.value, {
-    name: editName.value.trim(),
-    description: editDescription.value.trim(),
-    ownerId: editOwnerId.value
-  })
+  alert('Not implemented with real API yet')
   isEditDialogOpen.value = false
 }
 
 // Delete Control
 function confirmDelete(code: string) {
   if (confirm(`Are you sure you want to delete control ${code}?`)) {
-    controlsStore.deleteControl(code)
+    alert('Not implemented with real API yet')
   }
 }
 
@@ -239,27 +195,6 @@ function handleFileDrop(e: DragEvent) {
 
 function simulateImport() {
   importSuccess.value = true
-  // Insert some mock controls after a brief delay
-  setTimeout(() => {
-    controlsStore.addControl({
-      code: 'CC6.8',
-      name: 'Unauthorized software prevention',
-      description: 'Rules and automated checks are established to prevent unauthorized software installation.',
-      frameworks: ['soc2'],
-      owner: OWNER_LIST[2] || { id: 'aisha', name: 'Aisha Patel', initials: 'AP' },
-      status: 'passing',
-      evidence: 'fresh'
-    })
-    controlsStore.addControl({
-      code: 'A.12.4',
-      name: 'Event logging',
-      description: 'Event logs recording user activities, exceptions, faults and information security events shall be produced.',
-      frameworks: ['iso27001'],
-      owner: OWNER_LIST[0] || { id: 'maya', name: 'Maya Chen', initials: 'MC' },
-      status: 'attention',
-      evidence: 'expiring'
-    })
-  }, 1000)
 }
 </script>
 
@@ -366,18 +301,18 @@ function simulateImport() {
               <th scope="col" class="w-[5%] px-5 py-3 text-right"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody v-if="!isLoading">
             <tr
               v-for="control in paged"
-              :key="control.code"
+              :key="control.$id"
               class="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30 cursor-pointer"
-              @click="goToDetail(control.code)"
+              @click="goToDetail(control)"
             >
               <!-- Control Code & Name -->
               <td class="px-5 py-4">
                 <div class="flex flex-col gap-0.5">
                   <span class="font-mono text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">
-                    {{ control.code }}
+                    {{ control.controlKey }}
                   </span>
                   <span class="font-medium text-foreground hover:text-primary transition-colors">
                     {{ control.name }}
@@ -387,35 +322,29 @@ function simulateImport() {
               <!-- Frameworks / Category -->
               <td class="px-5 py-4" @click.stop>
                 <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="fw in control.frameworks"
-                    :key="fw"
-                    class="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
-                  >
-                    {{ FRAMEWORKS[fw].label }}
-                  </span>
                 </div>
               </td>
               <!-- Owner -->
               <td class="px-5 py-4" @click.stop>
-                <div class="flex items-center gap-2">
+                <div v-if="control.owner" class="flex items-center gap-2">
                   <Avatar class="size-6 shrink-0">
                     <AvatarFallback
                       class="bg-secondary text-[10px] font-semibold text-secondary-foreground"
                     >
-                      {{ control.owner.initials }}
+                      {{ control.owner.name?.charAt(0) || '?' }}
                     </AvatarFallback>
                   </Avatar>
                   <span class="whitespace-nowrap text-foreground text-xs">{{ control.owner.name }}</span>
                 </div>
+                <div v-else class="text-xs text-muted-foreground">-</div>
               </td>
               <!-- Status / State -->
               <td class="px-5 py-4" @click.stop>
-                <ControlStatusBadge :status="control.status" />
+                <ControlStatusBadge :status="mapStatus(control.implementationStatus)" />
               </td>
               <!-- Evidence Status -->
               <td class="px-5 py-4" @click.stop>
-                <EvidenceIndicator :state="control.evidence" />
+                <EvidenceIndicator state="fresh" />
               </td>
               <!-- Actions -->
               <td class="px-5 py-4 text-right" @click.stop>
@@ -427,16 +356,16 @@ function simulateImport() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" class="w-[140px]">
-                    <DropdownMenuItem @click="goToDetail(control.code)" class="gap-2">
+                    <DropdownMenuItem @click="goToDetail(control)" class="gap-2">
                       <PhEye :size="14" />
                       View details
                     </DropdownMenuItem>
-                    <DropdownMenuItem @click="openEditDialog(control.code)" class="gap-2">
+                    <DropdownMenuItem @click="openEditDialog(control.controlKey)" class="gap-2">
                       <PhPencilSimple :size="14" />
                       Edit control
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem @click="confirmDelete(control.code)" class="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <DropdownMenuItem @click="confirmDelete(control.controlKey)" class="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive">
                       <PhTrash :size="14" />
                       Delete control
                     </DropdownMenuItem>
@@ -445,12 +374,19 @@ function simulateImport() {
               </td>
             </tr>
           </tbody>
+          <tbody v-else>
+            <tr>
+              <td colspan="6" class="px-5 py-16 text-center text-muted-foreground">
+                Loading controls...
+              </td>
+            </tr>
+          </tbody>
         </table>
       </div>
 
       <!-- Empty State -->
       <div
-        v-if="sorted.length === 0"
+        v-if="controls.length === 0 && !isLoading"
         class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center bg-card"
       >
         <span
@@ -470,12 +406,12 @@ function simulateImport() {
 
       <!-- Pagination -->
       <div
-        v-else
+        v-else-if="controls.length > 0"
         class="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between bg-muted/10"
       >
         <p class="text-xs text-muted-foreground" aria-live="polite">
           Showing <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
-          <span class="font-medium text-foreground">{{ sorted.length }}</span> controls
+          <span class="font-medium text-foreground">{{ totalControls }}</span> controls
         </p>
         <div class="flex items-center gap-1">
           <Button

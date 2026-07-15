@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PhCheckCircle, PhWarningCircle, PhXCircle } from '@phosphor-icons/vue'
+import { PhCheckCircle, PhWarningCircle, PhXCircle, PhCircle, PhMinusCircle } from '@phosphor-icons/vue'
 import type { ControlStatus } from '@/data/controls'
 
 const props = defineProps<{ status: ControlStatus }>()
@@ -9,6 +9,8 @@ const config = {
   passing: { label: 'Passing', icon: PhCheckCircle, base: 'var(--success-emphasis)' },
   attention: { label: 'Attention', icon: PhWarningCircle, base: 'var(--warning-emphasis)' },
   failing: { label: 'Failing', icon: PhXCircle, base: 'var(--destructive-emphasis)' },
+  not_started: { label: 'Not Started', icon: PhCircle, base: 'var(--muted-foreground)' },
+  not_applicable: { label: 'N/A', icon: PhMinusCircle, base: 'var(--muted-foreground)' },
 } as const
 
 const current = computed(() => config[props.status])

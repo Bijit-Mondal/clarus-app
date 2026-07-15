@@ -1,6 +1,6 @@
 export type FrameworkId = 'soc2' | 'iso27001' | 'gdpr'
 
-export type ControlStatus = 'passing' | 'attention' | 'failing'
+export type ControlStatus = 'passing' | 'attention' | 'failing' | 'not_started' | 'not_applicable'
 
 export type EvidenceState = 'fresh' | 'expiring' | 'expired'
 
@@ -272,6 +272,8 @@ export interface StatusSummary {
   passing: number
   attention: number
   failing: number
+  not_started: number
+  not_applicable: number
   total: number
   /** Weighted readiness: passing = full credit, attention = half, failing = none. */
   readiness: number
@@ -281,9 +283,11 @@ export function summarize(list: Control[]): StatusSummary {
   const passing = list.filter((c) => c.status === 'passing').length
   const attention = list.filter((c) => c.status === 'attention').length
   const failing = list.filter((c) => c.status === 'failing').length
+  const not_started = list.filter((c) => c.status === 'not_started').length
+  const not_applicable = list.filter((c) => c.status === 'not_applicable').length
   const total = list.length
   const readiness = total === 0 ? 0 : Math.round(((passing + attention * 0.5) / total) * 100)
-  return { passing, attention, failing, total, readiness }
+  return { passing, attention, failing, not_started, not_applicable, total, readiness }
 }
 
 export interface FrameworkProgress extends Framework {

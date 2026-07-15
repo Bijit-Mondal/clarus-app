@@ -26,6 +26,7 @@ const emit = defineEmits<{
   (e: 'open-link-dialog', sectionId: LinkSectionId): void
   (e: 'retry-controls'): void
   (e: 'unlink-item', sectionId: LinkSectionId, item: LinkItem): void
+  (e: 'click-control', item: LinkItem): void
 }>()
 
 const activeTab = ref<LinkSectionId>('controls')
@@ -317,6 +318,7 @@ const LINK_SECTIONS: Omit<LinkSectionConfig, 'searchPlaceholder' | 'columns'>[] 
                 <!-- Control Name -->
                 <span
                   class="font-medium text-foreground truncate text-sm hover:text-primary hover:underline cursor-pointer"
+                  @click="emit('click-control', item)"
                 >
                   {{ item.name }}
                 </span>
