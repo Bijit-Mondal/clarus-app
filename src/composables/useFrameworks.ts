@@ -1,4 +1,4 @@
-import { computed, type MaybeRefOrGetter, toValue } from 'vue'
+import { computed, type MaybeRefOrGetter, type Ref, toValue } from 'vue'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   adoptFramework,
@@ -7,6 +7,7 @@ import {
   getRequirementControls,
   getTenantFrameworkRequirements,
   getTenantFrameworks,
+  searchTenantRequirements,
   type AdoptFrameworkInput,
 } from '@/api/frameworks'
 import { useOrganizationStore } from '@/stores/organization'
@@ -32,6 +33,8 @@ export const frameworkKeys = {
       tenantFrameworkId,
       requirementId,
     ] as const,
+  searchRequirements: (tenantId: string, query: string, limit: number) =>
+    [...frameworkKeys.all, 'search-requirements', tenantId, { query, limit }] as const,
 }
 
 function useFrameworkTenantId() {
@@ -85,6 +88,24 @@ export function useAdoptFrameworkMutation() {
 }
 
 const REQUIREMENTS_PAGE_SIZE = 20
+
+export function useTenantRequirementSearchQuery(
+  query: Ref<string>,
+  enabled: Ref<boolean>,
+  limit = 20,
+) {
+  const tenantId = useFrameworkTenantId()
+
+  return useQuery({
+    queryKey: computed(() =>
+      frameworkKeys.searchRequirements(tenantId.value || '', query.value, limit),
+    ),
+    queryFn: () => searchTenantRequirements(tenantId.value!, query.value, limit),
+    enabled: computed(() => !!tenantId.value && enabled.value && query.value.trim().length > 0),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+  })
+}
 
 export function useTenantFrameworkRequirementsQuery(
   tenantFrameworkId: MaybeRefOrGetter<string | undefined>,

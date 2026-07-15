@@ -27,6 +27,7 @@ import {
   useFrameworksCatalogQuery,
   useTenantFrameworksQuery,
 } from '@/composables/useFrameworks'
+import { useOrganizationStore } from '@/stores/organization'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -56,6 +57,7 @@ type AdoptedFrameworkDisplay = {
 
 const router = useRouter()
 const route = useRoute()
+const organizationStore = useOrganizationStore()
 
 function navigateToRequirements(item: AdoptedFrameworkDisplay) {
   const slug = route.params.organizationSlug as string
@@ -357,11 +359,11 @@ watch(isAdoptionDialogOpen, (isOpen) => {
             </div>
 
             <!-- Framework name -->
-            <div class="px-5 pb-4">
-              <h3 class="text-lg font-semibold leading-tight text-foreground">
+            <div class="min-w-0 px-5 pb-4">
+              <h3 class="truncate text-lg font-semibold leading-tight text-foreground" :title="item.framework?.name">
                 {{ item.framework?.name ?? 'Framework' }}
               </h3>
-              <p v-if="item.release" class="mt-0.5 font-mono text-xs text-muted-foreground">
+              <p v-if="item.release" class="mt-0.5 truncate font-mono text-xs text-muted-foreground" :title="item.release.title">
                 {{ item.release.title }} &middot; v{{ item.release.version }}
               </p>
             </div>
@@ -378,21 +380,27 @@ watch(isAdoptionDialogOpen, (isOpen) => {
       </div>
 
       <!-- Empty state -->
-      <div v-else class="rounded-lg border border-dashed border-border px-6 py-16 text-center">
+      <div v-else class="mx-auto max-w-lg py-20 text-center">
         <div
-          class="mx-auto flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+          class="mx-auto flex size-16 items-center justify-center rounded-xl bg-muted text-muted-foreground"
         >
-          <PhFolder :size="24" aria-hidden="true" />
+          <PhFolder :size="28" aria-hidden="true" />
         </div>
-        <h3 class="mt-4 font-medium text-foreground">No frameworks adopted yet</h3>
-        <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+        <h3 class="mt-5 text-lg font-semibold text-foreground">No frameworks adopted yet</h3>
+        <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
           Adopt a compliance framework to begin mapping controls and tracking readiness for
-          {{ organizationStore.activeOrganization?.name ?? 'your organization' }}.
+          <span class="text-foreground">{{ organizationStore.activeOrganization?.name ?? 'your organization' }}</span>.
+          Once adopted, requirements, controls, and evidence tracking will be available from this page.
         </p>
-        <Button class="mt-5" size="sm" @click="openAdoptionDialog()">
-          <PhPlus :size="16" weight="bold" aria-hidden="true" />
-          Add framework
-        </Button>
+        <div class="mt-8 space-y-3">
+          <Button size="sm" @click="openAdoptionDialog()">
+            <PhPlus :size="16" weight="bold" aria-hidden="true" />
+            Add framework
+          </Button>
+          <p class="text-xs text-muted-foreground">
+            SOC 2, ISO 27001, HIPAA, GDPR, and more available
+          </p>
+        </div>
       </div>
     </section>
 
@@ -548,7 +556,7 @@ watch(isAdoptionDialogOpen, (isOpen) => {
             >
               <!-- Typography mirroring the tenant framework card on the left -->
               <div class="min-w-0 flex-1">
-                <span class="block text-lg font-semibold leading-tight text-foreground">
+                <span class="block truncate text-lg font-semibold leading-tight text-foreground" :title="framework.name">
                   {{ framework.name }}
                 </span>
                 <div class="mt-0.5 flex flex-wrap items-center gap-2">
@@ -642,8 +650,8 @@ watch(isAdoptionDialogOpen, (isOpen) => {
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span class="font-medium text-foreground">{{ release.title }}</span>
-                    <span class="font-mono text-xs text-muted-foreground"
+                    <span class="truncate font-medium text-foreground" :title="release.title">{{ release.title }}</span>
+                    <span class="shrink-0 font-mono text-xs text-muted-foreground"
                       >v{{ release.version }}</span
                     >
                   </span>
@@ -652,7 +660,7 @@ watch(isAdoptionDialogOpen, (isOpen) => {
                   >
                   <span
                     v-if="release.releaseNotes"
-                    class="mt-2 block text-sm text-muted-foreground"
+                    class="mt-2 line-clamp-3 text-sm text-muted-foreground"
                     >{{ release.releaseNotes }}</span
                   >
                 </span>
@@ -663,7 +671,7 @@ watch(isAdoptionDialogOpen, (isOpen) => {
               v-else
               class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
             >
-              There are no published releases available for {{ selectedFramework.name }}.
+              There are no published releases available for <span class="font-medium text-foreground">{{ selectedFramework.name }}</span>.
             </div>
 
             <div

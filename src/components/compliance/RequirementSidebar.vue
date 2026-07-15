@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import type { Requirement } from './types'
@@ -29,17 +29,6 @@ function handleScroll() {
     emit('load-more')
   }
 }
-
-// Group requirements by category for the left panel
-const groupedRequirements = computed(() => {
-  const map = new Map<string, Requirement[]>()
-  for (const req of props.requirements) {
-    const group = map.get(req.category) ?? []
-    group.push(req)
-    map.set(req.category, group)
-  }
-  return [...map.entries()].map(([category, items]) => ({ category, items }))
-})
 
 // Scroll the selected requirement into view if needed
 watch(
@@ -78,14 +67,9 @@ watch(
     </div>
 
     <template v-else>
-      <div v-for="group in groupedRequirements" :key="group.category" class="py-2">
-        <p
-          class="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60"
-        >
-          {{ group.category }}
-        </p>
+      <div class="py-2">
         <button
-          v-for="req in group.items"
+          v-for="req in requirements"
           :key="req.id"
           type="button"
           class="w-full px-4 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-ring"

@@ -115,6 +115,30 @@ export type TenantFrameworkRequirementsResponse = {
   tenantRequirementAssessments: TenantRequirementAssessment[]
 }
 
+export type TenantRequirementSearchResult = {
+  tenantRequirementAssessmentId: string
+  tenantFrameworkId: string
+  frameworkNodeId: string
+  frameworkName: string
+  externalId: string
+  title: string
+  status: string
+  nextReviewAt: string
+}
+
+export type TenantRequirementSearchResponse = {
+  tenantRequirementAssessments: TenantRequirementSearchResult[]
+}
+
+export function searchTenantRequirements(tenantId: string, query: string, limit = 20) {
+  return apiRequest<TenantRequirementSearchResponse>('/v1/tenants/frameworks/requirements/search', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: { query, limit },
+  })
+}
+
 export function getTenantFrameworkRequirements(
   tenantId: string,
   tenantFrameworkId: string,

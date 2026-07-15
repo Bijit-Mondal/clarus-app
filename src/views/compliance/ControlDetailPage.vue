@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useDebounce } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhCaretRight,
@@ -33,8 +34,12 @@ import {
   useTenantControlsQuery,
   useUpdateTenantControlMutation,
 } from '@/composables/useControls'
+import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
+import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
+import type { LinkItem } from '@/components/compliance/types'
 import { useTenantUsersQuery } from '@/composables/useTenants'
 import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/controls'
+import { getApiErrorMessage } from '@/lib/api'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -362,7 +367,56 @@ function submitTask() {
   }
 }
 
-// Requirement Linking Dialog (Removed mock implementations)
+// Requirement Linking Dialog
+const isRequirementDialogOpen = ref(false)
+const requirementSearchQuery = ref('')
+const debouncedRequirementSearchQuery = useDebounce(requirementSearchQuery, 300)
+const requirementSearch = useTenantRequirementSearchQuery(
+  debouncedRequirementSearchQuery,
+  isRequirementDialogOpen,
+)
+
+const requirementSearchItems = computed<LinkItem[]>(() =>
+  (requirementSearch.data.value?.tenantRequirementAssessments ?? []).map((requirement) => ({
+    id: requirement.tenantRequirementAssessmentId,
+    name: requirement.title,
+    state: requirement.status
+      ? requirement.status
+          .split('_')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+      : 'Not Started',
+    source: requirement.externalId,
+    area: requirement.frameworkName,
+  })),
+)
+
+const requirementSearchError = computed(() =>
+  requirementSearch.error.value
+    ? getApiErrorMessage(requirementSearch.error.value, 'Failed to search requirements.')
+    : '',
+)
+
+const requirementSearchLoading = computed(
+  () => requirementSearch.isPending.value || requirementSearch.isFetching.value,
+)
+
+function handleRequirementSearchQuery(query: string) {
+  requirementSearchQuery.value = query
+}
+
+function linkRequirement(item: LinkItem) {
+  if (!control.value) return
+  controlsStore.linkRequirement(control.value.code, {
+    id: item.id,
+    code: item.source || '',
+    framework: item.area || '',
+    title: item.name,
+    description: '',
+  })
+  isRequirementDialogOpen.value = false
+}
+
 function unlinkRequirement() {
   alert('Unlink not implemented with real API yet')
 }
@@ -438,10 +492,6 @@ const getDocStatusClass = (status: string) => {
   if (status === 'Approved') return 'bg-success/10 text-success border-success/20'
   if (status === 'Under Review') return 'bg-warning/10 text-warning-emphasis border-warning/20'
   return 'bg-muted text-muted-foreground border-border'
-}
-
-function handleNotImplemented() {
-  alert('Not implemented')
 }
 
 const isDescriptionExpanded = ref(false)
@@ -930,7 +980,7 @@ function goToRequirement(map: ControlRequirementMap) {
               size="sm"
               variant="ghost"
               class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="handleNotImplemented"
+              @click="isRequirementDialogOpen = true"
             >
               <PhPlus :size="14" weight="bold" />
               Link requirement
@@ -1405,6 +1455,20 @@ function goToRequirement(map: ControlRequirementMap) {
         </form>
       </DialogContent>
     </Dialog>
+
+    <LinkItemDialog
+      :isOpen="isRequirementDialogOpen"
+      label="Requirements"
+      :icon="PhGavel"
+      searchPlaceholder="Search requirements…"
+      :availableItems="requirementSearchItems"
+      :linkedItemIds="requirements.map((map) => map.tenantRequirementAssessment.$id)"
+      :isLoading="requirementSearchLoading"
+      :error="requirementSearchError"
+      @close="isRequirementDialogOpen = false"
+      @link="linkRequirement"
+      @search-query="handleRequirementSearchQuery"
+    />
 
     <!-- Link Risk Dialog -->
     <Dialog :open="isRiskDialogOpen" @update:open="isRiskDialogOpen = $event">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { getModulePagePath } from '@/config/navigation'
 import {
   PhMoon,
   PhSidebarSimple,
@@ -34,7 +35,12 @@ import { useAuth } from '@/composables/useAuth'
 const { collapsed, toggle } = useSidebar()
 const { isDark, toggleTheme } = useTheme()
 const { accountQuery, logoutMutation } = useAuth()
+const route = useRoute()
 const router = useRouter()
+
+const organizationSlug = computed(() =>
+  typeof route.params.organizationSlug === 'string' ? route.params.organizationSlug : undefined,
+)
 
 const accountName = computed(() => {
   if (accountQuery.data.value?.name) return accountQuery.data.value.name
@@ -138,11 +144,11 @@ async function onLogout() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
+            <DropdownMenuItem @select="router.push(getModulePagePath('settings', 'profile', organizationSlug))">
               <PhUserCircle :size="16" class="mr-2" aria-hidden="true" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem @select="router.push(getModulePagePath('settings', 'account', organizationSlug))">
               <PhUser :size="16" class="mr-2" aria-hidden="true" />
               Account settings
             </DropdownMenuItem>

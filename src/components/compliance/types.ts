@@ -3,9 +3,8 @@ export type Requirement = {
   code: string
   title: string
   description: string
-  bestPractice: boolean
   maturityLevel: string
-  category: string
+  category?: string
 }
 
 export type LinkItem = {
@@ -28,7 +27,7 @@ export type LinkSectionId = 'controls' | 'documents' | 'audits' | 'obligations'
 export type LinkSectionConfig = {
   id: LinkSectionId
   label: string
-  icon: any
+  icon: unknown
   searchPlaceholder: string
   columns: string[]
   emptyLabel: string

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useDebounce } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { PhClipboardText, PhFileText, PhGavel, PhShieldCheck } from '@phosphor-icons/vue'
 import type { TenantRequirementAssessment } from '@/api/frameworks'
@@ -7,6 +8,7 @@ import {
   useRequirementControlsQuery,
   useTenantFrameworkRequirementsQuery,
 } from '@/composables/useFrameworks'
+import { useTenantControlSearchQuery } from '@/composables/useControls'
 import { getApiErrorMessage } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import FrameworkHeader from '@/components/compliance/FrameworkHeader.vue'
@@ -32,31 +34,13 @@ function goBack() {
 
 const requirementsQuery = useTenantFrameworkRequirementsQuery(frameworkId, selectedAssessmentId)
 
-const mapAssessmentToRequirement = (assessment: TenantRequirementAssessment): Requirement => {
-  const code = assessment.frameworkNode?.externalId || ''
-  const match = code.trim().match(/^[A-Za-z]+/)
-  const prefix = match ? match[0].toUpperCase() : 'GENERAL'
-
-  let category = 'Requirements'
-  if (prefix === 'PR' || prefix === 'P') category = 'Privacy'
-  else if (prefix === 'DS') category = 'Data Security'
-  else if (prefix === 'CC') category = 'Common Criteria'
-  else if (prefix === 'A') category = 'Availability'
-  else if (prefix === 'C') category = 'Confidentiality'
-  else if (prefix) {
-    category = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase()
-  }
-
-  return {
-    id: assessment.$id,
-    code,
-    title: assessment.frameworkNode?.title || '',
-    description: assessment.frameworkNode?.description || '',
-    bestPractice: false,
-    maturityLevel: assessment.status ? assessment.status.replace('_', ' ') : 'not started',
-    category,
-  }
-}
+const mapAssessmentToRequirement = (assessment: TenantRequirementAssessment): Requirement => ({
+  id: assessment.$id,
+  code: assessment.frameworkNode?.externalId || '',
+  title: assessment.frameworkNode?.title || '',
+  description: assessment.frameworkNode?.description || '',
+  maturityLevel: assessment.status ? assessment.status.replace(/_/g, ' ') : '',
+})
 
 const requirements = computed(() =>
   (requirementsQuery.data.value?.pages ?? []).flatMap((page) =>
@@ -173,6 +157,44 @@ const currentLinkedItems = computed(() => {
 })
 
 const activeLinkSectionId = ref<LinkSectionId | null>(null)
+const controlSearchQuery = ref('')
+const debouncedControlSearchQuery = useDebounce(controlSearchQuery, 300)
+const controlSearchEnabled = computed(
+  () => activeLinkSectionId.value === 'controls' && !!selectedId.value,
+)
+const controlSearch = useTenantControlSearchQuery(
+  debouncedControlSearchQuery,
+  controlSearchEnabled,
+)
+
+const searchedControls = computed<LinkItem[]>(() =>
+  (controlSearch.data.value?.tenantControls ?? []).map((control) => ({
+    id: control.tenantControlId,
+    name: control.name,
+    controlKey: control.controlKey,
+    state: control.implementationStatus
+      ? control.implementationStatus
+          .split('_')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+      : 'Not Started',
+    implementationStatus: control.implementationStatus,
+  })),
+)
+
+const controlSearchError = computed(() =>
+  controlSearch.error.value
+    ? getApiErrorMessage(controlSearch.error.value, 'Failed to search controls.')
+    : '',
+)
+
+const controlSearchLoading = computed(
+  () => controlSearch.isPending.value || controlSearch.isFetching.value,
+)
+
+function handleLinkSearchQuery(query: string) {
+  controlSearchQuery.value = query
+}
 
 const LINK_SECTIONS = [
   {
@@ -215,7 +237,9 @@ const activeLinkSectionConfig = computed(() => {
 })
 
 function allItemsForSection(sectionId: LinkSectionId): LinkItem[] {
-  void sectionId
+  if (sectionId === 'controls') {
+    return controlSearchQuery.value.trim() ? searchedControls.value : mappedControls.value
+  }
   return []
 }
 
@@ -329,8 +353,11 @@ function goToControlDetail(item: LinkItem) {
       :searchPlaceholder="activeLinkSectionConfig?.searchPlaceholder ?? ''"
       :availableItems="activeLinkSectionId ? allItemsForSection(activeLinkSectionId) : []"
       :linkedItemIds="currentLinkedItemIds"
+      :isLoading="activeLinkSectionId === 'controls' && controlSearchLoading"
+      :error="activeLinkSectionId === 'controls' ? controlSearchError : ''"
       @close="activeLinkSectionId = null"
       @link="handleLinkItem"
+      @search-query="handleLinkSearchQuery"
     />
   </div>
 </template>

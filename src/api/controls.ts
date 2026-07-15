@@ -30,6 +30,30 @@ export type TenantControlsResponse = {
   tenantControls: TenantControl[]
 }
 
+export type TenantControlSearchResult = {
+  tenantControlId: string
+  controlKey: string
+  name: string
+  implementationStatus: string
+  reviewFrequency: string
+  nextReviewAt: string
+  ownerId: string
+  isCustom: boolean
+}
+
+export type TenantControlSearchResponse = {
+  tenantControls: TenantControlSearchResult[]
+}
+
+export function searchTenantControls(tenantId: string, query: string, limit = 10) {
+  return apiRequest<TenantControlSearchResponse>('/v1/tenants/frameworks/controls/search', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: { query, limit },
+  })
+}
+
 export function getTenantControls(tenantId: string, options?: { limit?: number; offset?: number }) {
   return apiRequest<TenantControlsResponse>('/v1/tenants/frameworks/controls', {
     headers: {

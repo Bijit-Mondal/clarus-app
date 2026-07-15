@@ -16,15 +16,18 @@ import type { LinkItem } from './types'
 const props = defineProps<{
   isOpen: boolean
   label: string
-  icon: any
+  icon: unknown
   searchPlaceholder: string
   availableItems: LinkItem[]
   linkedItemIds: string[]
+  isLoading?: boolean
+  error?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'link', item: LinkItem): void
+  (e: 'search-query', query: string): void
 }>()
 
 const searchQuery = ref('')
@@ -40,9 +43,12 @@ watch(
 )
 
 const filteredItems = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return props.availableItems
-  return props.availableItems.filter((item) => item.name.toLowerCase().includes(q))
+  if (props.isLoading || props.error || searchQuery.value.trim()) return props.availableItems
+  return props.availableItems
+})
+
+watch(searchQuery, (query) => {
+  emit('search-query', query)
 })
 </script>
 
@@ -106,16 +112,22 @@ const filteredItems = computed(() => {
             </Button>
           </li>
           <li
-            v-if="!availableItems.length"
+            v-if="isLoading"
             class="px-5 py-8 text-center text-sm text-muted-foreground"
           >
-            No items available to link yet.
+            Searching controls…
           </li>
           <li
-            v-else-if="!filteredItems.length"
+            v-else-if="error"
+            class="px-5 py-8 text-center text-sm text-destructive"
+          >
+            {{ error }}
+          </li>
+          <li
+            v-else-if="!availableItems.length"
             class="px-5 py-8 text-center text-sm text-muted-foreground"
           >
-            No results for "{{ searchQuery }}"
+            {{ searchQuery.trim() ? `No results for "${searchQuery}"` : 'Type to search controls.' }}
           </li>
         </ul>
       </div>
