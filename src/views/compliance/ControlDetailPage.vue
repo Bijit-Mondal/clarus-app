@@ -64,7 +64,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { FRAMEWORKS, OWNER_LIST, type ControlStatus } from '@/data/controls'
+import { OWNER_LIST, type ControlStatus } from '@/data/controls'
 
 const route = useRoute()
 const router = useRouter()
@@ -105,7 +105,6 @@ const control = computed(() => {
       implementationStatus: apiControl.value.implementationStatus || 'not_started',
       reviewFrequency: apiControl.value.reviewFrequency || '',
       owner: apiControl.value.owner || { name: 'Unassigned', id: '' },
-      frameworks: [] as string[], // Can map this later if API provides it
       status: mapStatus(apiControl.value.implementationStatus),
       nextReview: apiControl.value.nextReviewAt || '',
       archivedAt: apiControl.value.archivedAt || '',
@@ -127,7 +126,6 @@ const control = computed(() => {
     implementationStatus: 'not_started',
     reviewFrequency: '',
     owner: { name: 'Unassigned', id: '' },
-    frameworks: [] as string[],
     status: 'not_started' as ControlStatus,
     nextReview: '',
     archivedAt: '',
@@ -180,6 +178,20 @@ const activeTab = ref<
 
 const { data: reqData, isPending: reqIsPending } = useControlRequirementsQuery(controlId)
 const requirements = computed(() => reqData.value?.tenantRequirementControlMaps || [])
+const controlFrameworks = computed(() => {
+  const frameworks = new Map<string, { id: string; name: string; publisher: string }>()
+
+  for (const map of requirements.value) {
+    const { tenantFrameworkId, frameworkNode } = map.tenantRequirementAssessment
+    frameworks.set(tenantFrameworkId, {
+      id: tenantFrameworkId,
+      name: frameworkNode.frameworkName,
+      publisher: frameworkNode.frameworkPublisher,
+    })
+  }
+
+  return [...frameworks.values()]
+})
 
 // Back navigation
 function goBack() {
@@ -395,9 +407,6 @@ function linkVendor(v: ThirdParty) {
 }
 
 // Helpers
-const getFrameworkLabel = (id: string) =>
-  FRAMEWORKS[id as keyof typeof FRAMEWORKS]?.label || id.toUpperCase()
-
 const statusConfig = computed(() => {
   const s = control.value?.status
   if (s === 'passing')
@@ -462,6 +471,8 @@ function goToRequirement(map: ControlRequirementMap) {
     },
     query: {
       selectedId: map.tenantRequirementAssessment.$id,
+      name: map.tenantRequirementAssessment.frameworkNode.frameworkName,
+      publisher: map.tenantRequirementAssessment.frameworkNode.frameworkPublisher,
     },
   })
 }
@@ -585,7 +596,11 @@ function goToRequirement(map: ControlRequirementMap) {
       <span class="text-border" aria-hidden="true">·</span>
       <span class="inline-flex items-center gap-1.5">
         <PhShieldCheck :size="13" class="text-success" />
-        {{ control.frameworks.map((f) => getFrameworkLabel(f)).join(', ') }}
+        <span v-if="reqIsPending">Loading frameworks…</span>
+        <span v-else-if="controlFrameworks.length">
+          {{ controlFrameworks.map((framework) => framework.name).join(', ') }}
+        </span>
+        <span v-else>No linked frameworks</span>
       </span>
       <span class="text-border" aria-hidden="true">·</span>
       <span class="inline-flex items-center gap-1.5">

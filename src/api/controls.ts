@@ -1,5 +1,10 @@
 import { apiRequest } from '@/lib/api'
 
+export type TenantControlOwner = {
+  id: string
+  name: string
+}
+
 export type TenantControl = {
   $id: string
   $createdAt: string
@@ -12,7 +17,7 @@ export type TenantControl = {
   implementationDescription: string
   implementationStatus: string
   ownerId: string
-  owner: any | null
+  owner: TenantControlOwner | null
   reviewFrequency: string
   lastReviewedAt: string
   nextReviewAt: string
@@ -72,6 +77,7 @@ export type ControlRequirementMap = {
   tenantControlId: string
   coverage: string
   rationale: string
+  tenantControl: TenantControl | null
   tenantRequirementAssessment: {
     $id: string
     $createdAt: string
@@ -80,11 +86,17 @@ export type ControlRequirementMap = {
     frameworkNodeId: string
     status: string
     rationale: string
+    assessedById: string
+    assessedAt: string
+    nextReviewAt: string
     frameworkNode: {
       $id: string
       $createdAt: string
       $updatedAt: string
       frameworkReleaseId: string
+      frameworkName: string
+      frameworkPublisher: string
+      parentNodeId: string
       externalId: string
       title: string
       description: string
