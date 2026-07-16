@@ -34,7 +34,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { OWNER_LIST, frameworkProgress, summarize } from '@/data/controls'
 import { useControlsStore, type Task } from '@/stores/controls'
 
@@ -55,7 +61,11 @@ const today = new Date('2026-07-15T00:00:00')
 
 const tasks = computed(() =>
   controlsStore.list.flatMap((control) =>
-    control.tasks.map((task) => ({ ...task, controlCode: control.code, controlName: control.name })),
+    control.tasks.map((task) => ({
+      ...task,
+      controlCode: control.code,
+      controlName: control.name,
+    })),
   ),
 )
 
@@ -69,8 +79,11 @@ const taskSummary = computed(() => ({
 const visibleTasks = computed(() => {
   const query = search.value.trim().toLowerCase()
   return tasks.value.filter((task) => {
-    const matchesQuery = !query || [task.description, task.assignee.name, task.controlCode]
-      .some((value) => value.toLowerCase().includes(query))
+    const matchesQuery =
+      !query ||
+      [task.description, task.assignee.name, task.controlCode].some((value) =>
+        value.toLowerCase().includes(query),
+      )
     const matchesFilter =
       activeFilter.value === 'all' ||
       (activeFilter.value === 'open' && task.status !== 'completed') ||
@@ -152,8 +165,13 @@ function toggleTask(task: (typeof tasks.value)[number]) {
       </template>
     </PageHeader>
 
-    <section class="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_1fr]" aria-label="Compliance summary">
-      <article class="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-sm sm:p-6">
+    <section
+      class="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_1fr]"
+      aria-label="Compliance summary"
+    >
+      <article
+        class="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-sm sm:p-6"
+      >
         <div class="mb-5 flex items-center justify-between gap-4">
           <div>
             <h2 class="text-base font-semibold text-foreground">Readiness overview</h2>
@@ -172,16 +190,33 @@ function toggleTask(task: (typeof tasks.value)[number]) {
             :aria-label="`${summary.passing} passing, ${summary.attention} need attention, ${summary.failing} failing`"
           >
             <div class="flex size-28 flex-col items-center justify-center rounded-full bg-card">
-              <span class="text-3xl font-semibold tracking-tight text-foreground">{{ summary.total }}</span>
+              <span class="text-3xl font-semibold tracking-tight text-foreground">{{
+                summary.total
+              }}</span>
               <span class="text-xs text-muted-foreground">controls</span>
             </div>
           </div>
           <ul class="grid w-full grid-cols-3 gap-3" role="list">
             <li
               v-for="item in [
-                { label: 'Passing', value: summary.passing, color: 'bg-success', text: 'text-success-emphasis' },
-                { label: 'Attention', value: summary.attention, color: 'bg-warning', text: 'text-warning-emphasis' },
-                { label: 'Failing', value: summary.failing, color: 'bg-destructive', text: 'text-destructive-emphasis' },
+                {
+                  label: 'Passing',
+                  value: summary.passing,
+                  color: 'bg-success',
+                  text: 'text-success-emphasis',
+                },
+                {
+                  label: 'Attention',
+                  value: summary.attention,
+                  color: 'bg-warning',
+                  text: 'text-warning-emphasis',
+                },
+                {
+                  label: 'Failing',
+                  value: summary.failing,
+                  color: 'bg-destructive',
+                  text: 'text-destructive-emphasis',
+                },
               ]"
               :key="item.label"
               class="min-w-0"
@@ -190,13 +225,17 @@ function toggleTask(task: (typeof tasks.value)[number]) {
                 <span class="size-2 rounded-full" :class="item.color" aria-hidden="true" />
                 {{ item.label }}
               </div>
-              <span class="text-xl font-semibold tabular-nums" :class="item.text">{{ item.value }}</span>
+              <span class="text-xl font-semibold tabular-nums" :class="item.text">{{
+                item.value
+              }}</span>
             </li>
           </ul>
         </div>
       </article>
 
-      <article class="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-sm sm:p-6">
+      <article
+        class="rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-sm sm:p-6"
+      >
         <div class="mb-5 flex items-center justify-between gap-4">
           <div>
             <h2 class="text-base font-semibold text-foreground">Framework coverage</h2>
@@ -208,10 +247,15 @@ function toggleTask(task: (typeof tasks.value)[number]) {
           <li v-for="framework in frameworks" :key="framework.id">
             <div class="mb-1.5 flex items-center justify-between gap-3 text-sm">
               <span class="font-medium text-foreground">{{ framework.label }}</span>
-              <span class="tabular-nums text-muted-foreground">{{ framework.summary.readiness }}%</span>
+              <span class="tabular-nums text-muted-foreground"
+                >{{ framework.summary.readiness }}%</span
+              >
             </div>
             <div class="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
-              <div class="h-full rounded-full bg-success transition-[width] duration-300" :style="{ width: `${framework.summary.readiness}%` }" />
+              <div
+                class="h-full rounded-full bg-success transition-[width] duration-300"
+                :style="{ width: `${framework.summary.readiness}%` }"
+              />
             </div>
           </li>
         </ul>
@@ -222,7 +266,9 @@ function toggleTask(task: (typeof tasks.value)[number]) {
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 id="tasks-heading" class="text-lg font-semibold text-foreground">Tasks</h2>
-          <p class="mt-1 text-sm text-muted-foreground">Keep the work moving toward audit readiness.</p>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Keep the work moving toward audit readiness.
+          </p>
         </div>
         <Button variant="ghost" size="sm" class="w-fit text-muted-foreground">
           <PhArrowUpRight :size="15" aria-hidden="true" />
@@ -236,7 +282,12 @@ function toggleTask(task: (typeof tasks.value)[number]) {
             { key: 'all', label: 'All tasks', value: taskSummary.total, icon: PhListChecks },
             { key: 'open', label: 'Open', value: taskSummary.open, icon: PhClock },
             { key: 'overdue', label: 'Overdue', value: taskSummary.overdue, icon: PhWarningCircle },
-            { key: 'completed', label: 'Completed', value: taskSummary.completed, icon: PhCheckCircle },
+            {
+              key: 'completed',
+              label: 'Completed',
+              value: taskSummary.completed,
+              icon: PhCheckCircle,
+            },
           ]"
           :key="item.key"
           type="button"
@@ -253,10 +304,21 @@ function toggleTask(task: (typeof tasks.value)[number]) {
       </div>
 
       <div class="overflow-hidden rounded-lg border border-border bg-card">
-        <div class="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          class="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div class="relative max-w-sm flex-1">
-            <PhMagnifyingGlass :size="17" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input v-model="search" class="pl-9" placeholder="Search tasks or assignees" aria-label="Search tasks or assignees" />
+            <PhMagnifyingGlass
+              :size="17"
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              v-model="search"
+              class="pl-9"
+              placeholder="Search tasks or assignees"
+              aria-label="Search tasks or assignees"
+            />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -285,15 +347,31 @@ function toggleTask(task: (typeof tasks.value)[number]) {
             <button
               type="button"
               class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-muted-foreground/50 text-transparent transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mt-0"
-              :class="task.status === 'completed' ? 'border-success bg-success text-success-foreground' : ''"
+              :class="
+                task.status === 'completed'
+                  ? 'border-success bg-success text-success-foreground'
+                  : ''
+              "
               :aria-label="`${task.status === 'completed' ? 'Reopen' : 'Complete'} task: ${task.description}`"
               @click="toggleTask(task)"
             >
-              <PhCheckCircle v-if="task.status === 'completed'" :size="14" weight="fill" aria-hidden="true" />
+              <PhCheckCircle
+                v-if="task.status === 'completed'"
+                :size="14"
+                weight="fill"
+                aria-hidden="true"
+              />
             </button>
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-foreground" :class="task.status === 'completed' ? 'text-muted-foreground line-through' : ''">{{ task.description }}</p>
-              <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <p
+                class="font-medium text-foreground"
+                :class="task.status === 'completed' ? 'text-muted-foreground line-through' : ''"
+              >
+                {{ task.description }}
+              </p>
+              <div
+                class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+              >
                 <span class="font-mono text-[11px]">{{ task.controlCode }}</span>
                 <span aria-hidden="true">·</span>
                 <span>{{ task.controlName }}</span>
@@ -301,11 +379,30 @@ function toggleTask(task: (typeof tasks.value)[number]) {
             </div>
             <div class="flex shrink-0 items-center gap-3">
               <Avatar class="hidden size-7 sm:flex" :aria-label="task.assignee.name">
-                <AvatarFallback class="bg-muted text-[10px] font-medium text-muted-foreground">{{ task.assignee.initials }}</AvatarFallback>
+                <AvatarFallback class="bg-muted text-[10px] font-medium text-muted-foreground">{{
+                  task.assignee.initials
+                }}</AvatarFallback>
               </Avatar>
               <div class="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <Badge :variant="statusVariant(task.status)" :class="task.status === 'completed' ? 'text-success-emphasis' : task.status === 'in_progress' ? 'text-info' : 'text-muted-foreground'">{{ statusLabel(task.status) }}</Badge>
-                <span class="flex items-center gap-1 text-xs" :class="isOverdue(task) ? 'font-medium text-destructive-emphasis' : 'text-muted-foreground'">
+                <Badge
+                  :variant="statusVariant(task.status)"
+                  :class="
+                    task.status === 'completed'
+                      ? 'text-success-emphasis'
+                      : task.status === 'in_progress'
+                        ? 'text-info'
+                        : 'text-muted-foreground'
+                  "
+                  >{{ statusLabel(task.status) }}</Badge
+                >
+                <span
+                  class="flex items-center gap-1 text-xs"
+                  :class="
+                    isOverdue(task)
+                      ? 'font-medium text-destructive-emphasis'
+                      : 'text-muted-foreground'
+                  "
+                >
                   <PhWarningCircle v-if="isOverdue(task)" :size="14" aria-hidden="true" />
                   <PhClock v-else :size="14" aria-hidden="true" />
                   {{ formatDueDate(task.dueDate) }}
@@ -313,23 +410,33 @@ function toggleTask(task: (typeof tasks.value)[number]) {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <button type="button" class="flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100" :aria-label="`Options for ${task.description}`">
+                  <button
+                    type="button"
+                    class="flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                    :aria-label="`Options for ${task.description}`"
+                  >
                     <PhDotsThree :size="20" weight="bold" aria-hidden="true" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem @click="toggleTask(task)">{{ task.status === 'completed' ? 'Reopen task' : 'Complete task' }}</DropdownMenuItem>
+                  <DropdownMenuItem @click="toggleTask(task)">{{
+                    task.status === 'completed' ? 'Reopen task' : 'Complete task'
+                  }}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </div>
         <div v-else class="flex flex-col items-center px-6 py-14 text-center">
-          <div class="mb-3 flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <div
+            class="mb-3 flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+          >
             <PhCheckCircle :size="24" aria-hidden="true" />
           </div>
           <p class="font-medium text-foreground">No tasks match this view</p>
-          <p class="mt-1 max-w-sm text-sm text-muted-foreground">Try another status or search term to find the work you need.</p>
+          <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+            Try another status or search term to find the work you need.
+          </p>
         </div>
       </div>
     </section>
@@ -343,24 +450,40 @@ function toggleTask(task: (typeof tasks.value)[number]) {
         <form class="space-y-4" @submit.prevent="addTask">
           <div class="space-y-2">
             <Label for="task-description">Task</Label>
-            <Input id="task-description" v-model="taskDescription" placeholder="Describe the work to be done" required />
+            <Input
+              id="task-description"
+              v-model="taskDescription"
+              placeholder="Describe the work to be done"
+              required
+            />
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="space-y-2">
               <Label for="task-control">Related control</Label>
               <Select v-model="taskControlCode">
-                <SelectTrigger id="task-control"><SelectValue placeholder="Select a control" /></SelectTrigger>
+                <SelectTrigger id="task-control"
+                  ><SelectValue placeholder="Select a control"
+                /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="control in controlsStore.list" :key="control.code" :value="control.code">{{ control.code }} · {{ control.name }}</SelectItem>
+                  <SelectItem
+                    v-for="control in controlsStore.list"
+                    :key="control.code"
+                    :value="control.code"
+                    >{{ control.code }} · {{ control.name }}</SelectItem
+                  >
                 </SelectContent>
               </Select>
             </div>
             <div class="space-y-2">
               <Label for="task-assignee">Assignee</Label>
               <Select v-model="taskAssigneeId">
-                <SelectTrigger id="task-assignee"><SelectValue placeholder="Select an owner" /></SelectTrigger>
+                <SelectTrigger id="task-assignee"
+                  ><SelectValue placeholder="Select an owner"
+                /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="owner in owners" :key="owner.id" :value="owner.id">{{ owner.name }}</SelectItem>
+                  <SelectItem v-for="owner in owners" :key="owner.id" :value="owner.id">{{
+                    owner.name
+                  }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -370,7 +493,9 @@ function toggleTask(task: (typeof tasks.value)[number]) {
             <Input id="task-due-date" v-model="taskDueDate" type="date" required />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" @click="isTaskDialogOpen = false">Cancel</Button>
+            <Button type="button" variant="outline" @click="isTaskDialogOpen = false"
+              >Cancel</Button
+            >
             <Button type="submit">Add task</Button>
           </DialogFooter>
         </form>

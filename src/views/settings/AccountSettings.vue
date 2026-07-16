@@ -234,14 +234,22 @@ const revokeAllOtherSessions = () => {
               <Button size="sm" variant="ghost" class="flex-1" @click="show2FaSetup = false">
                 Cancel
               </Button>
-              <Button size="sm" class="flex-1" :disabled="mfaCodeInput.length < 6 || isVerifyingMfa" @click="verifyMfa">
+              <Button
+                size="sm"
+                class="flex-1"
+                :disabled="mfaCodeInput.length < 6 || isVerifyingMfa"
+                @click="verifyMfa"
+              >
                 {{ isVerifyingMfa ? 'Verifying...' : 'Verify' }}
               </Button>
             </div>
           </div>
 
           <!-- Enabled State Info -->
-          <div v-if="is2FaEnabled" class="p-3 bg-primary/10 rounded-md border border-primary/20 space-y-3">
+          <div
+            v-if="is2FaEnabled"
+            class="p-3 bg-primary/10 rounded-md border border-primary/20 space-y-3"
+          >
             <p class="text-xs font-semibold text-primary flex items-center gap-1.5">
               <PhCheckCircle :size="16" weight="fill" />
               2FA Protection Enabled
@@ -303,11 +311,17 @@ const revokeAllOtherSessions = () => {
 
             <div class="flex items-center justify-between pt-2">
               <div class="min-h-5">
-                <span v-if="passwordSuccess" class="flex items-center gap-1 text-sm text-success-emphasis">
+                <span
+                  v-if="passwordSuccess"
+                  class="flex items-center gap-1 text-sm text-success-emphasis"
+                >
                   <PhCheckCircle :size="16" weight="fill" />
                   Password updated successfully
                 </span>
-                <span v-if="passwordError" class="flex items-center gap-1 text-sm text-destructive-emphasis">
+                <span
+                  v-if="passwordError"
+                  class="flex items-center gap-1 text-sm text-destructive-emphasis"
+                >
                   <PhWarning :size="16" weight="fill" />
                   {{ passwordError }}
                 </span>
@@ -359,7 +373,11 @@ const revokeAllOtherSessions = () => {
                     <span class="text-sm font-semibold text-foreground">
                       {{ session.browser }} on {{ session.os }}
                     </span>
-                    <Badge v-if="session.isCurrent" variant="secondary" class="bg-primary/10 text-primary hover:bg-primary/14 border-transparent text-[10px] font-semibold tracking-wider">
+                    <Badge
+                      v-if="session.isCurrent"
+                      variant="secondary"
+                      class="bg-primary/10 text-primary hover:bg-primary/14 border-transparent text-[10px] font-semibold tracking-wider"
+                    >
                       Current
                     </Badge>
                   </div>
@@ -368,9 +386,7 @@ const revokeAllOtherSessions = () => {
                       <PhGlobe :size="12" />
                       {{ session.location }}
                     </span>
-                    <span class="flex items-center gap-1 font-mono">
-                      IP: {{ session.ip }}
-                    </span>
+                    <span class="flex items-center gap-1 font-mono"> IP: {{ session.ip }} </span>
                     <span class="flex items-center gap-1">
                       <PhClock :size="12" />
                       {{ session.lastActive }}
@@ -392,7 +408,10 @@ const revokeAllOtherSessions = () => {
                 </Button>
               </div>
             </div>
-            <div v-if="sessions.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+            <div
+              v-if="sessions.length === 0"
+              class="py-6 text-center text-sm text-muted-foreground"
+            >
               No active sessions.
             </div>
           </div>
@@ -402,10 +421,15 @@ const revokeAllOtherSessions = () => {
         <div class="rounded-lg border border-destructive/20 bg-card p-6 shadow-2xs space-y-4">
           <h2 class="text-base font-semibold text-destructive">Danger Zone</h2>
           <p class="text-xs text-muted-foreground -mt-2">
-            Permanently delete your account. This action is immediate and cannot be undone. All compliance work mapping, history, and active evidence collections associated with this account will be permanently deleted.
+            Permanently delete your account. This action is immediate and cannot be undone. All
+            compliance work mapping, history, and active evidence collections associated with this
+            account will be permanently deleted.
           </p>
           <div class="pt-2">
-            <Button variant="outline" class="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground">
+            <Button
+              variant="outline"
+              class="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
               Delete Account
             </Button>
           </div>

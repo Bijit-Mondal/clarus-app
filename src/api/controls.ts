@@ -1,10 +1,5 @@
 import { apiRequest } from '@/lib/api'
 
-export type TenantControlOwner = {
-  id: string
-  name: string
-}
-
 export type TenantControl = {
   $id: string
   $createdAt: string
@@ -14,13 +9,7 @@ export type TenantControl = {
   controlKey: string
   name: string
   statement: string
-  implementationDescription: string
   implementationStatus: string
-  ownerId: string
-  owner: TenantControlOwner | null
-  reviewFrequency: string
-  lastReviewedAt: string
-  nextReviewAt: string
   isCustom: boolean
   archivedAt: string
 }
@@ -35,9 +24,6 @@ export type TenantControlSearchResult = {
   controlKey: string
   name: string
   implementationStatus: string
-  reviewFrequency: string
-  nextReviewAt: string
-  ownerId: string
   isCustom: boolean
 }
 
@@ -65,7 +51,6 @@ export function getTenantControls(tenantId: string, options?: { limit?: number; 
 
 export type UpdateTenantControlInput = {
   statement?: string | null
-  implementationDescription?: string | null
   implementationStatus?:
     | 'not_started'
     | 'in_progress'
@@ -74,8 +59,6 @@ export type UpdateTenantControlInput = {
     | 'not_applicable'
     | 'needs_review'
     | null
-  ownerId?: string | null
-  reviewFrequency?: string | null
   archive?: boolean | null
 }
 
@@ -186,5 +169,3 @@ export function unlinkControlRequirement(
     },
   )
 }
-
-

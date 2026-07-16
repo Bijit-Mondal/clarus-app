@@ -20,7 +20,7 @@ import HIPAALogo from '@/components/brand/HIPAALogo.vue'
 import ISOLogo from '@/components/brand/ISOLogo.vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
-import type { Framework, TenantFramework } from '@/api/frameworks'
+import type { Framework, TenantFramework, FrameworkRelease } from '@/api/frameworks'
 import {
   useAdoptFrameworkMutation,
   useFrameworkReleasesQuery,
@@ -129,9 +129,7 @@ const {
 } = useFrameworkReleasesQuery(selectedFrameworkId)
 
 const dialogReleases = computed(() =>
-  (releasesData.value?.frameworkReleases ?? []).filter(
-    (release) => release.status === 'published',
-  ),
+  (releasesData.value?.frameworkReleases ?? []).filter((release) => release.status === 'published'),
 )
 const releasesError = computed(() =>
   releasesQueryError.value
@@ -360,10 +358,17 @@ watch(isAdoptionDialogOpen, (isOpen) => {
 
             <!-- Framework name -->
             <div class="min-w-0 px-5 pb-4">
-              <h3 class="truncate text-lg font-semibold leading-tight text-foreground" :title="item.framework?.name">
+              <h3
+                class="truncate text-lg font-semibold leading-tight text-foreground"
+                :title="item.framework?.name"
+              >
                 {{ item.framework?.name ?? 'Framework' }}
               </h3>
-              <p v-if="item.release" class="mt-0.5 truncate font-mono text-xs text-muted-foreground" :title="item.release.title">
+              <p
+                v-if="item.release"
+                class="mt-0.5 truncate font-mono text-xs text-muted-foreground"
+                :title="item.release.title"
+              >
                 {{ item.release.title }} &middot; v{{ item.release.version }}
               </p>
             </div>
@@ -389,8 +394,11 @@ watch(isAdoptionDialogOpen, (isOpen) => {
         <h3 class="mt-5 text-lg font-semibold text-foreground">No frameworks adopted yet</h3>
         <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
           Adopt a compliance framework to begin mapping controls and tracking readiness for
-          <span class="text-foreground">{{ organizationStore.activeOrganization?.name ?? 'your organization' }}</span>.
-          Once adopted, requirements, controls, and evidence tracking will be available from this page.
+          <span class="text-foreground">{{
+            organizationStore.activeOrganization?.name ?? 'your organization'
+          }}</span
+          >. Once adopted, requirements, controls, and evidence tracking will be available from this
+          page.
         </p>
         <div class="mt-8 space-y-3">
           <Button size="sm" @click="openAdoptionDialog()">
@@ -556,7 +564,10 @@ watch(isAdoptionDialogOpen, (isOpen) => {
             >
               <!-- Typography mirroring the tenant framework card on the left -->
               <div class="min-w-0 flex-1">
-                <span class="block truncate text-lg font-semibold leading-tight text-foreground" :title="framework.name">
+                <span
+                  class="block truncate text-lg font-semibold leading-tight text-foreground"
+                  :title="framework.name"
+                >
                   {{ framework.name }}
                 </span>
                 <div class="mt-0.5 flex flex-wrap items-center gap-2">
@@ -650,7 +661,9 @@ watch(isAdoptionDialogOpen, (isOpen) => {
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span class="truncate font-medium text-foreground" :title="release.title">{{ release.title }}</span>
+                    <span class="truncate font-medium text-foreground" :title="release.title">{{
+                      release.title
+                    }}</span>
                     <span class="shrink-0 font-mono text-xs text-muted-foreground"
                       >v{{ release.version }}</span
                     >
@@ -671,7 +684,9 @@ watch(isAdoptionDialogOpen, (isOpen) => {
               v-else
               class="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground"
             >
-              There are no published releases available for <span class="font-medium text-foreground">{{ selectedFramework.name }}</span>.
+              There are no published releases available for
+              <span class="font-medium text-foreground">{{ selectedFramework.name }}</span
+              >.
             </div>
 
             <div

@@ -11,7 +11,11 @@ const isExpanded = ref(false)
 
 const maturityConfig = computed(() => {
   const status = props.requirement.maturityLevel.toLowerCase()
-  if (status.includes('complete') || status.includes('implemented') || status.includes('approved')) {
+  if (
+    status.includes('complete') ||
+    status.includes('implemented') ||
+    status.includes('approved')
+  ) {
     return {
       label: props.requirement.maturityLevel,
       icon: PhCheckCircle,

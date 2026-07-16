@@ -111,23 +111,19 @@ watch(searchQuery, (query) => {
               {{ linkedItemIds.includes(item.id) ? 'Linked' : 'Link' }}
             </Button>
           </li>
-          <li
-            v-if="isLoading"
-            class="px-5 py-8 text-center text-sm text-muted-foreground"
-          >
+          <li v-if="isLoading" class="px-5 py-8 text-center text-sm text-muted-foreground">
             Searching controls…
           </li>
-          <li
-            v-else-if="error"
-            class="px-5 py-8 text-center text-sm text-destructive"
-          >
+          <li v-else-if="error" class="px-5 py-8 text-center text-sm text-destructive">
             {{ error }}
           </li>
           <li
             v-else-if="!availableItems.length"
             class="px-5 py-8 text-center text-sm text-muted-foreground"
           >
-            {{ searchQuery.trim() ? `No results for "${searchQuery}"` : 'Type to search controls.' }}
+            {{
+              searchQuery.trim() ? `No results for "${searchQuery}"` : 'Type to search controls.'
+            }}
           </li>
         </ul>
       </div>

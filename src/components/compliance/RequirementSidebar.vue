@@ -117,10 +117,7 @@ watch(
         variant="compact"
         label="Loading more requirements"
       />
-      <div
-        v-else-if="!requirements.length"
-        class="py-12 text-center text-xs text-muted-foreground"
-      >
+      <div v-else-if="!requirements.length" class="py-12 text-center text-xs text-muted-foreground">
         No requirements found.
       </div>
     </template>

@@ -36,11 +36,7 @@ export function useTenantControlsQuery(limit: Ref<number>, offset: Ref<number>) 
   })
 }
 
-export function useTenantControlSearchQuery(
-  query: Ref<string>,
-  enabled: Ref<boolean>,
-  limit = 10,
-) {
+export function useTenantControlSearchQuery(query: Ref<string>, enabled: Ref<boolean>, limit = 10) {
   const organizationStore = useOrganizationStore()
   const tenantId = computed(() => organizationStore.activeOrganization?.id)
 
@@ -125,5 +121,3 @@ export function useUnlinkControlRequirementMutation() {
     },
   })
 }
-
-

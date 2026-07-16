@@ -16,7 +16,6 @@ import {
   PhWarning,
   PhPencilSimple,
   PhDotsThreeOutline,
-  PhUser,
   PhChecks,
   PhMagnifyingGlass,
 } from '@phosphor-icons/vue'
@@ -37,12 +36,11 @@ import {
   useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
 import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
-import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
 import type { LinkItem } from '@/components/compliance/types'
-import { useTenantUsersQuery } from '@/composables/useTenants'
 import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/controls'
 import { getApiErrorMessage } from '@/lib/api'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
+import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -106,14 +104,10 @@ const control = computed(() => {
       id: apiControl.value.$id,
       code: apiControl.value.controlKey,
       name: apiControl.value.name,
-      description: apiControl.value.statement || apiControl.value.implementationDescription || '',
+      description: apiControl.value.statement || '',
       statement: apiControl.value.statement || '',
-      implementationDescription: apiControl.value.implementationDescription || '',
       implementationStatus: apiControl.value.implementationStatus || 'not_started',
-      reviewFrequency: apiControl.value.reviewFrequency || '',
-      owner: apiControl.value.owner || { name: 'Unassigned', id: '' },
       status: mapStatus(apiControl.value.implementationStatus),
-      nextReview: apiControl.value.nextReviewAt || '',
       archivedAt: apiControl.value.archivedAt || '',
       evidences: [] as Evidence[],
       tasks: [] as Task[],
@@ -129,12 +123,8 @@ const control = computed(() => {
     name: controlId.value,
     description: '',
     statement: '',
-    implementationDescription: '',
     implementationStatus: 'not_started',
-    reviewFrequency: '',
-    owner: { name: 'Unassigned', id: '' },
     status: 'not_started' as ControlStatus,
-    nextReview: '',
     archivedAt: '',
     evidences: [] as Evidence[],
     tasks: [] as Task[],
@@ -143,27 +133,6 @@ const control = computed(() => {
     documents: [] as Document[],
     thirdParties: [] as ThirdParty[],
   }
-})
-
-const { data: usersData } = useTenantUsersQuery()
-
-const getInitials = (name: string) => {
-  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
-}
-
-const ownersList = computed(() => {
-  const users = usersData.value?.users || []
-  if (users.length === 0) return OWNER_LIST
-  return users
-    .filter((u) => u.status === 'active')
-    .map((u) => ({
-      id: u.$id,
-      name: u.name,
-      initials: getInitials(u.name),
-    }))
 })
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -211,9 +180,6 @@ function goBack() {
 // Edit Dialog
 const isEditDialogOpen = ref(false)
 const editStatement = ref('')
-const editImplementationDescription = ref('')
-const editReviewFrequency = ref('')
-const editOwnerId = ref('')
 const editImplementationStatus =
   ref<UpdateTenantControlInput['implementationStatus']>('not_started')
 const editArchive = ref(false)
@@ -225,9 +191,6 @@ const unlinkRequirementMutation = useUnlinkControlRequirementMutation()
 function openEditDialog() {
   if (control.value) {
     editStatement.value = control.value.statement
-    editImplementationDescription.value = control.value.implementationDescription
-    editReviewFrequency.value = control.value.reviewFrequency
-    editOwnerId.value = control.value.owner?.id || ''
     editImplementationStatus.value = (control.value.implementationStatus ||
       'not_started') as UpdateTenantControlInput['implementationStatus']
     editArchive.value = !!control.value.archivedAt
@@ -243,23 +206,6 @@ function saveEdit() {
     const origStatementVal = (control.value.statement || '').trim()
     if (statementVal !== origStatementVal) {
       updates.statement = statementVal || null
-    }
-
-    const implDescVal = editImplementationDescription.value.trim()
-    const origImplDescVal = (control.value.implementationDescription || '').trim()
-    if (implDescVal !== origImplDescVal) {
-      updates.implementationDescription = implDescVal || null
-    }
-
-    const reviewFreqVal = editReviewFrequency.value.trim()
-    const origReviewFreqVal = (control.value.reviewFrequency || '').trim()
-    if (reviewFreqVal !== origReviewFreqVal) {
-      updates.reviewFrequency = reviewFreqVal || null
-    }
-
-    const origOwnerId = control.value.owner?.id || ''
-    if (editOwnerId.value !== origOwnerId) {
-      updates.ownerId = editOwnerId.value || null
     }
 
     const origStatus = control.value.implementationStatus || 'not_started'
@@ -349,7 +295,7 @@ function openTaskDialog() {
   taskDescription.value = ''
   taskDueDate.value =
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] || ''
-  taskAssigneeId.value = control.value?.owner.id || 'daniel'
+  taskAssigneeId.value = 'daniel'
   isTaskDialogOpen.value = true
 }
 
@@ -655,27 +601,12 @@ function goToRequirement(map: ControlRequirementMap) {
     <!-- Meta strip -->
     <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
       <span class="inline-flex items-center gap-1.5">
-        <PhUser :size="13" class="text-primary" />
-        {{ control.owner.name }}
-      </span>
-      <span class="text-border" aria-hidden="true">·</span>
-      <span class="inline-flex items-center gap-1.5">
         <PhShieldCheck :size="13" class="text-success" />
         <span v-if="reqIsPending">Loading frameworks…</span>
         <span v-else-if="controlFrameworks.length">
           {{ controlFrameworks.map((framework) => framework.name).join(', ') }}
         </span>
         <span v-else>No linked frameworks</span>
-      </span>
-      <span class="text-border" aria-hidden="true">·</span>
-      <span class="inline-flex items-center gap-1.5">
-        <PhClock :size="13" class="text-info" />
-        <span>
-          Review: {{ control.reviewFrequency || 'Not specified' }}
-          <span v-if="control.nextReview" class="text-muted-foreground ml-1">
-            (Next: {{ formatDate(control.nextReview) }})
-          </span>
-        </span>
       </span>
     </div>
 
@@ -1221,11 +1152,11 @@ function goToRequirement(map: ControlRequirementMap) {
 
     <!-- Edit Dialog -->
     <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
-      <DialogContent class="sm:max-w-[760px]">
+      <DialogContent class="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>Edit Control Details</DialogTitle>
+          <DialogTitle>Edit Control</DialogTitle>
           <DialogDescription>
-            Update control definition, ownership, implementation status, and archive state.
+            Update the control statement, implementation status, or archive state.
           </DialogDescription>
         </DialogHeader>
         <form @submit.prevent="saveEdit" class="space-y-4 py-3">
@@ -1242,110 +1173,55 @@ function goToRequirement(map: ControlRequirementMap) {
             }}</span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-5">
-            <!-- Left Column: Statements (col-span-3) -->
-            <div class="md:col-span-3 space-y-4">
-              <!-- Control Statement -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <Label for="edit-statement" class="text-xs font-semibold text-foreground"
-                    >Control Statement</Label
-                  >
-                  <span class="text-[10px] text-muted-foreground">Markdown</span>
-                </div>
-                <textarea
-                  id="edit-statement"
-                  v-model="editStatement"
-                  rows="4"
-                  class="flex min-h-[100px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="The objective or rule defined by this control..."
-                ></textarea>
-              </div>
-
-              <!-- Implementation Description -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <Label for="edit-impl-desc" class="text-xs font-semibold text-foreground"
-                    >Implementation Description</Label
-                  >
-                  <span class="text-[10px] text-muted-foreground">Markdown</span>
-                </div>
-                <textarea
-                  id="edit-impl-desc"
-                  v-model="editImplementationDescription"
-                  rows="4"
-                  class="flex min-h-[100px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Detailed description of how this control is enforced..."
-                ></textarea>
-              </div>
+          <!-- Control Statement -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <Label for="edit-statement" class="text-xs font-semibold text-foreground"
+                >Control Statement</Label
+              >
+              <span class="text-[10px] text-muted-foreground">Markdown</span>
             </div>
+            <textarea
+              id="edit-statement"
+              v-model="editStatement"
+              rows="5"
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="The objective or rule defined by this control..."
+            ></textarea>
+          </div>
 
-            <!-- Right Column: Metadata / Admin (col-span-2) -->
-            <div class="md:col-span-2 space-y-4">
-              <div class="space-y-1.5">
-                <Label for="edit-owner" class="text-xs font-semibold text-foreground">Owner</Label>
-                <Select v-model="editOwnerId">
-                  <SelectTrigger id="edit-owner" class="h-9 bg-card">
-                    <SelectValue placeholder="Select owner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="owner in ownersList" :key="owner.id" :value="owner.id">
-                      {{ owner.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div class="space-y-1.5">
+            <Label for="edit-status" class="text-xs font-semibold text-foreground">Status</Label>
+            <Select v-model="editImplementationStatus">
+              <SelectTrigger id="edit-status" class="h-9 bg-card">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Not Started</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="implemented">Implemented</SelectItem>
+                <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
+                <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                <SelectItem value="needs_review">Needs Review</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div class="space-y-1.5">
-                <Label for="edit-status" class="text-xs font-semibold text-foreground"
-                  >Status</Label
-                >
-                <Select v-model="editImplementationStatus">
-                  <SelectTrigger id="edit-status" class="h-9 bg-card">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_started">Not Started</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="implemented">Implemented</SelectItem>
-                    <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
-                    <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                    <SelectItem value="needs_review">Needs Review</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div class="space-y-1.5">
-                <Label for="edit-review-freq" class="text-xs font-semibold text-foreground"
-                  >Review Frequency</Label
-                >
-                <Input
-                  id="edit-review-freq"
-                  v-model="editReviewFrequency"
-                  placeholder="e.g. Annually, Quarterly"
-                  class="h-9 bg-card"
-                />
-              </div>
-
-              <!-- Archive Control Switch -->
-              <div class="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
-                <div class="flex items-center justify-between">
-                  <Label
-                    for="edit-archive"
-                    class="text-xs font-semibold text-foreground cursor-pointer"
-                    >Archive Control</Label
-                  >
-                  <Switch
-                    id="edit-archive"
-                    :checked="editArchive"
-                    @update:checked="editArchive = $event"
-                  />
-                </div>
-                <p class="text-[10px] text-muted-foreground leading-normal">
-                  Excludes control from active frameworks while preserving evidence.
-                </p>
-              </div>
+          <!-- Archive Control Switch -->
+          <div class="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <Label for="edit-archive" class="text-xs font-semibold text-foreground cursor-pointer"
+                >Archive Control</Label
+              >
+              <Switch
+                id="edit-archive"
+                :checked="editArchive"
+                @update:checked="editArchive = $event"
+              />
             </div>
+            <p class="text-[10px] text-muted-foreground leading-normal">
+              Excludes control from active frameworks while preserving evidence.
+            </p>
           </div>
 
           <DialogFooter class="pt-4 border-t border-border flex items-center justify-end gap-2">

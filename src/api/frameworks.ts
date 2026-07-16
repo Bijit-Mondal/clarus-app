@@ -172,12 +172,7 @@ export type TenantRequirementControlMap = {
     controlKey: string
     name: string
     statement: string
-    implementationDescription: string
     implementationStatus: string
-    ownerId: string
-    reviewFrequency: string
-    lastReviewedAt: string
-    nextReviewAt: string
     isCustom: boolean
     archivedAt: string
   }

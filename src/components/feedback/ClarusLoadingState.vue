@@ -23,12 +23,7 @@ withDefaults(
 
 <template>
   <!-- Grouped requirement list skeleton -->
-  <div
-    v-if="variant === 'requirements-sidebar'"
-    class="py-1"
-    role="status"
-    :aria-label="label"
-  >
+  <div v-if="variant === 'requirements-sidebar'" class="py-1" role="status" :aria-label="label">
     <div v-for="group in 2" :key="group" class="py-2">
       <div class="mx-4 mb-2 h-2 w-14 rounded bg-muted/70" />
       <div
@@ -40,10 +35,7 @@ withDefaults(
         <div class="flex items-start gap-2">
           <div class="h-5 w-11 shrink-0 rounded bg-primary/10" />
           <div class="min-w-0 flex-1 space-y-1.5">
-            <div
-              class="h-3 rounded bg-muted"
-              :class="item === 1 ? 'w-4/5' : 'w-3/5'"
-            />
+            <div class="h-3 rounded bg-muted" :class="item === 1 ? 'w-4/5' : 'w-3/5'" />
             <div class="h-2.5 w-full rounded bg-muted/50" />
           </div>
         </div>
@@ -95,11 +87,7 @@ withDefaults(
     role="status"
     :aria-label="label"
   >
-    <div
-      v-for="row in rows"
-      :key="row"
-      class="flex items-center gap-4 px-4 py-3.5"
-    >
+    <div v-for="row in rows" :key="row" class="flex items-center gap-4 px-4 py-3.5">
       <div class="h-8 w-1 shrink-0 rounded-full bg-primary/35" />
       <div class="h-4 flex-1 rounded bg-muted/60" />
       <div class="h-5 w-24 rounded-full bg-primary/10" />
@@ -115,11 +103,7 @@ withDefaults(
     role="status"
     :aria-label="label"
   >
-    <div
-      v-for="row in rows"
-      :key="row"
-      class="grid grid-cols-6 gap-4 px-5 py-4"
-    >
+    <div v-for="row in rows" :key="row" class="grid grid-cols-6 gap-4 px-5 py-4">
       <div class="col-span-2 space-y-2">
         <div class="h-2.5 w-14 rounded bg-muted/70" />
         <div class="h-4 w-4/5 rounded bg-muted" />
@@ -137,12 +121,7 @@ withDefaults(
   </div>
 
   <!-- Control detail header skeleton -->
-  <div
-    v-else-if="variant === 'control-header'"
-    class="space-y-6"
-    role="status"
-    :aria-label="label"
-  >
+  <div v-else-if="variant === 'control-header'" class="space-y-6" role="status" :aria-label="label">
     <div class="flex items-center gap-2">
       <div class="h-3 w-14 rounded bg-muted/60" />
       <div class="h-3 w-3 rounded bg-muted/40" />
@@ -174,11 +153,7 @@ withDefaults(
     </div>
     <div class="rounded-lg border border-border bg-card p-5">
       <div class="divide-y divide-border/50">
-        <div
-          v-for="row in 2"
-          :key="row"
-          class="grid grid-cols-6 gap-4 px-5 py-4"
-        >
+        <div v-for="row in 2" :key="row" class="grid grid-cols-6 gap-4 px-5 py-4">
           <div class="col-span-2 space-y-2">
             <div class="h-2.5 w-14 rounded bg-muted/70" />
             <div class="h-4 w-4/5 rounded bg-muted" />

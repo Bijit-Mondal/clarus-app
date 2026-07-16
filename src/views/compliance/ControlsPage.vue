@@ -14,13 +14,11 @@ import {
   PhPencilSimple,
   PhFileArrowUp,
   PhCheck,
-  PhClock,
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import EvidenceIndicator from '@/components/compliance/EvidenceIndicator.vue'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,15 +45,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  FRAMEWORKS,
-  FRAMEWORK_ORDER,
-  OWNER_LIST,
-  type ControlStatus,
-  type FrameworkId,
-} from '@/data/controls'
+import { FRAMEWORKS, FRAMEWORK_ORDER, type ControlStatus, type FrameworkId } from '@/data/controls'
 import { useTenantControlsQuery, useUpdateTenantControlMutation } from '@/composables/useControls'
-import { useTenantUsersQuery } from '@/composables/useTenants'
 import type { TenantControl, UpdateTenantControlInput } from '@/api/controls'
 
 const router = useRouter()
@@ -68,9 +59,8 @@ const PAGE_SIZE = 8
 const search = ref('')
 const statusFilter = ref<string>('all')
 const frameworkFilter = ref<FrameworkId | 'all'>('all')
-const ownerFilter = ref<string>('all')
 
-type SortKey = 'code' | 'nextReview'
+type SortKey = 'code'
 const sortKey = ref<SortKey>('code')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const page = ref(1)
@@ -92,8 +82,7 @@ const filteredControls = computed(() => {
       (c) =>
         c.controlKey?.toLowerCase().includes(query) ||
         c.name?.toLowerCase().includes(query) ||
-        c.statement?.toLowerCase().includes(query) ||
-        c.implementationDescription?.toLowerCase().includes(query),
+        c.statement?.toLowerCase().includes(query),
     )
   }
 
@@ -102,29 +91,10 @@ const filteredControls = computed(() => {
     result = result.filter((c) => c.implementationStatus === statusFilter.value)
   }
 
-  // Owner filter
-  if (ownerFilter.value !== 'all') {
-    result = result.filter(
-      (c) =>
-        c.ownerId === ownerFilter.value ||
-        c.owner?.$id === ownerFilter.value ||
-        c.owner?.id === ownerFilter.value,
-    )
-  }
-
   // Sorting
   result.sort((a, b) => {
-    let valA = ''
-    let valB = ''
-
-    if (sortKey.value === 'code') {
-      valA = a.controlKey || ''
-      valB = b.controlKey || ''
-    } else if (sortKey.value === 'nextReview') {
-      valA = a.nextReviewAt || ''
-      valB = b.nextReviewAt || ''
-    }
-
+    const valA = a.controlKey || ''
+    const valB = b.controlKey || ''
     if (valA < valB) return sortDir.value === 'asc' ? -1 : 1
     if (valA > valB) return sortDir.value === 'asc' ? 1 : -1
     return 0
@@ -146,7 +116,7 @@ const rangeStart = computed(() =>
 )
 const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, totalControls.value))
 
-watch([search, statusFilter, frameworkFilter, ownerFilter], () => {
+watch([search, statusFilter, frameworkFilter], () => {
   page.value = 1
 })
 
@@ -176,7 +146,6 @@ function resetFilters() {
   search.value = ''
   statusFilter.value = 'all'
   frameworkFilter.value = 'all'
-  ownerFilter.value = 'all'
 }
 
 function goToDetail(control: TenantControl) {
@@ -197,7 +166,6 @@ const isAddDialogOpen = ref(false)
 const newCode = ref('')
 const newName = ref('')
 const newDescription = ref('')
-const newOwnerId = ref('maya')
 const newStatus = ref<string>('implemented')
 const selectedFws = ref<Record<FrameworkId, boolean>>({
   soc2: true,
@@ -209,7 +177,6 @@ function openAddDialog() {
   newCode.value = ''
   newName.value = ''
   newDescription.value = ''
-  newOwnerId.value = 'maya'
   newStatus.value = 'implemented'
   selectedFws.value = { soc2: true, iso27001: false, gdpr: false }
   isAddDialogOpen.value = true
@@ -220,27 +187,6 @@ function submitAddControl() {
   isAddDialogOpen.value = false
 }
 
-const { data: usersData } = useTenantUsersQuery()
-
-const getInitials = (name: string) => {
-  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
-}
-
-const ownersList = computed(() => {
-  const users = usersData.value?.users || []
-  if (users.length === 0) return OWNER_LIST
-  return users
-    .filter((u) => u.status === 'active')
-    .map((u) => ({
-      id: u.$id,
-      name: u.name,
-      initials: getInitials(u.name),
-    }))
-})
-
 // Edit Control Dialog State
 const isEditDialogOpen = ref(false)
 const editingControlId = ref('')
@@ -248,9 +194,6 @@ const originalControl = ref<TenantControl | null>(null)
 const editCode = ref('')
 const editName = ref('')
 const editStatement = ref('')
-const editImplementationDescription = ref('')
-const editReviewFrequency = ref('')
-const editOwnerId = ref('')
 const editImplementationStatus =
   ref<UpdateTenantControlInput['implementationStatus']>('not_started')
 const editArchive = ref(false)
@@ -263,9 +206,6 @@ function openEditDialog(control: TenantControl) {
   editCode.value = control.controlKey
   editName.value = control.name
   editStatement.value = control.statement || ''
-  editImplementationDescription.value = control.implementationDescription || ''
-  editReviewFrequency.value = control.reviewFrequency || ''
-  editOwnerId.value = control.ownerId || control.owner?.$id || control.owner?.id || ''
   editImplementationStatus.value = (control.implementationStatus ||
     'not_started') as UpdateTenantControlInput['implementationStatus']
   editArchive.value = !!control.archivedAt
@@ -280,27 +220,6 @@ function submitEditControl() {
     const origStatementVal = (originalControl.value.statement || '').trim()
     if (statementVal !== origStatementVal) {
       updates.statement = statementVal || null
-    }
-
-    const implDescVal = editImplementationDescription.value.trim()
-    const origImplDescVal = (originalControl.value.implementationDescription || '').trim()
-    if (implDescVal !== origImplDescVal) {
-      updates.implementationDescription = implDescVal || null
-    }
-
-    const reviewFreqVal = editReviewFrequency.value.trim()
-    const origReviewFreqVal = (originalControl.value.reviewFrequency || '').trim()
-    if (reviewFreqVal !== origReviewFreqVal) {
-      updates.reviewFrequency = reviewFreqVal || null
-    }
-
-    const origOwnerId =
-      originalControl.value.ownerId ||
-      originalControl.value.owner?.$id ||
-      originalControl.value.owner?.id ||
-      ''
-    if (editOwnerId.value !== origOwnerId) {
-      updates.ownerId = editOwnerId.value || null
     }
 
     const origStatus = originalControl.value.implementationStatus || 'not_started'
@@ -436,22 +355,6 @@ function simulateImport() {
             </SelectItem>
           </SelectContent>
         </Select>
-
-        <Select v-model="ownerFilter">
-          <SelectTrigger
-            size="sm"
-            class="w-[140px] bg-card border-border"
-            aria-label="Filter by owner"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All owners</SelectItem>
-            <SelectItem v-for="owner in ownersList" :key="owner.id" :value="owner.id">
-              {{ owner.name }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
       </div>
     </div>
 
@@ -461,7 +364,7 @@ function simulateImport() {
         <table class="w-full min-w-[850px] border-collapse text-sm">
           <thead>
             <tr class="border-b border-border text-left align-middle bg-muted/20">
-              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[32%]">
+              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[45%]">
                 <button
                   type="button"
                   class="inline-flex items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -480,15 +383,11 @@ function simulateImport() {
                   />
                 </button>
               </th>
-              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[22%]">
-                Category
-              </th>
-              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[16%]">Owner</th>
-              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[15%]">State</th>
-              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[10%]">
+              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[30%]">State</th>
+              <th scope="col" class="px-5 py-3 font-medium text-muted-foreground w-[15%]">
                 Evidence
               </th>
-              <th scope="col" class="w-[5%] px-5 py-3 text-right"></th>
+              <th scope="col" class="w-[10%] px-5 py-3 text-right"></th>
             </tr>
           </thead>
           <tbody v-if="!isLoading">
@@ -509,31 +408,7 @@ function simulateImport() {
                   <span class="font-medium text-foreground hover:text-primary transition-colors">
                     {{ control.name }}
                   </span>
-                  <span class="text-xs text-muted-foreground/90 flex items-center gap-1 mt-0.5">
-                    <PhClock :size="12" class="text-muted-foreground/70" />
-                    Review: {{ control.reviewFrequency || 'Not specified' }}
-                  </span>
                 </div>
-              </td>
-              <!-- Frameworks / Category -->
-              <td class="px-5 py-4" @click.stop>
-                <div class="flex flex-wrap gap-1"></div>
-              </td>
-              <!-- Owner -->
-              <td class="px-5 py-4" @click.stop>
-                <div v-if="control.owner" class="flex items-center gap-2">
-                  <Avatar class="size-6 shrink-0">
-                    <AvatarFallback
-                      class="bg-secondary text-[10px] font-semibold text-secondary-foreground"
-                    >
-                      {{ control.owner.name?.charAt(0) || '?' }}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span class="whitespace-nowrap text-foreground text-xs">{{
-                    control.owner.name
-                  }}</span>
-                </div>
-                <div v-else class="text-xs text-muted-foreground">-</div>
               </td>
               <!-- Status / State -->
               <td class="px-5 py-4" @click.stop>
@@ -590,7 +465,7 @@ function simulateImport() {
 
       <!-- Empty State -->
       <div
-        v-if="controls.length === 0 && !isLoading"
+        v-if="filteredControls.length === 0 && !isLoading"
         class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center bg-card"
       >
         <span
@@ -671,46 +546,31 @@ function simulateImport() {
           </div>
 
           <div class="space-y-1.5">
-            <Label for="control-desc">Description</Label>
+            <Label for="control-desc">Statement</Label>
             <textarea
               id="control-desc"
               v-model="newDescription"
               rows="3"
               class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Describe the policies or actions this control enforces..."
+              placeholder="The objective or rule defined by this control..."
             ></textarea>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <Label for="control-owner">Owner</Label>
-              <Select v-model="newOwnerId">
-                <SelectTrigger id="control-owner">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="owner in ownersList" :key="owner.id" :value="owner.id">
-                    {{ owner.name }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div class="space-y-1.5">
-              <Label for="control-status">Status</Label>
-              <Select v-model="newStatus">
-                <SelectTrigger id="control-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_started">Not Started</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="implemented">Implemented</SelectItem>
-                  <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
-                  <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                  <SelectItem value="needs_review">Needs Review</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div class="space-y-1.5">
+            <Label for="control-status">Status</Label>
+            <Select v-model="newStatus">
+              <SelectTrigger id="control-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Not Started</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="implemented">Implemented</SelectItem>
+                <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
+                <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                <SelectItem value="needs_review">Needs Review</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div class="space-y-1.5">
@@ -746,14 +606,13 @@ function simulateImport() {
         </form>
       </DialogContent>
     </Dialog>
-
     <!-- Edit Control Dialog -->
     <Dialog :open="isEditDialogOpen" @update:open="isEditDialogOpen = $event">
-      <DialogContent class="sm:max-w-[760px]">
+      <DialogContent class="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>Edit Control Details</DialogTitle>
+          <DialogTitle>Edit Control</DialogTitle>
           <DialogDescription>
-            Update control definition, ownership, implementation status, and archive state.
+            Update the control statement, implementation status, or archive state.
           </DialogDescription>
         </DialogHeader>
         <form @submit.prevent="submitEditControl" class="space-y-4 py-3">
@@ -768,110 +627,55 @@ function simulateImport() {
             <span class="font-medium text-foreground text-sm leading-tight">{{ editName }}</span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-5">
-            <!-- Left Column: Statements (col-span-3) -->
-            <div class="md:col-span-3 space-y-4">
-              <!-- Control Statement -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <Label for="edit-statement" class="text-xs font-semibold text-foreground"
-                    >Control Statement</Label
-                  >
-                  <span class="text-[10px] text-muted-foreground">Markdown</span>
-                </div>
-                <textarea
-                  id="edit-statement"
-                  v-model="editStatement"
-                  rows="4"
-                  class="flex min-h-[100px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="The objective or rule defined by this control..."
-                ></textarea>
-              </div>
-
-              <!-- Implementation Description -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <Label for="edit-impl-desc" class="text-xs font-semibold text-foreground"
-                    >Implementation Description</Label
-                  >
-                  <span class="text-[10px] text-muted-foreground">Markdown</span>
-                </div>
-                <textarea
-                  id="edit-impl-desc"
-                  v-model="editImplementationDescription"
-                  rows="4"
-                  class="flex min-h-[100px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Detailed description of how this control is enforced..."
-                ></textarea>
-              </div>
+          <!-- Control Statement -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <Label for="edit-statement" class="text-xs font-semibold text-foreground"
+                >Control Statement</Label
+              >
+              <span class="text-[10px] text-muted-foreground">Markdown</span>
             </div>
+            <textarea
+              id="edit-statement"
+              v-model="editStatement"
+              rows="5"
+              class="flex min-h-[120px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="The objective or rule defined by this control..."
+            ></textarea>
+          </div>
 
-            <!-- Right Column: Metadata / Admin (col-span-2) -->
-            <div class="md:col-span-2 space-y-4">
-              <div class="space-y-1.5">
-                <Label for="edit-owner" class="text-xs font-semibold text-foreground">Owner</Label>
-                <Select v-model="editOwnerId">
-                  <SelectTrigger id="edit-owner" class="h-9 bg-card">
-                    <SelectValue placeholder="Select owner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="owner in ownersList" :key="owner.id" :value="owner.id">
-                      {{ owner.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div class="space-y-1.5">
+            <Label for="edit-status" class="text-xs font-semibold text-foreground">Status</Label>
+            <Select v-model="editImplementationStatus">
+              <SelectTrigger id="edit-status" class="h-9 bg-card">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Not Started</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="implemented">Implemented</SelectItem>
+                <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
+                <SelectItem value="not_applicable">Not Applicable</SelectItem>
+                <SelectItem value="needs_review">Needs Review</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div class="space-y-1.5">
-                <Label for="edit-status" class="text-xs font-semibold text-foreground"
-                  >Status</Label
-                >
-                <Select v-model="editImplementationStatus">
-                  <SelectTrigger id="edit-status" class="h-9 bg-card">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_started">Not Started</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="implemented">Implemented</SelectItem>
-                    <SelectItem value="partially_implemented">Partially Implemented</SelectItem>
-                    <SelectItem value="not_applicable">Not Applicable</SelectItem>
-                    <SelectItem value="needs_review">Needs Review</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div class="space-y-1.5">
-                <Label for="edit-review-freq" class="text-xs font-semibold text-foreground"
-                  >Review Frequency</Label
-                >
-                <Input
-                  id="edit-review-freq"
-                  v-model="editReviewFrequency"
-                  placeholder="e.g. Annually, Quarterly"
-                  class="h-9 bg-card"
-                />
-              </div>
-
-              <!-- Archive Control Switch -->
-              <div class="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
-                <div class="flex items-center justify-between">
-                  <Label
-                    for="edit-archive"
-                    class="text-xs font-semibold text-foreground cursor-pointer"
-                    >Archive Control</Label
-                  >
-                  <Switch
-                    id="edit-archive"
-                    :checked="editArchive"
-                    @update:checked="editArchive = $event"
-                  />
-                </div>
-                <p class="text-[10px] text-muted-foreground leading-normal">
-                  Excludes control from active frameworks while preserving evidence.
-                </p>
-              </div>
+          <!-- Archive Control Switch -->
+          <div class="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <Label for="edit-archive" class="text-xs font-semibold text-foreground cursor-pointer"
+                >Archive Control</Label
+              >
+              <Switch
+                id="edit-archive"
+                :checked="editArchive"
+                @update:checked="editArchive = $event"
+              />
             </div>
+            <p class="text-[10px] text-muted-foreground leading-normal">
+              Excludes control from active frameworks while preserving evidence.
+            </p>
           </div>
 
           <DialogFooter class="pt-4 border-t border-border flex items-center justify-end gap-2">

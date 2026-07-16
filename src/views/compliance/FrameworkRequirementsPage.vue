@@ -166,14 +166,9 @@ const debouncedControlSearchQuery = useDebounce(controlSearchQuery, 300)
 const controlSearchEnabled = computed(
   () => activeLinkSectionId.value === 'controls' && !!selectedId.value,
 )
-const controlSearch = useTenantControlSearchQuery(
-  debouncedControlSearchQuery,
-  controlSearchEnabled,
-)
+const controlSearch = useTenantControlSearchQuery(debouncedControlSearchQuery, controlSearchEnabled)
 const linkControlRequirementMutation = useLinkControlRequirementMutation()
 const unlinkControlRequirementMutation = useUnlinkControlRequirementMutation()
-
-
 
 const searchedControls = computed<LinkItem[]>(() =>
   (controlSearch.data.value?.tenantControls ?? []).map((control) => ({

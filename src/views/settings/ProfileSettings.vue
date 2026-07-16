@@ -110,8 +110,15 @@ const handleSave = () => {
         <div class="rounded-lg border border-border bg-card p-6 shadow-2xs">
           <div class="flex flex-col items-center text-center">
             <div class="group relative mb-4">
-              <Avatar class="size-24 border-2 border-border transition-colors group-hover:border-primary">
-                <img v-if="formAvatar" :src="formAvatar" alt="Avatar preview" class="object-cover" />
+              <Avatar
+                class="size-24 border-2 border-border transition-colors group-hover:border-primary"
+              >
+                <img
+                  v-if="formAvatar"
+                  :src="formAvatar"
+                  alt="Avatar preview"
+                  class="object-cover"
+                />
                 <AvatarFallback class="bg-secondary text-2xl font-bold text-secondary-foreground">
                   {{ initials }}
                 </AvatarFallback>
@@ -133,7 +140,9 @@ const handleSave = () => {
             </div>
             <h3 class="text-base font-semibold text-foreground">{{ formName || 'Your Name' }}</h3>
             <p class="text-sm text-muted-foreground">{{ formTitle || 'Workspace Role' }}</p>
-            <div class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+            >
               <PhUser :size="12" />
               <span>Workspace Owner</span>
             </div>
@@ -148,7 +157,8 @@ const handleSave = () => {
           <div class="rounded-lg border border-border bg-card p-6 shadow-2xs space-y-4">
             <h2 class="text-base font-semibold text-foreground">Personal Details</h2>
             <p class="text-xs text-muted-foreground -mt-2">
-              Update your workspace identity. This information will be visible to auditors and other contributors.
+              Update your workspace identity. This information will be visible to auditors and other
+              contributors.
             </p>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -197,7 +207,10 @@ const handleSave = () => {
             <div class="divide-y divide-border">
               <div class="flex items-center justify-between py-3">
                 <div class="space-y-0.5">
-                  <Label for="notify-reviews" class="text-sm font-medium text-foreground cursor-pointer">
+                  <Label
+                    for="notify-reviews"
+                    class="text-sm font-medium text-foreground cursor-pointer"
+                  >
                     Control Review Deadlines
                   </Label>
                   <p class="text-xs text-muted-foreground">
@@ -209,7 +222,10 @@ const handleSave = () => {
 
               <div class="flex items-center justify-between py-3">
                 <div class="space-y-0.5">
-                  <Label for="notify-findings" class="text-sm font-medium text-foreground cursor-pointer">
+                  <Label
+                    for="notify-findings"
+                    class="text-sm font-medium text-foreground cursor-pointer"
+                  >
                     New Findings & Gaps
                   </Label>
                   <p class="text-xs text-muted-foreground">
@@ -221,7 +237,10 @@ const handleSave = () => {
 
               <div class="flex items-center justify-between py-3">
                 <div class="space-y-0.5">
-                  <Label for="notify-evidence" class="text-sm font-medium text-foreground cursor-pointer">
+                  <Label
+                    for="notify-evidence"
+                    class="text-sm font-medium text-foreground cursor-pointer"
+                  >
                     Evidence Expiry Alerts
                   </Label>
                   <p class="text-xs text-muted-foreground">
@@ -252,11 +271,7 @@ const handleSave = () => {
               </div>
             </Transition>
 
-            <Button
-              type="submit"
-              :disabled="isSaving"
-              class="font-medium"
-            >
+            <Button type="submit" :disabled="isSaving" class="font-medium">
               {{ isSaving ? 'Saving...' : 'Save Changes' }}
             </Button>
           </div>

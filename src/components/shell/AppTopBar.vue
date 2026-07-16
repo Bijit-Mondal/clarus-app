@@ -144,11 +144,15 @@ async function onLogout() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem @select="router.push(getModulePagePath('settings', 'profile', organizationSlug))">
+            <DropdownMenuItem
+              @select="router.push(getModulePagePath('settings', 'profile', organizationSlug))"
+            >
               <PhUserCircle :size="16" class="mr-2" aria-hidden="true" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem @select="router.push(getModulePagePath('settings', 'account', organizationSlug))">
+            <DropdownMenuItem
+              @select="router.push(getModulePagePath('settings', 'account', organizationSlug))"
+            >
               <PhUser :size="16" class="mr-2" aria-hidden="true" />
               Account settings
             </DropdownMenuItem>

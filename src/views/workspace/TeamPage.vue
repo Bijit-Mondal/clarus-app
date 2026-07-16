@@ -57,7 +57,6 @@ const revokeMembershipMutation = useRevokeMembershipMutation()
 const updateMembershipRoleMutation = useUpdateMembershipRoleMutation()
 const isQueryPending = computed(() => isUsersPending.value || isMembershipsPending.value)
 
-
 const members = computed<MembershipUser[]>(() => {
   const users = tenantUsersData.value?.users || []
   const memberships = membershipsData.value?.memberships || []
@@ -184,7 +183,10 @@ const handleRevoke = async (memberId: string) => {
   }
 }
 
-const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' | 'employee' | 'contractor') => {
+const handleRoleChange = async (
+  memberId: string,
+  newRole: 'admin' | 'auditor' | 'employee' | 'contractor',
+) => {
   updatingRoleId.value = memberId
   editingRoleId.value = null
   try {
@@ -218,7 +220,9 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
         <PhUsers :size="24" weight="fill" />
       </div>
       <div>
-        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tenant Members</p>
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Tenant Members
+        </p>
         <h3 class="text-2xl font-bold text-foreground">{{ members.length }} Total</h3>
       </div>
     </div>
@@ -229,11 +233,25 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-border bg-muted/40">
-              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/3">User</th>
-              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tenant Role</th>
-              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Joined Date</th>
-              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Actions</th>
+              <th
+                class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/3"
+              >
+                User
+              </th>
+              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Tenant Role
+              </th>
+              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
+              <th class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Joined Date
+              </th>
+              <th
+                class="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border">
@@ -244,18 +262,29 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
               </td>
             </tr>
 
-            <tr v-for="member in members" :key="member.id" class="hover:bg-muted/10 transition-colors">
+            <tr
+              v-for="member in members"
+              :key="member.id"
+              class="hover:bg-muted/10 transition-colors"
+            >
               <!-- Name & Email -->
               <td class="p-4 flex items-center gap-3">
                 <Avatar class="size-9 border border-border">
-                  <AvatarFallback class="bg-secondary text-xs font-semibold text-secondary-foreground">
+                  <AvatarFallback
+                    class="bg-secondary text-xs font-semibold text-secondary-foreground"
+                  >
                     {{ getInitials(member.name) }}
                   </AvatarFallback>
                 </Avatar>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5">
-                    <span class="text-sm font-semibold text-foreground truncate capitalize">{{ member.name }}</span>
-                    <Badge v-if="member.isCurrentUser" class="bg-primary/10 text-primary text-[9px] px-1.5 py-0 border-transparent font-medium">
+                    <span class="text-sm font-semibold text-foreground truncate capitalize">{{
+                      member.name
+                    }}</span>
+                    <Badge
+                      v-if="member.isCurrentUser"
+                      class="bg-primary/10 text-primary text-[9px] px-1.5 py-0 border-transparent font-medium"
+                    >
                       You
                     </Badge>
                   </div>
@@ -265,12 +294,23 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
               <!-- Role Selector / Static Badge -->
               <td class="p-4">
                 <div v-if="member.isCurrentUser || member.role === 'owner'" class="inline-block">
-                  <Badge :class="['text-xs font-medium px-2.5 py-0.5 border', getRoleBadgeClass(member.role)]">
+                  <Badge
+                    :class="[
+                      'text-xs font-medium px-2.5 py-0.5 border',
+                      getRoleBadgeClass(member.role),
+                    ]"
+                  >
                     {{ getRoleLabel(member.role) }}
                   </Badge>
                 </div>
-                <div v-else-if="updatingRoleId === member.id" class="flex items-center gap-2 text-xs text-muted-foreground">
-                  <div class="size-3.5 animate-spin rounded-full border border-primary border-t-transparent" aria-hidden="true" />
+                <div
+                  v-else-if="updatingRoleId === member.id"
+                  class="flex items-center gap-2 text-xs text-muted-foreground"
+                >
+                  <div
+                    class="size-3.5 animate-spin rounded-full border border-primary border-t-transparent"
+                    aria-hidden="true"
+                  />
                   <span>Updating...</span>
                 </div>
                 <div v-else-if="editingRoleId === member.id" class="flex items-center gap-1.5">
@@ -302,7 +342,12 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
                   </Button>
                 </div>
                 <div v-else class="flex items-center gap-2 group/role">
-                  <Badge :class="['text-xs font-medium px-2.5 py-0.5 border', getRoleBadgeClass(member.role)]">
+                  <Badge
+                    :class="[
+                      'text-xs font-medium px-2.5 py-0.5 border',
+                      getRoleBadgeClass(member.role),
+                    ]"
+                  >
                     {{ getRoleLabel(member.role) }}
                   </Badge>
                   <Button
@@ -312,7 +357,10 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
                     @click="editingRoleId = member.id"
                     aria-label="Edit role"
                   >
-                    <PhPencilSimple :size="12" class="text-muted-foreground hover:text-foreground" />
+                    <PhPencilSimple
+                      :size="12"
+                      class="text-muted-foreground hover:text-foreground"
+                    />
                   </Button>
                 </div>
               </td>
@@ -324,7 +372,12 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
                     class="size-2 rounded-full"
                     :class="[member.status === 'active' ? 'bg-primary' : 'bg-destructive']"
                   />
-                  <span class="text-xs font-medium capitalize" :class="[member.status === 'active' ? 'text-foreground' : 'text-muted-foreground']">
+                  <span
+                    class="text-xs font-medium capitalize"
+                    :class="[
+                      member.status === 'active' ? 'text-foreground' : 'text-muted-foreground',
+                    ]"
+                  >
                     {{ member.status }}
                   </span>
                 </div>
@@ -340,15 +393,23 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
 
               <!-- Actions -->
               <td class="p-4 text-right">
-                <div v-if="revokingMemberId === member.id" class="inline-flex items-center justify-end pr-4">
-                  <div class="size-3.5 animate-spin rounded-full border border-destructive border-t-transparent" aria-hidden="true" />
+                <div
+                  v-if="revokingMemberId === member.id"
+                  class="inline-flex items-center justify-end pr-4"
+                >
+                  <div
+                    class="size-3.5 animate-spin rounded-full border border-destructive border-t-transparent"
+                    aria-hidden="true"
+                  />
                 </div>
                 <Button
                   v-else-if="!member.isCurrentUser && member.role !== 'owner'"
                   size="sm"
                   variant="ghost"
                   class="h-8 text-xs font-medium text-muted-foreground hover:bg-destructive/10"
-                  :class="[member.status === 'active' ? 'hover:text-destructive' : 'hover:text-primary']"
+                  :class="[
+                    member.status === 'active' ? 'hover:text-destructive' : 'hover:text-primary',
+                  ]"
                   @click="handleRevoke(member.id)"
                 >
                   {{ member.status === 'active' ? 'Revoke' : 'Activate' }}
@@ -409,11 +470,17 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
         <DialogFooter class="gap-2 sm:gap-0">
           <div class="flex items-center justify-between w-full">
             <div class="min-h-5 text-xs">
-              <span v-if="addSuccess" class="flex items-center gap-1 text-success-emphasis font-medium">
+              <span
+                v-if="addSuccess"
+                class="flex items-center gap-1 text-success-emphasis font-medium"
+              >
                 <PhCheckCircle :size="14" weight="fill" />
                 Member added successfully
               </span>
-              <span v-if="addError" class="flex items-center gap-1 text-destructive-emphasis font-medium">
+              <span
+                v-if="addError"
+                class="flex items-center gap-1 text-destructive-emphasis font-medium"
+              >
                 <PhWarning :size="14" weight="fill" />
                 {{ addError }}
               </span>
@@ -422,7 +489,11 @@ const handleRoleChange = async (memberId: string, newRole: 'admin' | 'auditor' |
               <Button variant="ghost" :disabled="isAdding" @click="isDialogOpen = false">
                 Cancel
               </Button>
-              <Button :disabled="!formEmail || isAdding" @click="handleAddMember" class="font-medium">
+              <Button
+                :disabled="!formEmail || isAdding"
+                @click="handleAddMember"
+                class="font-medium"
+              >
                 {{ isAdding ? 'Adding...' : 'Add Member' }}
               </Button>
             </div>
