@@ -85,15 +85,7 @@ const initialDetails: Record<string, Partial<ControlDetail>> = {
         createdAt: '2026-07-02',
       },
     ],
-    tasks: [
-      {
-        id: 'task-101',
-        description: 'Conduct quarterly user access review',
-        dueDate: '2026-07-31',
-        assignee: { name: 'Maya Chen', initials: 'MC' },
-        status: 'in_progress',
-      },
-    ],
+    tasks: [],
     requirements: [
       {
         id: 'req-101',
@@ -149,22 +141,7 @@ const initialDetails: Record<string, Partial<ControlDetail>> = {
         createdAt: '2026-07-12',
       },
     ],
-    tasks: [
-      {
-        id: 'task-201',
-        description: 'Verify all guest developer accounts have MFA enabled',
-        dueDate: '2026-07-18',
-        assignee: { name: 'Daniel Kim', initials: 'DK' },
-        status: 'in_progress',
-      },
-      {
-        id: 'task-202',
-        description: 'Audit MFA bypass group configurations in Okta',
-        dueDate: '2026-08-01',
-        assignee: { name: 'Daniel Kim', initials: 'DK' },
-        status: 'not_started',
-      },
-    ],
+    tasks: [],
     requirements: [
       {
         id: 'req-201',
@@ -229,15 +206,7 @@ const initialDetails: Record<string, Partial<ControlDetail>> = {
         createdAt: '2026-07-01',
       },
     ],
-    tasks: [
-      {
-        id: 'task-301',
-        description: 'Renew PAM licenses and configure just-in-time access roles',
-        dueDate: '2026-07-15',
-        assignee: { name: 'Aisha Patel', initials: 'AP' },
-        status: 'in_progress',
-      },
-    ],
+    tasks: [],
     requirements: [
       {
         id: 'req-301',

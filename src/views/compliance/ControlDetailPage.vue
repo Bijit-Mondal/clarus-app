@@ -6,17 +6,11 @@ import {
   PhCaretRight,
   PhPlus,
   PhTrash,
-  PhCheckCircle,
-  PhClock,
-  PhCircle,
   PhFileText,
-  PhFolderOpen,
-  PhGavel,
   PhShieldCheck,
   PhWarning,
   PhPencilSimple,
   PhDotsThreeOutline,
-  PhChecks,
   PhMagnifyingGlass,
 } from '@phosphor-icons/vue'
 import {
@@ -41,8 +35,9 @@ import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/cont
 import { getApiErrorMessage } from '@/lib/api'
 import ControlStatusBadge from '@/components/compliance/ControlStatusBadge.vue'
 import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
+import TasksManager from '@/components/compliance/TasksManager.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -69,7 +64,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { OWNER_LIST, type ControlStatus } from '@/data/controls'
+import { type ControlStatus } from '@/data/controls'
 
 const route = useRoute()
 const router = useRouter()
@@ -283,38 +278,9 @@ function submitEvidence() {
   }
 }
 
-// Task Dialog State
-const isTaskDialogOpen = ref(false)
-const taskDescription = ref('')
-const taskDueDate = ref(
-  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] || '',
-)
-const taskAssigneeId = ref('daniel')
-
-function openTaskDialog() {
-  taskDescription.value = ''
-  taskDueDate.value =
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] || ''
-  taskAssigneeId.value = 'daniel'
-  isTaskDialogOpen.value = true
-}
-
-function submitTask() {
-  if (!taskDescription.value.trim()) return
-  const rawAssignee = OWNER_LIST.find((o) => o.id === taskAssigneeId.value) ||
-    OWNER_LIST[0] || { name: 'Daniel Kim', initials: 'DK' }
-  const assignee = {
-    name: rawAssignee.name,
-    initials: rawAssignee.initials,
-  }
-  if (control.value) {
-    controlsStore.addTask(control.value.code, {
-      description: taskDescription.value.trim(),
-      dueDate: taskDueDate.value || '',
-      assignee,
-    })
-    isTaskDialogOpen.value = false
-  }
+const controlTasksCount = ref(0)
+function onControlTasksUpdated(count: number) {
+  controlTasksCount.value = count
 }
 
 // Requirement Linking Dialog
@@ -617,7 +583,7 @@ function goToRequirement(map: ControlRequirementMap) {
         <button
           v-for="t in [
             { id: 'evidences', label: 'Evidences', count: control.evidences.length },
-            { id: 'tasks', label: 'Tasks', count: control.tasks.length },
+            { id: 'tasks', label: 'Tasks', count: controlTasksCount.value },
             { id: 'requirements', label: 'Requirements', count: requirements.length },
             { id: 'risks', label: 'Risks', count: control.risks.length },
             { id: 'documents', label: 'Documents', count: control.documents.length },
@@ -728,114 +694,17 @@ function goToRequirement(map: ControlRequirementMap) {
 
         <!-- Tasks Tab -->
         <div v-if="activeTab === 'tasks'">
-          <table v-if="control.tasks.length" class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5">Description</th>
-                <th class="px-5 py-2.5">Due date</th>
-                <th class="px-5 py-2.5">Assignee</th>
-                <th class="px-5 py-2.5">Status</th>
-                <th class="px-5 py-2.5 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="t in control.tasks"
-                :key="t.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td
-                  class="px-5 py-3.5 font-medium"
-                  :class="
-                    t.status === 'completed'
-                      ? 'text-muted-foreground line-through'
-                      : 'text-foreground'
-                  "
-                >
-                  {{ t.description }}
-                </td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
-                  {{ formatDate(t.dueDate) }}
-                </td>
-                <td class="px-5 py-3.5">
-                  <div class="flex items-center gap-1.5">
-                    <Avatar class="size-5 shrink-0">
-                      <AvatarFallback
-                        class="bg-secondary text-[8px] font-bold text-secondary-foreground"
-                      >
-                        {{ t.assignee.initials }}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span class="text-xs text-muted-foreground">{{ t.assignee.name }}</span>
-                  </div>
-                </td>
-                <td class="px-5 py-3.5">
-                  <button
-                    @click="controlsStore.toggleTaskStatus(control.code, t.id)"
-                    class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold border leading-none transition-colors cursor-pointer"
-                    :class="
-                      t.status === 'completed'
-                        ? 'bg-success/10 border-success/20 text-success'
-                        : t.status === 'in_progress'
-                          ? 'bg-warning/10 border-warning/20 text-warning-emphasis'
-                          : 'bg-muted border-border text-muted-foreground'
-                    "
-                  >
-                    <component
-                      :is="
-                        t.status === 'completed'
-                          ? PhChecks
-                          : t.status === 'in_progress'
-                            ? PhClock
-                            : PhCircle
-                      "
-                      :size="10"
-                    />
-                    {{
-                      t.status === 'completed'
-                        ? 'Completed'
-                        : t.status === 'in_progress'
-                          ? 'In Progress'
-                          : 'Not Started'
-                    }}
-                  </button>
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="controlsStore.removeTask(control.code, t.id)"
-                  >
-                    <PhTrash :size="14" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <TasksManager
+            v-if="control && control.id"
+            :controlId="control.id"
+            :controlKey="control.code"
+            :controlName="control.name"
+            :hideTitleSection="true"
+            :hideControlDetailsLink="true"
+            @tasksUpdated="onControlTasksUpdated"
+          />
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhCheckCircle :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No tasks open</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Create review tasks or corrective actions to assign to team members.
-            </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="openTaskDialog"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Add task
-            </Button>
+            <p class="text-sm font-medium text-foreground">Loading tasks...</p>
           </div>
         </div>
 
@@ -1297,55 +1166,7 @@ function goToRequirement(map: ControlRequirementMap) {
       </DialogContent>
     </Dialog>
 
-    <!-- Task Dialog -->
-    <Dialog :open="isTaskDialogOpen" @update:open="isTaskDialogOpen = $event">
-      <DialogContent class="sm:max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle>Create Task</DialogTitle>
-          <DialogDescription
-            >Assign a review task or audit prep task to a team member.</DialogDescription
-          >
-        </DialogHeader>
-        <form @submit.prevent="submitTask" class="space-y-4 py-3">
-          <div class="space-y-1.5">
-            <Label for="task-desc">Task Description</Label>
-            <Input
-              id="task-desc"
-              v-model="taskDescription"
-              placeholder="e.g. Review MFA bypass groups list"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <Label for="task-due">Due Date</Label>
-              <Input id="task-due" type="date" v-model="taskDueDate" required />
-            </div>
-            <div class="space-y-1.5">
-              <Label for="task-assignee">Assignee</Label>
-              <Select v-model="taskAssigneeId">
-                <SelectTrigger id="task-assignee">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="owner in OWNER_LIST" :key="owner.id" :value="owner.id">
-                    {{ owner.name }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter class="pt-4 border-t border-border">
-            <Button type="button" variant="outline" size="sm" @click="isTaskDialogOpen = false"
-              >Cancel</Button
-            >
-            <Button type="submit" size="sm" class="bg-primary text-primary-foreground"
-              >Create task</Button
-            >
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+
 
     <LinkItemDialog
       :isOpen="isRequirementDialogOpen"
