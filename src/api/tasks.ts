@@ -86,5 +86,3 @@ export function getTenantTask(tenantId: string, taskId: string) {
     },
   })
 }
-
-

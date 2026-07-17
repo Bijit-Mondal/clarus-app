@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  PhCheckCircle,
-  PhClock,
-  PhCircle,
-  PhWarningCircle,
-} from '@phosphor-icons/vue'
+import { PhCheckCircle, PhClock, PhCircle, PhWarningCircle } from '@phosphor-icons/vue'
 
 const props = defineProps<{ status: string }>()
 
@@ -20,7 +15,8 @@ const current = computed(() => {
   const normalized = props.status?.toLowerCase() || 'pending'
   if (normalized === 'completed') return config.completed
   if (normalized === 'in_progress') return config.in_progress
-  if (normalized === 'not_started' || normalized === 'to_do' || normalized === 'todo') return config.not_started
+  if (normalized === 'not_started' || normalized === 'to_do' || normalized === 'todo')
+    return config.not_started
   return config.pending
 })
 

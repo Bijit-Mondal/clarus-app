@@ -32,17 +32,25 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void
-  (e: 'save', payload: {
-    title: string
-    description: string
-    status: string
-    assigneeId: string | null
-    department: string
-    type: string
-    frequency: string
-    dueDate: string
-    controlCode?: string
-  }): void
+  (
+    e: 'save',
+    payload: {
+      title: string
+      description: string
+      status: string
+      assigneeId: string | null
+      department: string
+      type: string
+      frequency: string
+      dueDate: string
+      controlCode?: string
+      assignee?: {
+        $id: string
+        name: string
+        email: string
+      } | null
+    },
+  ): void
 }>()
 
 const controlsStore = useControlsStore()
@@ -85,7 +93,11 @@ watch(
         taskTitle.value = props.task.title || ''
         taskDescription.value = props.task.description || ''
         taskStatus.value = props.task.status || 'pending'
-        taskAssigneeId.value = props.task.assigneeId || (props.task.assignee?.$id || props.task.assignee?.id) || 'unassigned'
+        taskAssigneeId.value =
+          props.task.assigneeId ||
+          props.task.assignee?.$id ||
+          props.task.assignee?.id ||
+          'unassigned'
         taskDepartment.value = props.task.department || 'general'
         taskType.value = props.task.type || 'manual'
         taskFrequency.value = props.task.frequency || 'one_time'
@@ -105,7 +117,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const isOpenComputed = computed({
@@ -115,6 +127,12 @@ const isOpenComputed = computed({
 
 function handleSubmit() {
   if (!taskTitle.value.trim() || !taskDueDate.value) return
+
+  const selectedUser =
+    taskAssigneeId.value === 'unassigned'
+      ? null
+      : users.value.find((u) => u.$id === taskAssigneeId.value)
+
   emit('save', {
     title: taskTitle.value.trim(),
     description: taskDescription.value.trim(),
@@ -125,6 +143,13 @@ function handleSubmit() {
     frequency: taskFrequency.value,
     dueDate: taskDueDate.value,
     controlCode: taskControlCode.value,
+    assignee: selectedUser
+      ? {
+          $id: selectedUser.$id,
+          name: selectedUser.name,
+          email: `${selectedUser.$id}@clarus.app`,
+        }
+      : null,
   })
 }
 </script>
@@ -264,9 +289,7 @@ function handleSubmit() {
         </div>
 
         <DialogFooter class="border-t border-border pt-4">
-          <Button type="button" variant="outline" @click="isOpenComputed = false">
-            Cancel
-          </Button>
+          <Button type="button" variant="outline" @click="isOpenComputed = false"> Cancel </Button>
           <Button type="submit">
             {{ isEditing ? 'Save changes' : 'Add task' }}
           </Button>

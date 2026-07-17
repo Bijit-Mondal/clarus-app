@@ -40,7 +40,8 @@ const initialDocuments: DocumentItem[] = [
     id: 'doc-1',
     code: 'POL-01',
     title: 'Information Security Policy',
-    description: 'High-level security directives governing all organization compliance requirements.',
+    description:
+      'High-level security directives governing all organization compliance requirements.',
     category: 'policy',
     version: 'v2.4',
     status: 'approved',
@@ -53,7 +54,8 @@ const initialDocuments: DocumentItem[] = [
     id: 'doc-2',
     code: 'SOP-01',
     title: 'Access Control Procedure',
-    description: 'Standard operating procedure for provisioning, reviewing, and deprovisioning user access.',
+    description:
+      'Standard operating procedure for provisioning, reviewing, and deprovisioning user access.',
     category: 'procedure',
     version: 'v1.8',
     status: 'approved',
@@ -92,7 +94,8 @@ const initialDocuments: DocumentItem[] = [
     id: 'doc-5',
     code: 'POL-03',
     title: 'Vulnerability Management Policy',
-    description: 'Requirements for regular vulnerability scans, penetration testing, and software patches.',
+    description:
+      'Requirements for regular vulnerability scans, penetration testing, and software patches.',
     category: 'policy',
     version: 'v1.0',
     status: 'draft',
@@ -117,8 +120,7 @@ const filteredDocuments = computed(() => {
       doc.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       doc.description.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-    const matchesCategory =
-      activeCategory.value === 'all' || doc.category === activeCategory.value
+    const matchesCategory = activeCategory.value === 'all' || doc.category === activeCategory.value
     const matchesStatus = activeStatus.value === 'all' || doc.status === activeStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
@@ -128,9 +130,7 @@ const filteredDocuments = computed(() => {
 // Statistics computed properties
 const totalCount = computed(() => documents.value.length)
 const approvedCount = computed(() => documents.value.filter((d) => d.status === 'approved').length)
-const inReviewCount = computed(
-  () => documents.value.filter((d) => d.status === 'in-review').length,
-)
+const inReviewCount = computed(() => documents.value.filter((d) => d.status === 'in-review').length)
 const draftCount = computed(() => documents.value.filter((d) => d.status === 'draft').length)
 
 // Categories tabs
@@ -171,10 +171,7 @@ function resetFilters() {
     </PageHeader>
 
     <!-- Stats Panel -->
-    <section
-      class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4"
-      aria-label="Document statistics"
-    >
+    <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="Document statistics">
       <div
         v-for="stat in [
           { label: 'Total index', value: totalCount, description: 'Active documents' },
@@ -198,10 +195,7 @@ function resetFilters() {
         class="flex flex-col gap-4 border-b border-border p-4 md:flex-row md:items-center md:justify-between"
       >
         <!-- Category switcher -->
-        <nav
-          class="flex items-center gap-1.5"
-          aria-label="Category navigation"
-        >
+        <nav class="flex items-center gap-1.5" aria-label="Category navigation">
           <button
             v-for="cat in categories"
             :key="cat.id"
@@ -254,11 +248,7 @@ function resetFilters() {
               class="h-9 rounded-md border border-border bg-background px-3 py-1 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-hidden"
               aria-label="Filter by status"
             >
-              <option
-                v-for="status in statusFilters"
-                :key="status.id"
-                :value="status.id"
-              >
+              <option v-for="status in statusFilters" :key="status.id" :value="status.id">
                 {{ status.label }}
               </option>
             </select>
@@ -271,19 +261,29 @@ function resetFilters() {
         <table class="w-full text-left border-collapse text-sm">
           <thead>
             <tr class="border-b border-border bg-muted/30">
-              <th class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th
+                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
                 Document
               </th>
-              <th class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th
+                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
                 Status
               </th>
-              <th class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th
+                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
                 Owner
               </th>
-              <th class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th
+                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
                 Mapped Controls
               </th>
-              <th class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <th
+                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+              >
                 Updated
               </th>
               <th class="relative px-5 py-3">
@@ -308,11 +308,15 @@ function resetFilters() {
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-xs text-muted-foreground">{{ doc.code }}</span>
-                      <span class="text-xs font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
+                      <span
+                        class="text-xs font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider"
+                      >
                         {{ doc.version }}
                       </span>
                     </div>
-                    <p class="mt-1 font-medium text-foreground group-hover:text-success-emphasis transition-colors">
+                    <p
+                      class="mt-1 font-medium text-foreground group-hover:text-success-emphasis transition-colors"
+                    >
                       {{ doc.title }}
                     </p>
                     <p class="mt-0.5 text-xs text-muted-foreground line-clamp-1 max-w-lg">
@@ -338,11 +342,7 @@ function resetFilters() {
                   <PhClock :size="13" weight="fill" aria-hidden="true" />
                   In review
                 </Badge>
-                <Badge
-                  v-else
-                  variant="secondary"
-                  class="gap-1 text-muted-foreground"
-                >
+                <Badge v-else variant="secondary" class="gap-1 text-muted-foreground">
                   <PhNoteBlank :size="13" aria-hidden="true" />
                   Draft
                 </Badge>
@@ -364,7 +364,9 @@ function resetFilters() {
                 {{ doc.updatedAt }}
               </td>
               <td class="px-5 py-4 whitespace-nowrap text-right">
-                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div
+                  class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
                   <Button variant="ghost" size="icon" class="size-8" aria-label="Download document">
                     <PhDownload :size="15" />
                   </Button>
@@ -379,7 +381,9 @@ function resetFilters() {
             <tr v-if="filteredDocuments.length === 0">
               <td colspan="6" class="px-5 py-12 text-center">
                 <div class="flex flex-col items-center justify-center gap-3">
-                  <span class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <span
+                    class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  >
                     <PhFileText :size="20" />
                   </span>
                   <div class="max-w-xs">

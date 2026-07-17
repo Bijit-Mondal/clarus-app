@@ -20,7 +20,7 @@ import {
 } from '@phosphor-icons/vue'
 import { useControlsStore } from '@/stores/controls'
 import { useOrganizationStore } from '@/stores/organization'
-import { useTenantUsersQuery } from '@/composables/useTenants'
+
 import { useTasksQuery, useUpdateTenantTaskMutation, taskKeys } from '@/composables/useTasks'
 import type { TenantTasksResponse, TenantTask } from '@/api/tasks'
 import TaskDialog from '@/components/compliance/TaskDialog.vue'
@@ -92,9 +92,6 @@ const currentEditingTask = ref<any | null>(null)
 const isEditing = computed(() => currentEditingTask.value !== null)
 
 const today = new Date('2026-07-15T00:00:00')
-
-const { data: usersData } = useTenantUsersQuery()
-const users = computed(() => usersData.value?.users || [])
 
 const PAGE_SIZE = 8
 const page = ref(1)
@@ -338,12 +335,14 @@ function executeAddTask(payload: {
   frequency: string
   dueDate: string
   controlCode?: string
+  assignee?: {
+    $id: string
+    name: string
+    email: string
+  } | null
 }) {
   const control = controlsStore.list.find((item) => item.code === payload.controlCode)
-  const assignee =
-    payload.assigneeId === null
-      ? undefined
-      : users.value.find((u) => u.$id === payload.assigneeId)
+  const assignee = payload.assignee
 
   const tenantId = organizationStore.activeOrganization?.id || ''
   const queryKey = props.controlId
@@ -384,7 +383,7 @@ function executeAddTask(payload: {
       ? {
           $id: assignee.$id,
           name: assignee.name,
-          email: `${assignee.$id}@clarus.app`,
+          email: assignee.email,
         }
       : null,
     control: {
@@ -569,10 +568,7 @@ defineExpose({
       </div>
 
       <!-- Error State -->
-      <div
-        v-else-if="isError"
-        class="flex flex-col items-center px-6 py-14 text-center bg-card"
-      >
+      <div v-else-if="isError" class="flex flex-col items-center px-6 py-14 text-center bg-card">
         <div
           class="mb-3 flex size-12 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
         >
@@ -669,7 +665,11 @@ defineExpose({
 
           <!-- Assignee & Action Buttons -->
           <div class="flex shrink-0 items-center gap-3">
-            <Avatar v-if="task.assignee" class="hidden size-7 sm:flex" :aria-label="task.assignee.name">
+            <Avatar
+              v-if="task.assignee"
+              class="hidden size-7 sm:flex"
+              :aria-label="task.assignee.name"
+            >
               <AvatarFallback class="bg-muted text-[10px] font-medium text-muted-foreground">
                 {{ task.assignee.initials }}
               </AvatarFallback>
@@ -685,7 +685,9 @@ defineExpose({
               <span
                 class="flex items-center gap-1 text-xs"
                 :class="
-                  isOverdue(task) ? 'font-medium text-destructive-emphasis' : 'text-muted-foreground'
+                  isOverdue(task)
+                    ? 'font-medium text-destructive-emphasis'
+                    : 'text-muted-foreground'
                 "
               >
                 <PhWarningCircle v-if="isOverdue(task)" :size="14" aria-hidden="true" />
@@ -717,7 +719,10 @@ defineExpose({
                 <DropdownMenuItem @click.stop="goToTaskDetail(task.id)">
                   View task details
                 </DropdownMenuItem>
-                <DropdownMenuItem v-if="task.controlCode" @click.stop="goToControlDetail(task.controlCode)">
+                <DropdownMenuItem
+                  v-if="task.controlCode"
+                  @click.stop="goToControlDetail(task.controlCode)"
+                >
                   View control details
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -777,6 +782,7 @@ defineExpose({
 
     <!-- Task Dialog (Add / Edit) -->
     <TaskDialog
+      v-if="isTaskDialogOpen"
       v-model:open="isTaskDialogOpen"
       :task="currentEditingTask"
       :controlId="props.controlId"

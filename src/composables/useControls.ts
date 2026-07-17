@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   getTenantControls,
+  getTenantControl,
   searchTenantControls,
   getControlRequirements,
   updateTenantControl,
@@ -16,6 +17,8 @@ export const controlKeys = {
   all: ['controls'] as const,
   list: (tenantId: string, limit: number, offset: number) =>
     [...controlKeys.all, tenantId, { limit, offset }] as const,
+  detail: (tenantId: string, controlKey: string) =>
+    [...controlKeys.all, 'detail', tenantId, controlKey] as const,
   requirements: (tenantId: string, controlKey: string) =>
     [...controlKeys.all, 'requirements', tenantId, controlKey] as const,
   search: (tenantId: string, query: string, limit: number) =>
@@ -33,6 +36,24 @@ export function useTenantControlsQuery(limit: Ref<number>, offset: Ref<number>) 
     }),
     queryFn: () => getTenantControls(tenantId.value!, { limit: limit.value, offset: offset.value }),
     enabled: computed(() => !!tenantId.value),
+  })
+}
+
+export function useTenantControlQuery(controlKey: Ref<string> | Ref<string | undefined> | string) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const controlKeyVal = computed(() => {
+    return typeof controlKey === 'string' ? controlKey : controlKey.value
+  })
+
+  return useQuery({
+    queryKey: computed(() => {
+      const tId = tenantId.value || ''
+      return controlKeys.detail(tId, controlKeyVal.value || '')
+    }),
+    queryFn: () => getTenantControl(tenantId.value!, controlKeyVal.value!),
+    enabled: computed(() => !!tenantId.value && !!controlKeyVal.value),
+    staleTime: 300_000,
   })
 }
 
@@ -60,6 +81,7 @@ export function useControlRequirementsQuery(controlKey: Ref<string>) {
     }),
     queryFn: () => getControlRequirements(tenantId.value!, controlKey.value),
     enabled: computed(() => !!tenantId.value && !!controlKey.value),
+    staleTime: 300_000,
   })
 }
 

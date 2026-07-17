@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  PhArrowUpRight,
-  PhExport,
-  PhListChecks,
-  PhPlus,
-} from '@phosphor-icons/vue'
+import { PhArrowUpRight, PhExport, PhListChecks, PhPlus } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,7 +23,6 @@ const chartStyle = computed(() => {
   }
 })
 </script>
-
 
 <template>
   <div>

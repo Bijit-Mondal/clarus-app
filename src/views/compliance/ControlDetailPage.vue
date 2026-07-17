@@ -25,11 +25,13 @@ import {
 } from '@/stores/controls'
 import {
   useControlRequirementsQuery,
-  useTenantControlsQuery,
+  useTenantControlQuery,
   useUpdateTenantControlMutation,
   useLinkControlRequirementMutation,
   useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
+import { useControlTasksQuery } from '@/composables/useTasks'
+
 import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
 import type { LinkItem } from '@/components/compliance/types'
 import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/controls'
@@ -74,12 +76,16 @@ const controlsStore = useControlsStore()
 const controlId = computed(() => route.params.controlId as string)
 const orgSlug = computed(() => route.params.organizationSlug as string)
 
-const { data: controlsData, isPending: isControlLoading } = useTenantControlsQuery(ref(100), ref(0))
+const { data: controlDetailData, isPending: isControlLoading } = useTenantControlQuery(controlId)
 const apiControl = computed(() => {
-  const code = controlId.value
-  const found = controlsData.value?.tenantControls?.find((c) => c.controlKey === code)
-  return found || window.history.state?.controlData || null
+  return controlDetailData.value || window.history.state?.controlData || null
 })
+
+const controlDbId = computed(() => apiControl.value?.$id || '')
+const tasksLimit = ref(8)
+const tasksOffset = ref(0)
+const { data: tasksData } = useControlTasksQuery(controlDbId, tasksLimit, tasksOffset)
+const controlTasksCount = computed(() => tasksData.value?.total || 0)
 
 function mapStatus(apiStatus: string): ControlStatus {
   if (apiStatus === 'implemented') return 'passing'
@@ -277,11 +283,6 @@ function submitEvidence() {
     })
     isEvidenceDialogOpen.value = false
   }
-}
-
-const controlTasksCount = ref(0)
-function onControlTasksUpdated(count: number) {
-  controlTasksCount.value = count
 }
 
 // Requirement Linking Dialog
@@ -702,7 +703,6 @@ function goToRequirement(map: ControlRequirementMap) {
             :controlName="control.name"
             :hideTitleSection="true"
             :hideControlDetailsLink="true"
-            @tasksUpdated="onControlTasksUpdated"
           />
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
             <p class="text-sm font-medium text-foreground">Loading tasks...</p>
@@ -1166,8 +1166,6 @@ function goToRequirement(map: ControlRequirementMap) {
         </form>
       </DialogContent>
     </Dialog>
-
-
 
     <LinkItemDialog
       :isOpen="isRequirementDialogOpen"

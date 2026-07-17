@@ -21,7 +21,8 @@ export const taskKeys = {
     offset: number,
     status?: string,
     search?: string,
-  ) => [...taskKeys.all, tenantId, 'control', controlId, { limit, offset, status, search }] as const,
+  ) =>
+    [...taskKeys.all, tenantId, 'control', controlId, { limit, offset, status, search }] as const,
 }
 
 export function useControlTasksQuery(
@@ -78,9 +79,9 @@ export function useControlTasksQuery(
         search: searchVal.value,
       }),
     enabled: computed(() => !!tenantId.value && !!controlIdVal.value),
+    staleTime: 300_000,
   })
 }
-
 
 export function useTenantTasksQuery(
   limit: Ref<number> | number,
@@ -149,7 +150,6 @@ export function useTenantTaskQuery(taskId: Ref<string> | string) {
     enabled: computed(() => !!tenantId.value && !!taskIdVal.value),
   })
 }
-
 
 export function useTasksQuery(
   controlId: Ref<string | undefined> | string | undefined,
@@ -221,9 +221,9 @@ export function useTasksQuery(
       })
     },
     enabled: computed(() => !!tenantId.value),
+    staleTime: 300_000,
   })
 }
-
 
 export function useUpdateTenantTaskMutation() {
   const queryClient = useQueryClient()

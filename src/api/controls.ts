@@ -49,6 +49,14 @@ export function getTenantControls(tenantId: string, options?: { limit?: number; 
   })
 }
 
+export function getTenantControl(tenantId: string, controlKey: string) {
+  return apiRequest<TenantControl>(`/v1/tenants/frameworks/controls/${controlKey}`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}
+
 export type UpdateTenantControlInput = {
   statement?: string | null
   implementationStatus?:

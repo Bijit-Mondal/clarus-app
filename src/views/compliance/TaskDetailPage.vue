@@ -21,7 +21,6 @@ import {
   PhWarningCircle,
 } from '@phosphor-icons/vue'
 import { useTenantTaskQuery, useUpdateTenantTaskMutation } from '@/composables/useTasks'
-import { useTenantUsersQuery } from '@/composables/useTenants'
 import { useTenantControlsQuery } from '@/composables/useControls'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import TaskDialog from '@/components/compliance/TaskDialog.vue'
@@ -59,10 +58,6 @@ const { data: task, isPending: isTaskLoading, isError, error } = useTenantTaskQu
 
 // Update task mutation
 const updateTaskMutation = useUpdateTenantTaskMutation()
-
-// Fetch workspace users
-const { data: usersData } = useTenantUsersQuery()
-const users = computed(() => usersData.value?.users || [])
 
 // Fetch tenant controls for linking controls
 const { data: controlsData } = useTenantControlsQuery(ref(100), ref(0))
@@ -152,8 +147,17 @@ function openEditDialog() {
   isEditDialogOpen.value = true
 }
 
-function saveEdit(updates: any) {
+function saveEdit(payload: any) {
   if (!task.value) return
+  const updates = {
+    title: payload.title,
+    description: payload.description,
+    status: payload.status,
+    assigneeId: payload.assigneeId,
+    department: payload.department,
+    type: payload.type,
+    frequency: payload.frequency,
+  }
   updateTaskMutation.mutate(
     {
       taskId: taskId.value,
@@ -163,7 +167,7 @@ function saveEdit(updates: any) {
       onSuccess: () => {
         isEditDialogOpen.value = false
       },
-    }
+    },
   )
 }
 
@@ -323,11 +327,7 @@ function formatDate(iso: string) {
 
 function getControlStatusClass(status: string) {
   if (status === 'implemented') return 'bg-success/10 text-success border-success/20'
-  if (
-    status === 'in_progress' ||
-    status === 'partially_implemented' ||
-    status === 'needs_review'
-  )
+  if (status === 'in_progress' || status === 'partially_implemented' || status === 'needs_review')
     return 'bg-warning/10 text-warning-emphasis border-warning/20'
   return 'bg-muted text-muted-foreground border-border'
 }
@@ -354,11 +354,11 @@ function getDocStatusClass(status: string) {
     </span>
     <p class="text-sm font-medium text-foreground">Failed to load task</p>
     <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-      {{ error?.message || 'The requested task could not be retrieved from the compliance engine.' }}
+      {{
+        error?.message || 'The requested task could not be retrieved from the compliance engine.'
+      }}
     </p>
-    <Button size="sm" variant="outline" class="mt-4" @click="goBack">
-      Back to overview
-    </Button>
+    <Button size="sm" variant="outline" class="mt-4" @click="goBack"> Back to overview </Button>
   </div>
 
   <div v-else-if="task">
@@ -431,14 +431,21 @@ function getDocStatusClass(status: string) {
     </div>
 
     <!-- Metadata Section -->
-    <div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground bg-muted/30 px-3.5 py-2.5 rounded-lg border border-border/60">
+    <div
+      class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground bg-muted/30 px-3.5 py-2.5 rounded-lg border border-border/60"
+    >
       <!-- Assignee -->
       <div class="inline-flex items-center gap-1.5">
         <PhUser :size="14" class="text-primary/70" />
         <span class="text-muted-foreground">Assignee:</span>
-        <span v-if="task.assignee" class="font-medium text-foreground inline-flex items-center gap-1.5">
+        <span
+          v-if="task.assignee"
+          class="font-medium text-foreground inline-flex items-center gap-1.5"
+        >
           <Avatar class="size-4 shrink-0">
-            <AvatarFallback class="text-[8px] font-bold">{{ getUserInitials(task.assignee.name) }}</AvatarFallback>
+            <AvatarFallback class="text-[8px] font-bold">{{
+              getUserInitials(task.assignee.name)
+            }}</AvatarFallback>
           </Avatar>
           {{ task.assignee.name }}
         </span>
@@ -451,7 +458,9 @@ function getDocStatusClass(status: string) {
       <div class="inline-flex items-center gap-1.5">
         <PhBuildings :size="14" class="text-info/80" />
         <span class="text-muted-foreground">Department:</span>
-        <span class="font-semibold text-foreground capitalize">{{ task.department || 'general' }}</span>
+        <span class="font-semibold text-foreground capitalize">{{
+          task.department || 'general'
+        }}</span>
       </div>
 
       <span class="text-muted-foreground/35 select-none" aria-hidden="true">•</span>
@@ -469,7 +478,9 @@ function getDocStatusClass(status: string) {
       <div class="inline-flex items-center gap-1.5">
         <PhClock :size="14" class="text-warning-emphasis/80" />
         <span class="text-muted-foreground">Frequency:</span>
-        <span class="font-medium text-foreground capitalize">{{ task.frequency || 'one-time' }}</span>
+        <span class="font-medium text-foreground capitalize">{{
+          task.frequency || 'one-time'
+        }}</span>
       </div>
     </div>
 
@@ -518,7 +529,9 @@ function getDocStatusClass(status: string) {
         <div v-if="activeTab === 'evidences'">
           <table v-if="mockEvidences.length" class="w-full text-left border-collapse text-sm">
             <thead>
-              <tr class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium">
+              <tr
+                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
+              >
                 <th class="px-5 py-2.5">Description</th>
                 <th class="px-5 py-2.5">File type</th>
                 <th class="px-5 py-2.5">File size</th>
@@ -533,8 +546,12 @@ function getDocStatusClass(status: string) {
                 class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
               >
                 <td class="px-5 py-3.5 font-medium text-foreground">{{ e.description }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground font-mono text-xs">{{ e.fileType }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">{{ e.fileSize }}</td>
+                <td class="px-5 py-3.5 text-muted-foreground font-mono text-xs">
+                  {{ e.fileType }}
+                </td>
+                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
+                  {{ e.fileSize }}
+                </td>
                 <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
                   {{ formatDate(e.createdAt) }}
                 </td>
@@ -557,7 +574,9 @@ function getDocStatusClass(status: string) {
             </tbody>
           </table>
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3">
+            <span
+              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
+            >
               <PhFileText :size="22" />
             </span>
             <p class="text-sm font-medium text-foreground">No evidence linked yet</p>
@@ -582,7 +601,9 @@ function getDocStatusClass(status: string) {
         <div v-if="activeTab === 'controls'">
           <table v-if="mockControls.length" class="w-full text-left border-collapse text-sm">
             <thead>
-              <tr class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium">
+              <tr
+                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
+              >
                 <th class="px-5 py-2.5 w-[20%]">Control ID</th>
                 <th class="px-5 py-2.5 w-[60%]">Name</th>
                 <th class="px-5 py-2.5 w-[15%]">Status</th>
@@ -596,13 +617,18 @@ function getDocStatusClass(status: string) {
                 class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
               >
                 <td class="px-5 py-3.5 align-top">
-                  <span class="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground uppercase leading-none">
+                  <span
+                    class="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground uppercase leading-none"
+                  >
                     {{ c.controlKey }}
                   </span>
                 </td>
                 <td class="px-5 py-3.5">
                   <router-link
-                    :to="{ name: 'compliance-control-detail', params: { organizationSlug: orgSlug, controlId: c.controlKey } }"
+                    :to="{
+                      name: 'compliance-control-detail',
+                      params: { organizationSlug: orgSlug, controlId: c.controlKey },
+                    }"
                     class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
                   >
                     {{ c.name }}
@@ -630,7 +656,9 @@ function getDocStatusClass(status: string) {
             </tbody>
           </table>
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3">
+            <span
+              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
+            >
               <PhShieldCheck :size="22" />
             </span>
             <p class="text-sm font-medium text-foreground">No controls linked</p>
@@ -655,7 +683,9 @@ function getDocStatusClass(status: string) {
         <div v-if="activeTab === 'documents'">
           <table v-if="mockDocuments.length" class="w-full text-left border-collapse text-sm">
             <thead>
-              <tr class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium">
+              <tr
+                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
+              >
                 <th class="px-5 py-2.5">Name</th>
                 <th class="px-5 py-2.5">Version</th>
                 <th class="px-5 py-2.5">Status</th>
@@ -692,7 +722,9 @@ function getDocStatusClass(status: string) {
             </tbody>
           </table>
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3">
+            <span
+              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
+            >
               <PhFolderOpen :size="22" />
             </span>
             <p class="text-sm font-medium text-foreground">No documents linked</p>
@@ -726,7 +758,9 @@ function getDocStatusClass(status: string) {
         </DialogHeader>
         <form @submit.prevent="handleAddEvidence" class="space-y-4 py-3">
           <div class="space-y-1.5">
-            <Label for="ev-desc" class="text-xs font-semibold text-foreground">Evidence Description</Label>
+            <Label for="ev-desc" class="text-xs font-semibold text-foreground"
+              >Evidence Description</Label
+            >
             <Input
               id="ev-desc"
               v-model="newEvidenceDesc"
@@ -752,20 +786,14 @@ function getDocStatusClass(status: string) {
             </div>
             <div class="space-y-1.5">
               <Label for="ev-size" class="text-xs font-semibold text-foreground">File Size</Label>
-              <Input
-                id="ev-size"
-                v-model="newEvidenceSize"
-                placeholder="e.g., 2.4 MB"
-              />
+              <Input id="ev-size" v-model="newEvidenceSize" placeholder="e.g., 2.4 MB" />
             </div>
           </div>
           <DialogFooter class="pt-3">
             <Button type="button" variant="outline" size="sm" @click="isEvidenceDialogOpen = false">
               Cancel
             </Button>
-            <Button type="submit" size="sm">
-              Add Evidence
-            </Button>
+            <Button type="submit" size="sm"> Add Evidence </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -782,25 +810,28 @@ function getDocStatusClass(status: string) {
         </DialogHeader>
         <form @submit.prevent="handleLinkControl" class="space-y-4 py-3">
           <div class="space-y-1.5">
-            <Label for="control-select" class="text-xs font-semibold text-foreground">Select Control</Label>
+            <Label for="control-select" class="text-xs font-semibold text-foreground"
+              >Select Control</Label
+            >
             <Select v-model="selectedControlId">
               <SelectTrigger id="control-select" class="w-full text-left">
                 <SelectValue placeholder="Choose a control..." />
               </SelectTrigger>
               <SelectContent class="max-h-[220px]">
-                <SelectItem
-                  v-for="c in availableControlsToLink"
-                  :key="c.$id"
-                  :value="c.$id"
-                >
+                <SelectItem v-for="c in availableControlsToLink" :key="c.$id" :value="c.$id">
                   <div class="flex items-center gap-2">
-                    <span class="font-mono text-[10px] font-bold text-muted-foreground uppercase bg-muted px-1.5 py-0.25 rounded border border-border">
+                    <span
+                      class="font-mono text-[10px] font-bold text-muted-foreground uppercase bg-muted px-1.5 py-0.25 rounded border border-border"
+                    >
                       {{ c.controlKey }}
                     </span>
                     <span class="truncate">{{ c.name }}</span>
                   </div>
                 </SelectItem>
-                <div v-if="!availableControlsToLink.length" class="p-3 text-center text-xs text-muted-foreground">
+                <div
+                  v-if="!availableControlsToLink.length"
+                  class="p-3 text-center text-xs text-muted-foreground"
+                >
                   No unlinked controls available.
                 </div>
               </SelectContent>
@@ -810,9 +841,7 @@ function getDocStatusClass(status: string) {
             <Button type="button" variant="outline" size="sm" @click="isControlDialogOpen = false">
               Cancel
             </Button>
-            <Button type="submit" size="sm" :disabled="!selectedControlId">
-              Link Control
-            </Button>
+            <Button type="submit" size="sm" :disabled="!selectedControlId"> Link Control </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -829,7 +858,9 @@ function getDocStatusClass(status: string) {
         </DialogHeader>
         <form @submit.prevent="handleLinkDocument" class="space-y-4 py-3">
           <div class="space-y-1.5">
-            <Label for="doc-name" class="text-xs font-semibold text-foreground">Document Name</Label>
+            <Label for="doc-name" class="text-xs font-semibold text-foreground"
+              >Document Name</Label
+            >
             <Input
               id="doc-name"
               v-model="newDocName"
@@ -840,11 +871,7 @@ function getDocStatusClass(status: string) {
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
               <Label for="doc-version" class="text-xs font-semibold text-foreground">Version</Label>
-              <Input
-                id="doc-version"
-                v-model="newDocVersion"
-                placeholder="e.g., v1.0"
-              />
+              <Input id="doc-version" v-model="newDocVersion" placeholder="e.g., v1.0" />
             </div>
             <div class="space-y-1.5">
               <Label for="doc-status" class="text-xs font-semibold text-foreground">Status</Label>
@@ -864,9 +891,7 @@ function getDocStatusClass(status: string) {
             <Button type="button" variant="outline" size="sm" @click="isDocumentDialogOpen = false">
               Cancel
             </Button>
-            <Button type="submit" size="sm">
-              Link Document
-            </Button>
+            <Button type="submit" size="sm"> Link Document </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -874,6 +899,7 @@ function getDocStatusClass(status: string) {
 
     <!-- Reusable Edit Task Dialog -->
     <TaskDialog
+      v-if="isEditDialogOpen"
       v-model:open="isEditDialogOpen"
       :task="task"
       @save="saveEdit"
