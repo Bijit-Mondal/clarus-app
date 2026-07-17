@@ -12,6 +12,7 @@ import {
   PhDotsThree,
   PhFunnelSimple,
   PhGear,
+  PhListChecks,
   PhMagnifyingGlass,
   PhPlus,
   PhRepeat,
@@ -22,6 +23,8 @@ import { useOrganizationStore } from '@/stores/organization'
 import { useTenantUsersQuery } from '@/composables/useTenants'
 import { useTasksQuery, useUpdateTenantTaskMutation, taskKeys } from '@/composables/useTasks'
 import type { TenantTasksResponse, TenantTask } from '@/api/tasks'
+import TaskDialog from '@/components/compliance/TaskDialog.vue'
+import TaskStatusBadge from '@/components/compliance/TaskStatusBadge.vue'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -85,18 +88,8 @@ const search = ref('')
 const activeFilter = ref<TaskFilter>('all')
 const isTaskDialogOpen = ref(false)
 
-const editingTaskId = ref<string | null>(null)
-const isEditing = computed(() => editingTaskId.value !== null)
-
-const taskTitle = ref('')
-const taskDescription = ref('')
-const taskDueDate = ref('')
-const taskControlCode = ref('')
-const taskAssigneeId = ref('')
-const taskStatus = ref('pending')
-const taskDepartment = ref('general')
-const taskType = ref('manual')
-const taskFrequency = ref('one_time')
+const currentEditingTask = ref<any | null>(null)
+const isEditing = computed(() => currentEditingTask.value !== null)
 
 const today = new Date('2026-07-15T00:00:00')
 
@@ -294,48 +287,63 @@ function parseDateToInputFormat(dateStr: string) {
 }
 
 function openTaskDialog() {
-  editingTaskId.value = null
-  taskTitle.value = ''
-  taskDescription.value = ''
-  taskDueDate.value = ''
-  taskControlCode.value = props.controlKey || controlsStore.list[0]?.code || ''
-  taskAssigneeId.value = 'unassigned'
-  taskStatus.value = 'pending'
-  taskDepartment.value = 'general'
-  taskType.value = 'manual'
-  taskFrequency.value = 'one_time'
+  currentEditingTask.value = null
   isTaskDialogOpen.value = true
 }
 
 function openEditTaskDialog(task: (typeof tasks.value)[number]) {
-  editingTaskId.value = task.id
-  taskTitle.value = task.title
-  taskDescription.value = task.description || ''
-  taskDueDate.value = parseDateToInputFormat(task.dueDate)
-  taskControlCode.value = task.controlCode || ''
-  taskAssigneeId.value = task.assignee?.id || 'unassigned'
-  taskStatus.value = task.status || 'pending'
-  taskDepartment.value = task.department || 'general'
-  taskType.value = task.type || 'manual'
-  taskFrequency.value = task.frequency || 'one_time'
+  const originalTask = tasksData.value?.tenantTasks?.find((t) => t.$id === task.id)
+  currentEditingTask.value = originalTask || task
   isTaskDialogOpen.value = true
 }
 
-function submitTask() {
+function handleSaveTask(payload: {
+  title: string
+  description: string
+  status: string
+  assigneeId: string | null
+  department: string
+  type: string
+  frequency: string
+  dueDate: string
+  controlCode?: string
+}) {
   if (isEditing.value) {
-    saveTask()
+    const taskId = currentEditingTask.value.$id || currentEditingTask.value.id
+    updateTaskMutation.mutate({
+      taskId,
+      updates: {
+        title: payload.title,
+        description: payload.description,
+        status: payload.status,
+        assigneeId: payload.assigneeId,
+        department: payload.department,
+        type: payload.type,
+        frequency: payload.frequency,
+      },
+    })
   } else {
-    addTask()
+    executeAddTask(payload)
   }
+  isTaskDialogOpen.value = false
 }
 
-function addTask() {
-  const control = controlsStore.list.find((item) => item.code === taskControlCode.value)
+function executeAddTask(payload: {
+  title: string
+  description: string
+  status: string
+  assigneeId: string | null
+  department: string
+  type: string
+  frequency: string
+  dueDate: string
+  controlCode?: string
+}) {
+  const control = controlsStore.list.find((item) => item.code === payload.controlCode)
   const assignee =
-    taskAssigneeId.value === 'unassigned'
+    payload.assigneeId === null
       ? undefined
-      : users.value.find((u) => u.$id === taskAssigneeId.value)
-  if (!taskTitle.value.trim() || !taskDueDate.value) return
+      : users.value.find((u) => u.$id === payload.assigneeId)
 
   const tenantId = organizationStore.activeOrganization?.id || ''
   const queryKey = props.controlId
@@ -358,20 +366,20 @@ function addTask() {
 
   const newApiTask: TenantTask = {
     $id: `task-${Date.now()}`,
-    $createdAt: new Date(taskDueDate.value).toISOString(),
+    $createdAt: new Date(payload.dueDate).toISOString(),
     $updatedAt: new Date().toISOString(),
     commonTaskId: `common-${Date.now()}`,
-    assigneeId: assignee?.$id || null,
-    status: taskStatus.value,
-    title: taskTitle.value.trim(),
-    description: taskDescription.value.trim(),
-    department: taskDepartment.value,
-    type: taskType.value,
-    frequency: taskFrequency.value,
+    assigneeId: payload.assigneeId,
+    status: payload.status,
+    title: payload.title,
+    description: payload.description,
+    department: payload.department,
+    type: payload.type,
+    frequency: payload.frequency,
     lastCompletedAt: '',
     approverId: null,
     approvedAt: '',
-    dueDate: taskDueDate.value,
+    dueDate: payload.dueDate,
     assignee: assignee
       ? {
           $id: assignee.$id,
@@ -381,7 +389,7 @@ function addTask() {
       : null,
     control: {
       $id: props.controlId || control?.code || `ctrl-${Date.now()}`,
-      controlKey: props.controlKey || control?.code || taskControlCode.value,
+      controlKey: props.controlKey || control?.code || payload.controlCode || '',
       name: props.controlName || control?.name || '',
       implementationStatus: 'not_started',
     },
@@ -399,30 +407,6 @@ function addTask() {
       tenantTasks: [newApiTask],
     })
   }
-
-  isTaskDialogOpen.value = false
-}
-
-function saveTask() {
-  if (!editingTaskId.value) return
-  if (!taskTitle.value.trim() || !taskDueDate.value) return
-
-  const updates = {
-    title: taskTitle.value.trim(),
-    description: taskDescription.value.trim(),
-    status: taskStatus.value,
-    assigneeId: taskAssigneeId.value === 'unassigned' ? '' : taskAssigneeId.value,
-    department: taskDepartment.value,
-    type: taskType.value,
-    frequency: taskFrequency.value,
-  }
-
-  updateTaskMutation.mutate({
-    taskId: editingTaskId.value,
-    updates,
-  })
-
-  isTaskDialogOpen.value = false
 }
 
 function toggleTask(task: (typeof tasks.value)[number]) {
@@ -431,6 +415,18 @@ function toggleTask(task: (typeof tasks.value)[number]) {
     taskId: task.id,
     updates: {
       status: nextStatus,
+    },
+  })
+}
+
+function goToTaskDetail(taskId: string) {
+  if (!taskId) return
+  const activeOrgSlug = router.currentRoute.value.params.organizationSlug || ''
+  void router.push({
+    name: 'compliance-task-detail',
+    params: {
+      organizationSlug: activeOrgSlug as string,
+      taskId,
     },
   })
 }
@@ -596,7 +592,7 @@ defineExpose({
           v-for="task in visibleTasks"
           :key="task.id"
           class="group flex items-start gap-3 px-4 py-4 transition-colors hover:bg-muted/50 sm:items-center sm:px-5 cursor-pointer"
-          @click="goToControlDetail(task.controlCode)"
+          @click="goToTaskDetail(task.id)"
         >
           <!-- Complete Task Checkbox Button -->
           <button
@@ -685,18 +681,7 @@ defineExpose({
             </Avatar>
 
             <div class="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-              <Badge
-                :variant="statusVariant(task.status)"
-                :class="
-                  task.status === 'completed'
-                    ? 'text-success-emphasis bg-success/10 border-success/20'
-                    : task.status === 'pending' || task.status === 'in_progress'
-                      ? 'text-info bg-info/10 border-info/20'
-                      : 'text-muted-foreground'
-                "
-              >
-                {{ statusLabel(task.status) }}
-              </Badge>
+              <TaskStatusBadge :status="task.status" />
               <span
                 class="flex items-center gap-1 text-xs"
                 :class="
@@ -728,12 +713,13 @@ defineExpose({
                 <DropdownMenuItem @click.stop="toggleTask(task)">
                   {{ task.status === 'completed' ? 'Reopen task' : 'Complete task' }}
                 </DropdownMenuItem>
-                <template v-if="!hideControlDetailsLink">
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem @click.stop="goToControlDetail(task.controlCode)">
-                    View control details
-                  </DropdownMenuItem>
-                </template>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @click.stop="goToTaskDetail(task.id)">
+                  View task details
+                </DropdownMenuItem>
+                <DropdownMenuItem v-if="task.controlCode" @click.stop="goToControlDetail(task.controlCode)">
+                  View control details
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -790,149 +776,13 @@ defineExpose({
     </div>
 
     <!-- Task Dialog (Add / Edit) -->
-    <Dialog v-model:open="isTaskDialogOpen">
-      <DialogContent class="sm:max-w-3xl" @pointer-down-outside.prevent>
-        <DialogHeader>
-          <DialogTitle>{{ isEditing ? 'Edit task' : 'Add task' }}</DialogTitle>
-          <DialogDescription>
-            {{
-              isEditing
-                ? 'Update the details and properties of this task.'
-                : 'Create a task and assign it to the right owner.'
-            }}
-          </DialogDescription>
-        </DialogHeader>
-        <form class="space-y-6" @submit.prevent="submitTask">
-          <div class="grid gap-6 md:grid-cols-[1.2fr_1fr]">
-            <!-- Left Column: Title & Description -->
-            <div class="space-y-4">
-              <div class="space-y-2">
-                <Label for="task-title">Title</Label>
-                <Input
-                  id="task-title"
-                  v-model="taskTitle"
-                  placeholder="Describe the work to be done"
-                  required
-                />
-              </div>
-              <div class="space-y-2">
-                <Label for="task-description">Description</Label>
-                <textarea
-                  id="task-description"
-                  v-model="taskDescription"
-                  rows="8"
-                  class="flex min-h-[220px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Add details or instructions..."
-                />
-              </div>
-            </div>
-
-            <!-- Right Column: Metadata Panel -->
-            <div class="space-y-4 bg-muted/20 p-4 rounded-lg border border-border">
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div class="space-y-2">
-                  <Label for="task-status">Status</Label>
-                  <Select v-model="taskStatus">
-                    <SelectTrigger id="task-status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="not_started">To do</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="space-y-2">
-                  <Label for="task-assignee">Assignee</Label>
-                  <Select v-model="taskAssigneeId">
-                    <SelectTrigger id="task-assignee">
-                      <SelectValue placeholder="Select owner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      <SelectItem v-for="user in users" :key="user.$id" :value="user.$id">
-                        {{ user.name }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div class="space-y-2">
-                  <Label for="task-department">Department</Label>
-                  <Select v-model="taskDepartment">
-                    <SelectTrigger id="task-department">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General</SelectItem>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="hr">HR</SelectItem>
-                      <SelectItem value="security">Security</SelectItem>
-                      <SelectItem value="legal">Legal</SelectItem>
-                      <SelectItem value="operations">Operations</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="space-y-2">
-                  <Label for="task-type">Type</Label>
-                  <Select v-model="taskType">
-                    <SelectTrigger id="task-type">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="automated">Automated</SelectItem>
-                      <SelectItem value="evidence">Evidence</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div class="space-y-2">
-                  <Label for="task-frequency">Frequency</Label>
-                  <Select v-model="taskFrequency">
-                    <SelectTrigger id="task-frequency">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="one_time">One-time</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="annually">Annually</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="space-y-2">
-                  <Label for="task-due-date">Due date</Label>
-                  <Input
-                    id="task-due-date"
-                    v-model="taskDueDate"
-                    type="date"
-                    :disabled="isEditing"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter class="border-t border-border pt-4">
-            <Button type="button" variant="outline" @click="isTaskDialogOpen = false">
-              Cancel
-            </Button>
-            <Button type="submit">
-              {{ isEditing ? 'Save changes' : 'Add task' }}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <TaskDialog
+      v-model:open="isTaskDialogOpen"
+      :task="currentEditingTask"
+      :controlId="props.controlId"
+      :controlKey="props.controlKey"
+      :controlName="props.controlName"
+      @save="handleSaveTask"
+    />
   </section>
 </template>

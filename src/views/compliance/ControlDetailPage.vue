@@ -9,6 +9,7 @@ import {
   PhFileText,
   PhShieldCheck,
   PhWarning,
+  PhGavel,
   PhPencilSimple,
   PhDotsThreeOutline,
   PhMagnifyingGlass,
@@ -583,7 +584,7 @@ function goToRequirement(map: ControlRequirementMap) {
         <button
           v-for="t in [
             { id: 'evidences', label: 'Evidences', count: control.evidences.length },
-            { id: 'tasks', label: 'Tasks', count: controlTasksCount.value },
+            { id: 'tasks', label: 'Tasks', count: controlTasksCount },
             { id: 'requirements', label: 'Requirements', count: requirements.length },
             { id: 'risks', label: 'Risks', count: control.risks.length },
             { id: 'documents', label: 'Documents', count: control.documents.length },

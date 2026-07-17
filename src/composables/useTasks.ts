@@ -4,6 +4,7 @@ import {
   getTenantTasks,
   updateTenantTask,
   getControlTasks,
+  getTenantTask,
   type UpdateTenantTaskInput,
   type TenantTasksResponse,
 } from '@/api/tasks'
@@ -124,6 +125,31 @@ export function useTenantTasksQuery(
     enabled: computed(() => !!tenantId.value),
   })
 }
+
+export function useTenantTaskQuery(taskId: Ref<string> | string) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const taskIdVal = computed(() => {
+    return typeof taskId === 'string' ? taskId : taskId.value
+  })
+
+  return useQuery({
+    queryKey: computed(() => ['tasks', tenantId.value || '', 'detail', taskIdVal.value]),
+    queryFn: async () => {
+      try {
+        return await getTenantTask(tenantId.value!, taskIdVal.value)
+      } catch (err) {
+        // Fallback: fetch tasks list and find the task by ID
+        const response = await getTenantTasks(tenantId.value!, { limit: 100 })
+        const found = response.tenantTasks?.find((t) => t.$id === taskIdVal.value)
+        if (found) return found
+        throw err
+      }
+    },
+    enabled: computed(() => !!tenantId.value && !!taskIdVal.value),
+  })
+}
+
 
 export function useTasksQuery(
   controlId: Ref<string | undefined> | string | undefined,

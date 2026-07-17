@@ -47,6 +47,11 @@ export const appModules: AppModule[] = [
         description: 'Collected evidence, freshness, and what needs to be renewed.',
       },
       {
+        id: 'documents',
+        label: 'Documents',
+        description: 'Security policies, procedures, and official compliance documentation.',
+      },
+      {
         id: 'findings',
         label: 'Findings',
         description: 'Open gaps and exceptions raised during testing and audits.',

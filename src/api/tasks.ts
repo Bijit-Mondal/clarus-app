@@ -79,3 +79,12 @@ export function getControlTasks(
   })
 }
 
+export function getTenantTask(tenantId: string, taskId: string) {
+  return apiRequest<TenantTask>(`/v1/tenants/frameworks/tasks/${taskId}`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}
+
+
