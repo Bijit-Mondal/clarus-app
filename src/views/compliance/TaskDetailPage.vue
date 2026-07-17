@@ -5,7 +5,6 @@ import {
   PhCaretRight,
   PhPlus,
   PhTrash,
-  PhFileText,
   PhShieldCheck,
   PhWarning,
   PhClock,
@@ -23,14 +22,21 @@ import {
   useUpdateTenantTaskMutation,
   useTaskControlsQuery,
 } from '@/composables/useTasks'
+import {
+  useTaskEvidencesQuery,
+  useDeleteEvidenceMutation,
+  useDownloadEvidenceMutation,
+} from '@/composables/useEvidence'
+import { getApiErrorMessage } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import TaskDialog from '@/components/compliance/TaskDialog.vue'
 import TaskStatusBadge from '@/components/compliance/TaskStatusBadge.vue'
+import AddEvidenceDialog from '@/components/compliance/AddEvidenceDialog.vue'
+import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -174,23 +180,12 @@ function saveEdit(payload: EditTaskPayload) {
 // Tabs state
 const activeTab = ref<'evidences' | 'controls' | 'documents'>('evidences')
 
-// Local mock states for GRC items (since API is coming soon)
-const mockEvidences = ref([
-  {
-    id: 'ev-1',
-    description: 'Secrets manager configuration screenshot',
-    fileType: 'PNG',
-    fileSize: '2.4 MB',
-    createdAt: '2026-07-16T16:01:07.527Z',
-  },
-  {
-    id: 'ev-2',
-    description: 'AWS KMS Key rotation policy review',
-    fileType: 'PDF',
-    fileSize: '1.8 MB',
-    createdAt: '2026-07-16T16:05:00.000Z',
-  },
-])
+// Fetch evidences
+const { data: evidencesData, isPending: isEvidencesLoading } = useTaskEvidencesQuery(taskId)
+const evidences = computed(() => evidencesData.value?.evidences || [])
+
+const deleteEvidenceMutation = useDeleteEvidenceMutation()
+const downloadEvidenceMutation = useDownloadEvidenceMutation()
 
 const mockDocuments = ref<
   Array<{
@@ -216,31 +211,32 @@ const mockDocuments = ref<
 
 // Add Evidence Dialog
 const isEvidenceDialogOpen = ref(false)
-const newEvidenceDesc = ref('')
-const newEvidenceType = ref('PDF')
-const newEvidenceSize = ref('1.2 MB')
 
 function openEvidenceDialog() {
-  newEvidenceDesc.value = ''
-  newEvidenceType.value = 'PDF'
-  newEvidenceSize.value = '1.2 MB'
   isEvidenceDialogOpen.value = true
 }
 
-function handleAddEvidence() {
-  if (!newEvidenceDesc.value.trim()) return
-  mockEvidences.value.push({
-    id: `ev-${Date.now()}`,
-    description: newEvidenceDesc.value.trim(),
-    fileType: newEvidenceType.value,
-    fileSize: newEvidenceSize.value,
-    createdAt: new Date().toISOString(),
-  })
-  isEvidenceDialogOpen.value = false
+async function removeEvidence(id: string) {
+  if (confirm('Are you sure you want to delete this evidence?')) {
+    try {
+      await deleteEvidenceMutation.mutateAsync(id)
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Failed to delete evidence.'))
+    }
+  }
 }
 
-function removeEvidence(id: string) {
-  mockEvidences.value = mockEvidences.value.filter((e) => e.id !== id)
+const downloadingId = ref<string | null>(null)
+
+async function downloadFile(evidenceId: string) {
+  downloadingId.value = evidenceId
+  try {
+    await downloadEvidenceMutation.mutateAsync(evidenceId)
+  } catch (err) {
+    alert(getApiErrorMessage(err, 'Failed to download evidence file.'))
+  } finally {
+    downloadingId.value = null
+  }
 }
 
 // Link Document Dialog
@@ -269,19 +265,6 @@ function handleLinkDocument() {
 
 function unlinkDocument(id: string) {
   mockDocuments.value = mockDocuments.value.filter((d) => d.id !== id)
-}
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-})
-
-function formatDate(iso: string) {
-  if (!iso) return 'N/A'
-  const date = new Date(iso)
-  if (isNaN(date.getTime())) return 'N/A'
-  return dateFormatter.format(date)
 }
 
 function getControlStatusClass(status: string) {
@@ -449,7 +432,7 @@ function getDocStatusClass(status: string) {
       <div class="flex border-b border-border overflow-x-auto scrollbar-none" role="tablist">
         <button
           v-for="t in [
-            { id: 'evidences', label: 'Evidence', count: mockEvidences.length },
+            { id: 'evidences', label: 'Evidence', count: evidences.length },
             { id: 'controls', label: 'Controls', count: taskControls.length },
             { id: 'documents', label: 'Documents', count: mockDocuments.length },
           ]"
@@ -486,74 +469,15 @@ function getDocStatusClass(status: string) {
       <div class="rounded-lg border border-border bg-card overflow-hidden">
         <!-- Evidence Tab -->
         <div v-if="activeTab === 'evidences'">
-          <table v-if="mockEvidences.length" class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5">Description</th>
-                <th class="px-5 py-2.5">File type</th>
-                <th class="px-5 py-2.5">File size</th>
-                <th class="px-5 py-2.5">Created at</th>
-                <th class="px-5 py-2.5 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="e in mockEvidences"
-                :key="e.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td class="px-5 py-3.5 font-medium text-foreground">{{ e.description }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground font-mono text-xs">
-                  {{ e.fileType }}
-                </td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
-                  {{ e.fileSize }}
-                </td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
-                  {{ formatDate(e.createdAt) }}
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        @click="removeEvidence(e.id)"
-                      >
-                        <PhTrash :size="14" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Unlink evidence</TooltipContent>
-                  </Tooltip>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhFileText :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No evidence linked yet</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Add screenshots or reports as proof of this task being completed.
-            </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center bg-muted/5">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 font-semibold"
-              @click="openEvidenceDialog"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Add evidence
-            </Button>
-          </div>
+          <EvidenceTab
+            :evidences="evidences"
+            :is-loading="isEvidencesLoading"
+            :downloading-id="downloadingId"
+            empty-description="Add screenshots or reports as proof of this task being completed."
+            @download="downloadFile"
+            @delete="removeEvidence"
+            @add="openEvidenceDialog"
+          />
         </div>
 
         <!-- Controls Tab -->
@@ -693,56 +617,7 @@ function getDocStatusClass(status: string) {
     </div>
 
     <!-- Add Evidence Dialog -->
-    <Dialog :open="isEvidenceDialogOpen" @update:open="isEvidenceDialogOpen = $event">
-      <DialogContent class="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Evidence</DialogTitle>
-          <DialogDescription>
-            Upload or reference evidence items proving task execution.
-          </DialogDescription>
-        </DialogHeader>
-        <form @submit.prevent="handleAddEvidence" class="space-y-4 py-3">
-          <div class="space-y-1.5">
-            <Label for="ev-desc" class="text-xs font-semibold text-foreground"
-              >Evidence Description</Label
-            >
-            <Input
-              id="ev-desc"
-              v-model="newEvidenceDesc"
-              placeholder="e.g., Key Vault Policy screenshot"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <Label for="ev-type" class="text-xs font-semibold text-foreground">File Type</Label>
-              <Select v-model="newEvidenceType">
-                <SelectTrigger id="ev-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PDF">PDF Document</SelectItem>
-                  <SelectItem value="PNG">PNG Image</SelectItem>
-                  <SelectItem value="JPEG">JPEG Image</SelectItem>
-                  <SelectItem value="JSON">JSON Log</SelectItem>
-                  <SelectItem value="TXT">TXT File</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div class="space-y-1.5">
-              <Label for="ev-size" class="text-xs font-semibold text-foreground">File Size</Label>
-              <Input id="ev-size" v-model="newEvidenceSize" placeholder="e.g., 2.4 MB" />
-            </div>
-          </div>
-          <DialogFooter class="pt-3">
-            <Button type="button" variant="outline" size="sm" @click="isEvidenceDialogOpen = false">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm"> Add Evidence </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <AddEvidenceDialog v-model:open="isEvidenceDialogOpen" :tenant-task-id="task.$id" />
 
     <!-- Link Document Dialog -->
     <Dialog :open="isDocumentDialogOpen" @update:open="isDocumentDialogOpen = $event">

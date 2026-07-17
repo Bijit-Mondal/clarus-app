@@ -37,8 +37,29 @@ const description = computed(() => (route.meta.description as string) ?? '')
       </p>
     </div>
 
-    <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2">
+    <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2 page-header-actions">
       <slot name="actions" />
     </div>
   </header>
 </template>
+
+<style scoped>
+/* Enforce strict design uniformity for any button placed in the page header actions slot */
+.page-header-actions :deep(button),
+.page-header-actions :deep([role='button']) {
+  height: 2rem !important; /* h-8 */
+  padding-left: 0.75rem !important; /* px-3 */
+  padding-right: 0.75rem !important; /* px-3 */
+  font-size: 0.75rem !important; /* text-xs */
+  font-weight: 600 !important; /* font-semibold */
+  gap: 0.375rem !important; /* gap-1.5 */
+  border-radius: 0.375rem !important; /* rounded-md */
+}
+
+/* Enforce uniform icon size */
+.page-header-actions :deep(button svg),
+.page-header-actions :deep([role='button'] svg) {
+  width: 0.9375rem !important; /* 15px */
+  height: 0.9375rem !important; /* 15px */
+}
+</style>

@@ -12,6 +12,7 @@ const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'compliance-frameworks': () => import('@/views/compliance/FrameworksPage.vue'),
   'compliance-framework-requirements': () =>
     import('@/views/compliance/FrameworkRequirementsPage.vue'),
+  'compliance-evidence': () => import('@/views/compliance/EvidencePage.vue'),
   'compliance-documents': () => import('@/views/compliance/DocumentsPage.vue'),
   'settings-profile': () => import('@/views/settings/ProfileSettings.vue'),
   'settings-account': () => import('@/views/settings/AccountSettings.vue'),

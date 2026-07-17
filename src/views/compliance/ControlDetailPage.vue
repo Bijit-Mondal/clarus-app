@@ -31,6 +31,13 @@ import {
   useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
 import { useControlTasksQuery } from '@/composables/useTasks'
+import {
+  useControlEvidencesQuery,
+  useDeleteEvidenceMutation,
+  useDownloadEvidenceMutation,
+} from '@/composables/useEvidence'
+import AddEvidenceDialog from '@/components/compliance/AddEvidenceDialog.vue'
+import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
 
 import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
 import type { LinkItem } from '@/components/compliance/types'
@@ -45,7 +52,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -136,18 +142,6 @@ const control = computed(() => {
     thirdParties: [] as ThirdParty[],
   }
 })
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-})
-function formatDate(iso: string) {
-  if (!iso) return 'N/A'
-  const date = new Date(iso)
-  if (isNaN(date.getTime())) return 'N/A'
-  return dateFormatter.format(date)
-}
 
 // Active Tab
 const activeTab = ref<
@@ -260,28 +254,40 @@ function deleteControl() {
   }
 }
 
+// Fetch real control evidences
+const { data: evidencesData, isPending: isEvidencesLoading } = useControlEvidencesQuery(controlDbId)
+const controlEvidences = computed(() => evidencesData.value?.evidences || [])
+
+const deleteEvidenceMutation = useDeleteEvidenceMutation()
+const downloadEvidenceMutation = useDownloadEvidenceMutation()
+
 // Evidence Dialog State
 const isEvidenceDialogOpen = ref(false)
-const evDescription = ref('')
-const evFileType = ref('PDF')
-const evFileSize = ref('1.5 MB')
 
 function openEvidenceDialog() {
-  evDescription.value = ''
-  evFileType.value = 'PDF'
-  evFileSize.value = '1.5 MB'
   isEvidenceDialogOpen.value = true
 }
 
-function submitEvidence() {
-  if (!evDescription.value.trim()) return
-  if (control.value) {
-    controlsStore.addEvidence(control.value.code, {
-      description: evDescription.value.trim(),
-      fileType: evFileType.value,
-      fileSize: evFileSize.value,
-    })
-    isEvidenceDialogOpen.value = false
+async function removeEvidence(id: string) {
+  if (confirm('Are you sure you want to delete this evidence?')) {
+    try {
+      await deleteEvidenceMutation.mutateAsync(id)
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Failed to delete evidence.'))
+    }
+  }
+}
+
+const downloadingId = ref<string | null>(null)
+
+async function downloadFile(evidenceId: string) {
+  downloadingId.value = evidenceId
+  try {
+    await downloadEvidenceMutation.mutateAsync(evidenceId)
+  } catch (err) {
+    alert(getApiErrorMessage(err, 'Failed to download evidence file.'))
+  } finally {
+    downloadingId.value = null
   }
 }
 
@@ -584,7 +590,7 @@ function goToRequirement(map: ControlRequirementMap) {
       <div class="flex border-b border-border overflow-x-auto scrollbar-none" role="tablist">
         <button
           v-for="t in [
-            { id: 'evidences', label: 'Evidences', count: control.evidences.length },
+            { id: 'evidences', label: 'Evidences', count: controlEvidences.length },
             { id: 'tasks', label: 'Tasks', count: controlTasksCount },
             { id: 'requirements', label: 'Requirements', count: requirements.length },
             { id: 'risks', label: 'Risks', count: control.risks.length },
@@ -624,74 +630,15 @@ function goToRequirement(map: ControlRequirementMap) {
       <div class="rounded-lg border border-border bg-card overflow-hidden">
         <!-- Evidence Tab -->
         <div v-if="activeTab === 'evidences'">
-          <table v-if="control.evidences.length" class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5">Description</th>
-                <th class="px-5 py-2.5">File type</th>
-                <th class="px-5 py-2.5">File size</th>
-                <th class="px-5 py-2.5">Created at</th>
-                <th class="px-5 py-2.5 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="e in control.evidences"
-                :key="e.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td class="px-5 py-3.5 font-medium text-foreground">{{ e.description }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground font-mono text-xs">
-                  {{ e.fileType }}
-                </td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
-                  {{ e.fileSize }}
-                </td>
-                <td class="px-5 py-3.5 text-muted-foreground tabular-nums text-xs">
-                  {{ formatDate(e.createdAt) }}
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        @click="controlsStore.removeEvidence(control.code, e.id)"
-                      >
-                        <PhTrash :size="14" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Unlink evidence</TooltipContent>
-                  </Tooltip>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhFileText :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No evidence linked yet</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link documents, settings reports or file logs to satisfy this control.
-            </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="openEvidenceDialog"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Add evidence
-            </Button>
-          </div>
+          <EvidenceTab
+            :evidences="controlEvidences"
+            :is-loading="isEvidencesLoading"
+            :downloading-id="downloadingId"
+            empty-description="Link documents, settings reports or file logs to satisfy this control."
+            @download="downloadFile"
+            @delete="removeEvidence"
+            @add="openEvidenceDialog"
+          />
         </div>
 
         <!-- Tasks Tab -->
@@ -1117,55 +1064,7 @@ function goToRequirement(map: ControlRequirementMap) {
     </Dialog>
 
     <!-- Evidence Dialog -->
-    <Dialog :open="isEvidenceDialogOpen" @update:open="isEvidenceDialogOpen = $event">
-      <DialogContent class="sm:max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle>Add Evidence Document</DialogTitle>
-          <DialogDescription
-            >Simulate uploading an evidence report or settings snapshot.</DialogDescription
-          >
-        </DialogHeader>
-        <form @submit.prevent="submitEvidence" class="space-y-4 py-3">
-          <div class="space-y-1.5">
-            <Label for="ev-desc">Evidence Description</Label>
-            <Input
-              id="ev-desc"
-              v-model="evDescription"
-              placeholder="e.g. AWS Security Group configs Q2"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <Label for="ev-type">File Type</Label>
-              <Select v-model="evFileType">
-                <SelectTrigger id="ev-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PDF">PDF</SelectItem>
-                  <SelectItem value="Spreadsheet">Spreadsheet</SelectItem>
-                  <SelectItem value="Image">Image</SelectItem>
-                  <SelectItem value="JSON">JSON / Configuration</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div class="space-y-1.5">
-              <Label for="ev-size">File Size</Label>
-              <Input id="ev-size" v-model="evFileSize" placeholder="e.g. 1.2 MB" />
-            </div>
-          </div>
-          <DialogFooter class="pt-4 border-t border-border">
-            <Button type="button" variant="outline" size="sm" @click="isEvidenceDialogOpen = false"
-              >Cancel</Button
-            >
-            <Button type="submit" size="sm" class="bg-primary text-primary-foreground"
-              >Add evidence</Button
-            >
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <AddEvidenceDialog v-model:open="isEvidenceDialogOpen" :tenant-control-id="controlDbId" />
 
     <LinkItemDialog
       :isOpen="isRequirementDialogOpen"

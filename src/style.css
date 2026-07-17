@@ -216,6 +216,9 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-success-emphasis: var(--success-emphasis);
+  --color-warning-emphasis: var(--warning-emphasis);
+  --color-destructive-emphasis: var(--destructive-emphasis);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
