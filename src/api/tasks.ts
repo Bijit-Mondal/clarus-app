@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api'
+import type { TenantControlsResponse } from '@/api/controls'
 
 export type TenantTask = {
   $id: string
@@ -81,6 +82,14 @@ export function getControlTasks(
 
 export function getTenantTask(tenantId: string, taskId: string) {
   return apiRequest<TenantTask>(`/v1/tenants/frameworks/tasks/${taskId}`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}
+
+export function getTaskControls(tenantId: string, taskId: string) {
+  return apiRequest<TenantControlsResponse>(`/v1/tenants/frameworks/tasks/${taskId}/controls`, {
     headers: {
       'x-tenant-id': tenantId,
     },

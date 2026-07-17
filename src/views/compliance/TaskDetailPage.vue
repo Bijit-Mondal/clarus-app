@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhCaretRight,
@@ -10,9 +10,7 @@ import {
   PhWarning,
   PhClock,
   PhCheckCircle,
-  PhDownload,
   PhSliders,
-  PhLink,
   PhFolderOpen,
   PhUser,
   PhBuildings,
@@ -20,8 +18,11 @@ import {
   PhCircle,
   PhWarningCircle,
 } from '@phosphor-icons/vue'
-import { useTenantTaskQuery, useUpdateTenantTaskMutation } from '@/composables/useTasks'
-import { useTenantControlsQuery } from '@/composables/useControls'
+import {
+  useTenantTaskQuery,
+  useUpdateTenantTaskMutation,
+  useTaskControlsQuery,
+} from '@/composables/useTasks'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import TaskDialog from '@/components/compliance/TaskDialog.vue'
 import TaskStatusBadge from '@/components/compliance/TaskStatusBadge.vue'
@@ -59,9 +60,9 @@ const { data: task, isPending: isTaskLoading, isError, error } = useTenantTaskQu
 // Update task mutation
 const updateTaskMutation = useUpdateTenantTaskMutation()
 
-// Fetch tenant controls for linking controls
-const { data: controlsData } = useTenantControlsQuery(ref(100), ref(0))
-const allControls = computed(() => controlsData.value?.tenantControls || [])
+// Fetch task controls
+const { data: taskControlsData, isPending: isControlsLoading } = useTaskControlsQuery(taskId)
+const taskControls = computed(() => taskControlsData.value?.tenantControls || [])
 
 // Back navigation
 function goBack() {
@@ -118,24 +119,23 @@ const statusConfig = computed(() => {
   }
 })
 
+interface EditTaskPayload {
+  title?: string
+  description?: string
+  status?: string
+  assigneeId?: string | null
+  department?: string
+  type?: string
+  frequency?: string
+}
+
 // Update status
-function onStatusChange(newStatus: any) {
+function onStatusChange(newStatus: unknown) {
   if (!task.value) return
   updateTaskMutation.mutate({
     taskId: taskId.value,
     updates: {
       status: String(newStatus),
-    },
-  })
-}
-
-// Update assignee
-function onAssigneeChange(newAssigneeId: any) {
-  if (!task.value) return
-  updateTaskMutation.mutate({
-    taskId: taskId.value,
-    updates: {
-      assigneeId: newAssigneeId === 'unassigned' ? null : String(newAssigneeId),
     },
   })
 }
@@ -147,7 +147,7 @@ function openEditDialog() {
   isEditDialogOpen.value = true
 }
 
-function saveEdit(payload: any) {
+function saveEdit(payload: EditTaskPayload) {
   if (!task.value) return
   const updates = {
     title: payload.title,
@@ -192,22 +192,14 @@ const mockEvidences = ref([
   },
 ])
 
-const mockControls = ref([
-  {
-    id: 'c-1',
-    controlKey: 'CC6.1',
-    name: 'Access Authorization & Role Management',
-    implementationStatus: 'implemented',
-  },
-  {
-    id: 'c-2',
-    controlKey: 'CC6.3',
-    name: 'Access Modification & Offboarding Reviews',
-    implementationStatus: 'in_progress',
-  },
-])
-
-const mockDocuments = ref([
+const mockDocuments = ref<
+  Array<{
+    id: string
+    name: string
+    version: string
+    status: 'Approved' | 'Under Review' | 'Draft'
+  }>
+>([
   {
     id: 'doc-1',
     name: 'Secrets Management Policy & Procedures',
@@ -251,44 +243,11 @@ function removeEvidence(id: string) {
   mockEvidences.value = mockEvidences.value.filter((e) => e.id !== id)
 }
 
-// Link Control Dialog
-const isControlDialogOpen = ref(false)
-const selectedControlId = ref('')
-
-const availableControlsToLink = computed(() => {
-  return allControls.value.filter(
-    (c) => !mockControls.value.some((mc) => mc.controlKey === c.controlKey),
-  )
-})
-
-function openControlDialog() {
-  selectedControlId.value = ''
-  isControlDialogOpen.value = true
-}
-
-function handleLinkControl() {
-  if (!selectedControlId.value) return
-  const controlToLink = allControls.value.find((c) => c.$id === selectedControlId.value)
-  if (controlToLink) {
-    mockControls.value.push({
-      id: controlToLink.$id,
-      controlKey: controlToLink.controlKey,
-      name: controlToLink.name,
-      implementationStatus: controlToLink.implementationStatus,
-    })
-  }
-  isControlDialogOpen.value = false
-}
-
-function unlinkControl(controlKey: string) {
-  mockControls.value = mockControls.value.filter((c) => c.controlKey !== controlKey)
-}
-
 // Link Document Dialog
 const isDocumentDialogOpen = ref(false)
 const newDocName = ref('')
 const newDocVersion = ref('v1.0')
-const newDocStatus = ref('Draft')
+const newDocStatus = ref<'Draft' | 'Under Review' | 'Approved'>('Draft')
 
 function openDocumentDialog() {
   newDocName.value = ''
@@ -303,7 +262,7 @@ function handleLinkDocument() {
     id: `doc-${Date.now()}`,
     name: newDocName.value.trim(),
     version: newDocVersion.value,
-    status: newDocStatus.value as any,
+    status: newDocStatus.value,
   })
   isDocumentDialogOpen.value = false
 }
@@ -491,7 +450,7 @@ function getDocStatusClass(status: string) {
         <button
           v-for="t in [
             { id: 'evidences', label: 'Evidence', count: mockEvidences.length },
-            { id: 'controls', label: 'Controls', count: mockControls.length },
+            { id: 'controls', label: 'Controls', count: taskControls.length },
             { id: 'documents', label: 'Documents', count: mockDocuments.length },
           ]"
           :key="t.id"
@@ -599,84 +558,70 @@ function getDocStatusClass(status: string) {
 
         <!-- Controls Tab -->
         <div v-if="activeTab === 'controls'">
-          <table v-if="mockControls.length" class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5 w-[20%]">Control ID</th>
-                <th class="px-5 py-2.5 w-[60%]">Name</th>
-                <th class="px-5 py-2.5 w-[15%]">Status</th>
-                <th class="px-5 py-2.5 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="c in mockControls"
-                :key="c.controlKey"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td class="px-5 py-3.5 align-top">
-                  <span
-                    class="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground uppercase leading-none"
-                  >
-                    {{ c.controlKey }}
-                  </span>
-                </td>
-                <td class="px-5 py-3.5">
-                  <router-link
-                    :to="{
-                      name: 'compliance-control-detail',
-                      params: { organizationSlug: orgSlug, controlId: c.controlKey },
-                    }"
-                    class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
-                  >
-                    {{ c.name }}
-                  </router-link>
-                </td>
-                <td class="px-5 py-3.5">
-                  <span
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border capitalize"
-                    :class="getControlStatusClass(c.implementationStatus)"
-                  >
-                    {{ c.implementationStatus.replace('_', ' ') }}
-                  </span>
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="unlinkControl(c.controlKey)"
-                  >
-                    <PhTrash :size="14" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhShieldCheck :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No controls linked</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link this task to framework controls to establish your compliance posture.
-            </p>
+          <div
+            v-if="isControlsLoading"
+            class="py-14 flex flex-col items-center justify-center text-center"
+          >
+            <p class="text-xs text-muted-foreground">Loading controls...</p>
           </div>
-          <div class="border-t border-border p-3 flex justify-center bg-muted/5">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 font-semibold"
-              @click="openControlDialog"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Link control
-            </Button>
-          </div>
+          <template v-else>
+            <table v-if="taskControls.length" class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr
+                  class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
+                >
+                  <th class="px-5 py-2.5 w-[25%]">Control ID</th>
+                  <th class="px-5 py-2.5 w-[55%]">Name</th>
+                  <th class="px-5 py-2.5 w-[20%]">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="c in taskControls"
+                  :key="c.controlKey"
+                  class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
+                >
+                  <td class="px-5 py-3.5 align-top">
+                    <span
+                      class="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground uppercase leading-none"
+                    >
+                      {{ c.controlKey }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <router-link
+                      :to="{
+                        name: 'compliance-control-detail',
+                        params: { organizationSlug: orgSlug, controlId: c.controlKey },
+                      }"
+                      class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
+                    >
+                      {{ c.name }}
+                    </router-link>
+                  </td>
+                  <td class="px-5 py-3.5">
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border capitalize"
+                      :class="getControlStatusClass(c.implementationStatus)"
+                    >
+                      {{ c.implementationStatus.replace('_', ' ') }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else class="py-14 flex flex-col items-center justify-center text-center">
+              <span
+                class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
+              >
+                <PhShieldCheck :size="22" />
+              </span>
+              <p class="text-sm font-medium text-foreground">No controls linked</p>
+              <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
+                No controls are currently linked to this task.
+              </p>
+            </div>
+          </template>
         </div>
 
         <!-- Documents Tab -->
@@ -794,54 +739,6 @@ function getDocStatusClass(status: string) {
               Cancel
             </Button>
             <Button type="submit" size="sm"> Add Evidence </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    <!-- Link Control Dialog -->
-    <Dialog :open="isControlDialogOpen" @update:open="isControlDialogOpen = $event">
-      <DialogContent class="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Link Control</DialogTitle>
-          <DialogDescription>
-            Map this task to one of the active tenant controls.
-          </DialogDescription>
-        </DialogHeader>
-        <form @submit.prevent="handleLinkControl" class="space-y-4 py-3">
-          <div class="space-y-1.5">
-            <Label for="control-select" class="text-xs font-semibold text-foreground"
-              >Select Control</Label
-            >
-            <Select v-model="selectedControlId">
-              <SelectTrigger id="control-select" class="w-full text-left">
-                <SelectValue placeholder="Choose a control..." />
-              </SelectTrigger>
-              <SelectContent class="max-h-[220px]">
-                <SelectItem v-for="c in availableControlsToLink" :key="c.$id" :value="c.$id">
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="font-mono text-[10px] font-bold text-muted-foreground uppercase bg-muted px-1.5 py-0.25 rounded border border-border"
-                    >
-                      {{ c.controlKey }}
-                    </span>
-                    <span class="truncate">{{ c.name }}</span>
-                  </div>
-                </SelectItem>
-                <div
-                  v-if="!availableControlsToLink.length"
-                  class="p-3 text-center text-xs text-muted-foreground"
-                >
-                  No unlinked controls available.
-                </div>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter class="pt-3">
-            <Button type="button" variant="outline" size="sm" @click="isControlDialogOpen = false">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" :disabled="!selectedControlId"> Link Control </Button>
           </DialogFooter>
         </form>
       </DialogContent>
