@@ -50,7 +50,7 @@ function goToPage(pageId: string) {
       <DropdownMenuItem
         v-for="page in module.pages"
         :key="page.id"
-        :class="activePageId === page.id ? 'bg-accent' : ''"
+        :class="activePageId === page.id ? 'bg-accent text-accent-foreground' : ''"
         @select="goToPage(page.id)"
       >
         {{ page.label }}

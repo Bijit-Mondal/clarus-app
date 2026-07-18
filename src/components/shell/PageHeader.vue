@@ -53,7 +53,7 @@ const description = computed(() => (route.meta.description as string) ?? '')
   font-size: 0.75rem !important; /* text-xs */
   font-weight: 600 !important; /* font-semibold */
   gap: 0.375rem !important; /* gap-1.5 */
-  border-radius: 0.375rem !important; /* rounded-md */
+  border-radius: var(--radius-md) !important;
 }
 
 /* Enforce uniform icon size */
