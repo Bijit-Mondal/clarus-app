@@ -115,6 +115,13 @@ function getUserInitials(name: string) {
     .slice(0, 2)
 }
 
+function getCategoryLabel(category: string) {
+  if (category === 'policy') return 'Policies'
+  if (category === 'procedure') return 'Procedures'
+  if (category === 'sop') return 'SOPs'
+  return `${category}s`
+}
+
 // Title Edit state
 const isEditingTitle = ref(false)
 const titleInput = ref('')
@@ -302,216 +309,173 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
 </script>
 
 <template>
-  <div v-if="documentItem" class="flex flex-col gap-6">
-    <!-- Breadcrumbs & Actions Header -->
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <!-- Left side: Breadcrumb & Title -->
-      <div class="flex flex-col gap-1.5">
-        <nav
-          class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-          aria-label="Breadcrumb"
+  <div v-if="documentItem" class="flex flex-col gap-5">
+    <header class="flex flex-col gap-5">
+      <nav class="flex items-center gap-2 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <router-link
+          :to="{ name: 'compliance-documents', params: { organizationSlug: orgSlug } }"
+          class="font-medium transition-colors hover:text-foreground capitalize"
         >
-          <router-link
-            :to="{ name: 'compliance-documents', params: { organizationSlug: orgSlug } }"
-            class="hover:text-foreground transition-colors capitalize"
-          >
-            {{ documentItem.category }}s
-          </router-link>
-          <PhCaretRight :size="10" class="text-muted-foreground/60" />
-          <span class="text-foreground max-w-[200px] truncate">{{ documentItem.title }}</span>
-        </nav>
+          {{ getCategoryLabel(documentItem.category) }}
+        </router-link>
+        <PhCaretRight :size="13" class="text-muted-foreground/60" aria-hidden="true" />
+        <span class="max-w-[min(48vw,420px)] truncate font-medium text-foreground">{{ documentItem.title }}</span>
+      </nav>
 
-        <div class="flex items-center gap-2.5">
-          <button
-            @click="goBack"
-            class="mr-1 flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <PhArrowLeft :size="14" />
-          </button>
-
-          <!-- Editable Title -->
-          <div v-if="isEditingTitle" class="flex items-center gap-2">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="min-w-0">
+          <div class="mb-2 flex items-center gap-2">
+            <Badge
+              variant="outline"
+              :class="[
+                'gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+                statusConfig.class,
+              ]"
+            >
+              <component :is="statusConfig.icon" :size="13" weight="fill" />
+              {{ statusConfig.label }}
+            </Badge>
+            <span class="text-xs text-muted-foreground">{{ documentItem.code }}</span>
+          </div>
+          <div v-if="isEditingTitle" class="flex max-w-2xl flex-wrap items-center gap-2">
             <Input
               v-model="titleInput"
-              class="h-9 w-[300px] text-lg font-semibold"
+              class="h-10 min-w-[240px] flex-1 text-xl font-semibold md:text-2xl"
               @keydown.enter="saveTitle"
               @keydown.escape="isEditingTitle = false"
               v-focus
             />
-            <Button size="sm" class="h-9 px-3" @click="saveTitle">Save</Button>
-            <Button size="sm" variant="ghost" class="h-9 px-3" @click="isEditingTitle = false"
-              >Cancel</Button
-            >
+            <Button size="sm" class="h-10 px-4" @click="saveTitle">Save</Button>
+            <Button size="sm" variant="ghost" class="h-10 px-3" @click="isEditingTitle = false">Cancel</Button>
           </div>
-          <div v-else class="flex items-center gap-2 group">
-            <h1 class="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+          <div v-else class="group flex items-center gap-2">
+            <h1 class="min-w-0 truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
               {{ documentItem.title }}
             </h1>
             <button
+              type="button"
+              class="shrink-0 rounded-md p-2 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+              aria-label="Edit document title"
+              title="Edit title"
               @click="startEditingTitle"
-              class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
-              title="Edit Title"
             >
               <PhPencilSimple :size="16" />
             </button>
           </div>
+          <p class="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Manage the controlled content, ownership, and review state for this document.
+          </p>
+        </div>
 
-          <Badge
-            variant="outline"
-            :class="[
-              'gap-1 capitalize py-0.5 px-2 rounded-full font-medium text-xs',
-              statusConfig.class,
-            ]"
+        <div class="flex flex-wrap items-center gap-2 lg:shrink-0">
+          <Button size="sm" class="h-9 gap-1.5 px-3.5" @click="openPublishDialog">
+            <PhUploadSimple :size="15" weight="bold" />
+            Publish
+          </Button>
+          <Button variant="outline" size="sm" class="h-9 gap-1.5" @click="activeTab = 'versions'">
+            <PhClock :size="15" />
+            Version history
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="outline" size="icon-sm" class="size-9" aria-label="More document actions">
+                <PhDotsThree :size="18" weight="bold" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-48">
+              <DropdownMenuItem @click="startEditingTitle" class="gap-2">
+                <PhPencilSimple :size="15" />
+                Rename document
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="updateMetadata('classification', 'Confidential')" class="gap-2">
+                <PhGear :size="15" />
+                Settings
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
+
+    <section class="overflow-hidden rounded-lg border border-border bg-card" aria-label="Document properties">
+      <div class="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-5">
+        <div class="min-w-0 p-4">
+          <Label for="meta-category" class="text-xs font-medium text-muted-foreground">Type</Label>
+          <Select
+            :model-value="documentItem.category"
+            @update:model-value="(val) => updateMetadata('category', val)"
           >
-            <component :is="statusConfig.icon" :size="12" weight="fill" />
-            {{ statusConfig.label }}
-          </Badge>
+            <SelectTrigger id="meta-category" class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent class="text-sm">
+              <SelectItem value="policy">Policy</SelectItem>
+              <SelectItem value="procedure">Procedure</SelectItem>
+              <SelectItem value="sop">SOP</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      <!-- Right side: Actions -->
-      <div class="flex items-center gap-2">
-        <Button size="sm" class="gap-1.5" @click="openPublishDialog">
-          <PhUploadSimple :size="15" weight="bold" />
-          Publish
-        </Button>
-
-        <Button variant="outline" size="sm" class="gap-1.5" @click="activeTab = 'versions'">
-          <PhClock :size="15" />
-          Version history
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="icon-sm" class="size-9">
-              <PhDotsThree :size="18" weight="bold" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" class="w-48">
-            <DropdownMenuItem @click="startEditingTitle" class="gap-2">
-              <PhPencilSimple :size="15" />
-              Rename document
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              @click="updateMetadata('classification', 'Confidential')"
-              class="gap-2"
-            >
-              <PhGear :size="15" />
-              Settings
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-
-    <!-- Metadata Card / Properties (matches document_probo2.png) -->
-    <div class="rounded-lg border border-border bg-card p-5">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Left Side: Basic Meta Fields -->
-        <div class="flex flex-col gap-4">
-          <div class="grid grid-cols-3 items-center gap-4">
-            <Label
-              for="meta-category"
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >Type</Label
-            >
-            <div class="col-span-2">
-              <Select
-                :model-value="documentItem.category"
-                @update:model-value="(val) => updateMetadata('category', val)"
-              >
-                <SelectTrigger id="meta-category" class="h-8 text-xs">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent class="text-xs">
-                  <SelectItem value="policy">Policy</SelectItem>
-                  <SelectItem value="procedure">Procedure</SelectItem>
-                  <SelectItem value="sop">SOP (Standard Operating Procedure)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center gap-4">
-            <Label
-              for="meta-version"
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >Version</Label
-            >
-            <div class="col-span-2 text-sm font-mono text-foreground pl-3">
-              {{ documentItem.version }}
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 items-center gap-4">
-            <Label
-              for="meta-classification"
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              >Classification</Label
-            >
-            <div class="col-span-2">
-              <Select
-                :model-value="documentItem.classification"
-                @update:model-value="(val) => updateMetadata('classification', val)"
-              >
-                <SelectTrigger id="meta-classification" class="h-8 text-xs">
-                  <SelectValue placeholder="Select classification" />
-                </SelectTrigger>
-                <SelectContent class="text-xs">
-                  <SelectItem value="Public">Public</SelectItem>
-                  <SelectItem value="Internal">Internal</SelectItem>
-                  <SelectItem value="Confidential">Confidential</SelectItem>
-                  <SelectItem value="Restricted">Restricted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div class="p-4">
+          <span class="text-xs font-medium text-muted-foreground">Version</span>
+          <p class="mt-2 font-mono text-sm font-semibold text-foreground">{{ documentItem.version }}</p>
+        </div>
+        <div class="min-w-0 p-4">
+          <Label for="meta-classification" class="text-xs font-medium text-muted-foreground">Classification</Label>
+          <Select
+            :model-value="documentItem.classification"
+            @update:model-value="(val) => updateMetadata('classification', val)"
+          >
+            <SelectTrigger id="meta-classification" class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2">
+              <SelectValue placeholder="Select classification" />
+            </SelectTrigger>
+            <SelectContent class="text-sm">
+              <SelectItem value="Public">Public</SelectItem>
+              <SelectItem value="Internal">Internal</SelectItem>
+              <SelectItem value="Confidential">Confidential</SelectItem>
+              <SelectItem value="Restricted">Restricted</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div class="p-4">
+          <span class="text-xs font-medium text-muted-foreground">Owner</span>
+          <div class="mt-2 flex items-center gap-2">
+            <Avatar class="size-7">
+              <AvatarFallback class="bg-secondary text-[10px] font-semibold text-secondary-foreground">
+                {{ getUserInitials(documentItem.owner) }}
+              </AvatarFallback>
+            </Avatar>
+            <span class="truncate text-sm font-medium text-foreground">{{ documentItem.owner }}</span>
           </div>
         </div>
-
-        <!-- Right Side: Approvers & Owner -->
-        <div class="flex flex-col gap-4">
-          <div class="grid grid-cols-3 items-start gap-4">
-            <Label
-              class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1.5"
-              >Owner</Label
-            >
-            <div class="col-span-2 flex items-center gap-2">
-              <Avatar class="size-7">
-                <AvatarFallback
-                  class="text-[10px] bg-secondary text-secondary-foreground font-semibold"
-                >
-                  {{ getUserInitials(documentItem.owner) }}
-                </AvatarFallback>
-              </Avatar>
-              <span class="text-sm font-medium text-foreground">{{ documentItem.owner }}</span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 items-start gap-4">
-            <Label class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1"
-              >Approvers</Label
-            >
-            <div class="col-span-2 flex flex-wrap gap-1.5 items-center">
+        <div class="min-w-0 p-4 sm:col-span-2 lg:col-span-1">
+          <span class="text-xs font-medium text-muted-foreground">Approvers</span>
+          <div class="mt-2 flex min-h-7 items-center gap-1.5">
+            <div class="flex min-w-0 flex-wrap gap-1">
               <Badge
-                v-for="app in documentItem.approvers"
+                v-for="app in documentItem.approvers.slice(0, 2)"
                 :key="app"
                 variant="secondary"
-                class="gap-1 rounded-sm text-xs py-0.5 px-2 bg-secondary text-secondary-foreground font-medium"
+                class="max-w-[110px] truncate rounded-md px-2 py-1 text-xs font-medium"
               >
                 {{ app }}
               </Badge>
-              <button
-                @click="openPublishDialog"
-                class="flex size-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground transition-colors"
-                title="Manage Approvers"
-              >
-                <PhPencilSimple :size="12" />
-              </button>
+              <span v-if="documentItem.approvers.length > 2" class="self-center text-xs text-muted-foreground">
+                +{{ documentItem.approvers.length - 2 }}
+              </span>
             </div>
+            <button
+              type="button"
+              class="ml-auto flex size-7 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Manage approvers"
+              title="Manage approvers"
+              @click="openPublishDialog"
+            >
+              <PhPencilSimple :size="13" />
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Navigation Tabs -->
     <div class="flex border-b border-border">
@@ -611,12 +575,12 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
       </div>
 
       <!-- Content/Editor Tab -->
-      <div v-if="activeTab === 'content'" class="flex flex-col gap-3">
+      <div v-if="activeTab === 'content'" class="flex flex-col gap-4">
         <!-- Editor Status bar -->
-        <div class="flex items-center justify-between px-1 text-xs">
-          <div class="flex items-center gap-1.5 text-muted-foreground">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-1 text-xs">
+          <div class="flex items-center gap-2 text-muted-foreground" aria-live="polite">
             <div
-              class="size-2 rounded-full"
+              class="size-2 rounded-full ring-2 ring-background"
               :class="
                 saveStatus === 'saved'
                   ? 'bg-success'
@@ -625,11 +589,11 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
                     : 'bg-muted'
               "
             />
-            <span v-if="saveStatus === 'saved'">Changes saved automatically</span>
-            <span v-else-if="saveStatus === 'saving'">Saving changes...</span>
+            <span v-if="saveStatus === 'saved'">All changes saved</span>
+            <span v-else-if="saveStatus === 'saving'">Saving changes…</span>
             <span v-else>Unsaved changes</span>
           </div>
-          <span class="font-mono text-muted-foreground/80">Press Ctrl+S to force save</span>
+          <span class="text-muted-foreground/70">Autosaves as you type</span>
         </div>
 
         <DocumentEditor v-model="documentItem.content" />

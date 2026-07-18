@@ -12,11 +12,9 @@ import {
   PhLink,
   PhDownload,
   PhArrowUpRight,
-  PhSliders,
   PhX,
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useDocuments } from '@/composables/useDocuments'
+import { useDocuments, type DocumentItem } from '@/composables/useDocuments'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,7 +45,7 @@ const { documents, createDocument } = useDocuments()
 // Search & filter state
 const searchQuery = ref('')
 const activeCategory = ref<'all' | 'policy' | 'procedure' | 'sop'>('all')
-const activeStatus = ref<'all' | 'approved' | 'in-review' | 'draft'>('all')
+const activeStatus = ref<string>('all')
 
 const filteredDocuments = computed(() => {
   return documents.value.filter((doc) => {
@@ -85,10 +83,49 @@ const statusFilters = [
   { id: 'draft', label: 'Draft' },
 ] as const
 
+const documentStatusConfig = {
+  approved: {
+    label: 'Approved',
+    icon: PhCheckCircle,
+    base: 'var(--success-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+  'in-review': {
+    label: 'In review',
+    icon: PhClock,
+    base: 'var(--warning-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+  draft: {
+    label: 'Draft',
+    icon: PhNoteBlank,
+    base: 'var(--muted-foreground)',
+    iconWeight: 'regular' as const,
+  },
+} as const
+
 function resetFilters() {
   searchQuery.value = ''
   activeCategory.value = 'all'
   activeStatus.value = 'all'
+}
+
+function goToDetail(doc: DocumentItem) {
+  void router.push({
+    name: 'compliance-document-detail',
+    params: {
+      organizationSlug: orgSlug.value,
+      documentId: doc.id,
+    },
+  })
+}
+
+function downloadDocument(doc: DocumentItem) {
+  alert(`Downloading ${doc.title} (${doc.fileSize})...`)
+}
+
+function exportIndex() {
+  alert('Exporting document index...')
 }
 
 // Add Document Dialog state
@@ -144,12 +181,21 @@ function handleCreateDocument() {
   <div>
     <PageHeader>
       <template #actions>
-        <Button variant="outline" size="sm">
-          <PhDownload :size="16" aria-hidden="true" />
+        <Button
+          variant="outline"
+          size="sm"
+          class="gap-1.5 font-semibold text-xs"
+          @click="exportIndex"
+        >
+          <PhDownload :size="15" aria-hidden="true" />
           Export index
         </Button>
-        <Button size="sm" @click="openAddDialog">
-          <PhPlus :size="16" weight="bold" aria-hidden="true" />
+        <Button
+          size="sm"
+          class="gap-1.5 font-semibold text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+          @click="openAddDialog"
+        >
+          <PhPlus :size="15" weight="bold" aria-hidden="true" />
           Add document
         </Button>
       </template>
@@ -177,7 +223,7 @@ function handleCreateDocument() {
     <div class="rounded-lg border border-border bg-card">
       <!-- Toolbar -->
       <div
-        class="flex flex-col gap-4 border-b border-border p-4 md:flex-row md:items-center md:justify-between"
+        class="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <!-- Category switcher -->
         <nav class="flex items-center gap-1.5" aria-label="Category navigation">
@@ -185,7 +231,7 @@ function handleCreateDocument() {
             v-for="cat in categories"
             :key="cat.id"
             type="button"
-            class="rounded-md px-3 py-1.5 text-sm font-medium transition-all"
+            class="rounded-md px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             :class="
               activeCategory === cat.id
                 ? 'bg-secondary text-secondary-foreground shadow-2xs'
@@ -198,7 +244,9 @@ function handleCreateDocument() {
         </nav>
 
         <!-- Search & Custom Filters -->
-        <div class="flex flex-1 items-center justify-end gap-3 md:max-w-md">
+        <div
+          class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end flex-1 sm:max-w-md"
+        >
           <div class="relative w-full">
             <PhMagnifyingGlass
               :size="16"
@@ -207,7 +255,7 @@ function handleCreateDocument() {
             />
             <Input
               v-model="searchQuery"
-              class="pl-9"
+              class="pl-9 bg-background"
               placeholder="Search code, title or description..."
             />
             <button
@@ -221,23 +269,20 @@ function handleCreateDocument() {
             </button>
           </div>
 
-          <div class="flex items-center gap-1.5">
-            <span
-              class="flex size-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground"
-              aria-hidden="true"
-            >
-              <PhSliders :size="16" />
-            </span>
-            <select
-              v-model="activeStatus"
-              class="h-9 rounded-md border border-border bg-background px-3 py-1 text-sm font-medium text-foreground focus-visible:ring-2 focus-visible:ring-success focus-visible:outline-hidden"
+          <Select v-model="activeStatus">
+            <SelectTrigger
+              size="sm"
+              class="w-full sm:w-[140px] bg-background border-border shrink-0"
               aria-label="Filter by status"
             >
-              <option v-for="status in statusFilters" :key="status.id" :value="status.id">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="status in statusFilters" :key="status.id" :value="status.id">
                 {{ status.label }}
-              </option>
-            </select>
-          </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -245,42 +290,28 @@ function handleCreateDocument() {
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
-            <tr class="border-b border-border bg-muted/30">
-              <th
-                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                Document
-              </th>
-              <th
-                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                Status
-              </th>
-              <th
-                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                Owner
-              </th>
-              <th
-                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                Mapped Controls
-              </th>
-              <th
-                class="px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                Updated
-              </th>
-              <th class="relative px-5 py-3">
-                <span class="sr-only">Actions</span>
-              </th>
+            <tr
+              class="border-b border-border bg-muted/20 text-xs text-muted-foreground font-medium"
+            >
+              <th class="px-5 py-3 w-[40%]">Document</th>
+              <th class="px-5 py-3 w-[15%]">Status</th>
+              <th class="px-5 py-3 w-[15%]">Owner</th>
+              <th class="px-5 py-3 w-[15%]">Mapped Controls</th>
+              <th class="px-5 py-3 w-[15%]">Updated</th>
+              <th class="relative px-5 py-3 w-[10%]"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border">
             <tr
               v-for="doc in filteredDocuments"
               :key="doc.id"
-              class="group hover:bg-muted/30 transition-colors"
+              class="group border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30 cursor-pointer focus-visible:bg-muted/30 focus-visible:outline-hidden"
+              tabindex="0"
+              role="button"
+              :aria-label="`Open details for document ${doc.code}: ${doc.title}`"
+              @click="goToDetail(doc)"
+              @keydown.enter="goToDetail(doc)"
+              @keydown.space.prevent="goToDetail(doc)"
             >
               <td class="px-5 py-4">
                 <div class="flex items-start gap-3">
@@ -294,47 +325,38 @@ function handleCreateDocument() {
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-xs text-muted-foreground">{{ doc.code }}</span>
                       <span
-                        class="text-xs font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider"
+                        class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground tracking-wide"
                       >
                         {{ doc.version }}
                       </span>
                     </div>
-                    <router-link
-                      :to="{
-                        name: 'compliance-document-detail',
-                        params: { organizationSlug: orgSlug, documentId: doc.id },
-                      }"
-                      class="block mt-1 font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                    <span
+                      class="block mt-1 font-medium text-foreground group-hover:text-primary transition-colors"
                     >
                       {{ doc.title }}
-                    </router-link>
+                    </span>
                     <p class="mt-0.5 text-xs text-muted-foreground line-clamp-1 max-w-lg">
                       {{ doc.description }}
                     </p>
                   </div>
                 </div>
               </td>
-              <td class="px-5 py-4 whitespace-nowrap">
-                <Badge
-                  v-if="doc.status === 'approved'"
-                  variant="outline"
-                  class="gap-1 border-success/30 bg-success/10 text-success-emphasis"
+              <td class="px-5 py-4 whitespace-nowrap" @click.stop>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, ${documentStatusConfig[doc.status].base} 15%, transparent)`,
+                    color: documentStatusConfig[doc.status].base,
+                  }"
                 >
-                  <PhCheckCircle :size="13" weight="fill" aria-hidden="true" />
-                  Approved
-                </Badge>
-                <Badge
-                  v-else-if="doc.status === 'in-review'"
-                  variant="outline"
-                  class="gap-1 border-warning/30 bg-warning/10 text-warning-emphasis"
-                >
-                  <PhClock :size="13" weight="fill" aria-hidden="true" />
-                  In review
-                </Badge>
-                <Badge v-else variant="secondary" class="gap-1 text-muted-foreground">
-                  <PhNoteBlank :size="13" aria-hidden="true" />
-                  Draft
-                </Badge>
+                  <component
+                    :is="documentStatusConfig[doc.status].icon"
+                    :size="13"
+                    :weight="documentStatusConfig[doc.status].iconWeight"
+                    aria-hidden="true"
+                  />
+                  {{ documentStatusConfig[doc.status].label }}
+                </span>
               </td>
               <td class="px-5 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-1.5 text-foreground">
@@ -352,30 +374,35 @@ function handleCreateDocument() {
               <td class="px-5 py-4 whitespace-nowrap text-muted-foreground">
                 {{ doc.updatedAt }}
               </td>
-              <td class="px-5 py-4 whitespace-nowrap text-right">
+              <td class="px-5 py-4 whitespace-nowrap text-right" @click.stop>
                 <div
-                  class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                 >
-                  <Button variant="ghost" size="icon" class="size-8" aria-label="Download document">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="size-8 text-muted-foreground hover:text-foreground"
+                    aria-label="Download document"
+                    @click.stop="downloadDocument(doc)"
+                  >
                     <PhDownload :size="15" />
                   </Button>
-                  <router-link
-                    :to="{
-                      name: 'compliance-document-detail',
-                      params: { organizationSlug: orgSlug, documentId: doc.id },
-                    }"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="size-8 text-muted-foreground hover:text-foreground"
+                    aria-label="View details"
+                    @click.stop="goToDetail(doc)"
                   >
-                    <Button variant="ghost" size="icon" class="size-8" aria-label="View details">
-                      <PhArrowUpRight :size="15" />
-                    </Button>
-                  </router-link>
+                    <PhArrowUpRight :size="15" />
+                  </Button>
                 </div>
               </td>
             </tr>
 
             <!-- Empty filter state -->
             <tr v-if="filteredDocuments.length === 0">
-              <td colspan="6" class="px-5 py-12 text-center">
+              <td colspan="6" class="px-5 py-16 text-center">
                 <div class="flex flex-col items-center justify-center gap-3">
                   <span
                     class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
@@ -388,7 +415,12 @@ function handleCreateDocument() {
                       Try updating your search query or adjusting your filters.
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" class="mt-2" @click="resetFilters">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="mt-2 text-xs font-semibold"
+                    @click="resetFilters"
+                  >
                     Clear all filters
                   </Button>
                 </div>
@@ -462,11 +494,16 @@ function handleCreateDocument() {
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" @click="isAddDialogOpen = false">Cancel</Button>
-          <Button :disabled="!newDocTitle.trim()" @click="handleCreateDocument"
-            >Create Document</Button
+        <DialogFooter class="pt-4 border-t border-border">
+          <Button variant="outline" size="sm" @click="isAddDialogOpen = false">Cancel</Button>
+          <Button
+            size="sm"
+            class="bg-primary text-primary-foreground hover:bg-primary/90"
+            :disabled="!newDocTitle.trim()"
+            @click="handleCreateDocument"
           >
+            Create Document
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

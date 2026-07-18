@@ -154,6 +154,15 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success-emphasis: var(--success-emphasis);
+  --color-warning-emphasis: var(--warning-emphasis);
+  --color-destructive-emphasis: var(--destructive-emphasis);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -188,6 +197,7 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+  --color-shadow-color: var(--shadow-color);
 }
 
 @layer base {
@@ -290,4 +300,13 @@
 
 .clarus-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground);
+}
+/*
+ * Lock page viewport height and hide scrollbars when inside the app dashboard shell,
+ * ensuring only the main-content scroll container handles page scrolling.
+ */
+html:has(.clarus-dashboard-shell),
+body:has(.clarus-dashboard-shell) {
+  overflow: hidden;
+  height: 100%;
 }
