@@ -33,6 +33,7 @@ import TaskDialog from '@/components/compliance/TaskDialog.vue'
 import TaskStatusBadge from '@/components/compliance/TaskStatusBadge.vue'
 import AddEvidenceDialog from '@/components/compliance/AddEvidenceDialog.vue'
 import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
+import ControlsTable from '@/components/compliance/ControlsTable.vue'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -267,13 +268,6 @@ function unlinkDocument(id: string) {
   mockDocuments.value = mockDocuments.value.filter((d) => d.id !== id)
 }
 
-function getControlStatusClass(status: string) {
-  if (status === 'implemented') return 'bg-success/10 text-success border-success/20'
-  if (status === 'in_progress' || status === 'partially_implemented' || status === 'needs_review')
-    return 'bg-warning/10 text-warning-emphasis border-warning/20'
-  return 'bg-muted text-muted-foreground border-border'
-}
-
 function getDocStatusClass(status: string) {
   if (status === 'Approved') return 'bg-success/10 text-success border-success/20'
   if (status === 'Under Review') return 'bg-warning/10 text-warning-emphasis border-warning/20'
@@ -482,70 +476,24 @@ function getDocStatusClass(status: string) {
 
         <!-- Controls Tab -->
         <div v-if="activeTab === 'controls'">
-          <div
-            v-if="isControlsLoading"
-            class="py-14 flex flex-col items-center justify-center text-center"
-          >
-            <p class="text-xs text-muted-foreground">Loading controls...</p>
+          <ControlsTable
+            v-if="isControlsLoading || taskControls.length"
+            :controls="taskControls"
+            :is-loading="isControlsLoading"
+            :show-actions="false"
+            :organization-slug="orgSlug"
+          />
+          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
+            <span
+              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
+            >
+              <PhShieldCheck :size="22" />
+            </span>
+            <p class="text-sm font-medium text-foreground">No controls linked</p>
+            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
+              No controls are currently linked to this task.
+            </p>
           </div>
-          <template v-else>
-            <table v-if="taskControls.length" class="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr
-                  class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-                >
-                  <th class="px-5 py-2.5 w-[25%]">Control ID</th>
-                  <th class="px-5 py-2.5 w-[55%]">Name</th>
-                  <th class="px-5 py-2.5 w-[20%]">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="c in taskControls"
-                  :key="c.controlKey"
-                  class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-                >
-                  <td class="px-5 py-3.5 align-top">
-                    <span
-                      class="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground uppercase leading-none"
-                    >
-                      {{ c.controlKey }}
-                    </span>
-                  </td>
-                  <td class="px-5 py-3.5">
-                    <router-link
-                      :to="{
-                        name: 'compliance-control-detail',
-                        params: { organizationSlug: orgSlug, controlId: c.controlKey },
-                      }"
-                      class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
-                    >
-                      {{ c.name }}
-                    </router-link>
-                  </td>
-                  <td class="px-5 py-3.5">
-                    <span
-                      class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border capitalize"
-                      :class="getControlStatusClass(c.implementationStatus)"
-                    >
-                      {{ c.implementationStatus.replace('_', ' ') }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-              <span
-                class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-              >
-                <PhShieldCheck :size="22" />
-              </span>
-              <p class="text-sm font-medium text-foreground">No controls linked</p>
-              <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-                No controls are currently linked to this task.
-              </p>
-            </div>
-          </template>
         </div>
 
         <!-- Documents Tab -->

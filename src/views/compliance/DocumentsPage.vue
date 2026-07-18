@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PhFileText,
   PhPlus,
@@ -18,99 +19,34 @@ import PageHeader from '@/components/shell/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useDocuments } from '@/composables/useDocuments'
 
-// Document representation
-interface DocumentItem {
-  id: string
-  code: string
-  title: string
-  description: string
-  category: 'policy' | 'procedure'
-  version: string
-  status: 'approved' | 'in-review' | 'draft'
-  owner: string
-  updatedAt: string
-  controlsCount: number
-  fileSize: string
-}
+const route = useRoute()
+const router = useRouter()
+const orgSlug = computed(() => (route.params.organizationSlug as string) || '')
 
-// Initial mockup data
-const initialDocuments: DocumentItem[] = [
-  {
-    id: 'doc-1',
-    code: 'POL-01',
-    title: 'Information Security Policy',
-    description:
-      'High-level security directives governing all organization compliance requirements.',
-    category: 'policy',
-    version: 'v2.4',
-    status: 'approved',
-    owner: 'Sarah Connor',
-    updatedAt: '3 days ago',
-    controlsCount: 8,
-    fileSize: '2.4 MB',
-  },
-  {
-    id: 'doc-2',
-    code: 'SOP-01',
-    title: 'Access Control Procedure',
-    description:
-      'Standard operating procedure for provisioning, reviewing, and deprovisioning user access.',
-    category: 'procedure',
-    version: 'v1.8',
-    status: 'approved',
-    owner: 'David Miller',
-    updatedAt: '1 week ago',
-    controlsCount: 5,
-    fileSize: '1.2 MB',
-  },
-  {
-    id: 'doc-3',
-    code: 'POL-02',
-    title: 'Incident Response Plan',
-    description: 'Guidelines for identifying, containing, and communicating security incidents.',
-    category: 'policy',
-    version: 'v2.0',
-    status: 'approved',
-    owner: 'Sarah Connor',
-    updatedAt: '2 weeks ago',
-    controlsCount: 4,
-    fileSize: '3.1 MB',
-  },
-  {
-    id: 'doc-4',
-    code: 'SOP-02',
-    title: 'Data Classification & Retention Procedure',
-    description: 'Instructions on handling, tagging, and retaining client and organizational data.',
-    category: 'procedure',
-    version: 'v1.2',
-    status: 'in-review',
-    owner: 'David Miller',
-    updatedAt: 'Yesterday',
-    controlsCount: 3,
-    fileSize: '950 KB',
-  },
-  {
-    id: 'doc-5',
-    code: 'POL-03',
-    title: 'Vulnerability Management Policy',
-    description:
-      'Requirements for regular vulnerability scans, penetration testing, and software patches.',
-    category: 'policy',
-    version: 'v1.0',
-    status: 'draft',
-    owner: 'Alex Rivera',
-    updatedAt: 'Just now',
-    controlsCount: 2,
-    fileSize: '1.4 MB',
-  },
-]
-
-const documents = ref<DocumentItem[]>(initialDocuments)
+const { documents, createDocument } = useDocuments()
 
 // Search & filter state
 const searchQuery = ref('')
-const activeCategory = ref<'all' | 'policy' | 'procedure'>('all')
+const activeCategory = ref<'all' | 'policy' | 'procedure' | 'sop'>('all')
 const activeStatus = ref<'all' | 'approved' | 'in-review' | 'draft'>('all')
 
 const filteredDocuments = computed(() => {
@@ -138,6 +74,7 @@ const categories = [
   { id: 'all', label: 'All documents' },
   { id: 'policy', label: 'Policies' },
   { id: 'procedure', label: 'Procedures' },
+  { id: 'sop', label: 'SOPs' },
 ] as const
 
 // Status options
@@ -153,6 +90,54 @@ function resetFilters() {
   activeCategory.value = 'all'
   activeStatus.value = 'all'
 }
+
+// Add Document Dialog state
+const isAddDialogOpen = ref(false)
+const newDocTitle = ref('')
+const newDocCategory = ref<'policy' | 'procedure' | 'sop'>('policy')
+const newDocClassification = ref<'Public' | 'Internal' | 'Confidential' | 'Restricted'>('Internal')
+const newDocOwner = ref('Virat Kohli')
+const newDocDescription = ref('')
+
+function openAddDialog() {
+  newDocTitle.value = ''
+  newDocCategory.value = 'policy'
+  newDocClassification.value = 'Internal'
+  newDocOwner.value = 'Virat Kohli'
+  newDocDescription.value = ''
+  isAddDialogOpen.value = true
+}
+
+function handleCreateDocument() {
+  if (!newDocTitle.value.trim()) return
+
+  // Generate code prefix based on category
+  const prefix = newDocCategory.value.toUpperCase()
+  const codeNum = documents.value.filter((d) => d.category === newDocCategory.value).length + 1
+  const code = `${prefix}-${String(codeNum).padStart(2, '0')}`
+
+  const newDoc = createDocument({
+    code,
+    title: newDocTitle.value,
+    category: newDocCategory.value,
+    classification: newDocClassification.value,
+    owner: newDocOwner.value,
+    description: newDocDescription.value || `Document policy outline for ${newDocTitle.value}`,
+    content: `<h1>${newDocTitle.value}</h1><p>Start writing the content for ${newDocTitle.value} here...</p>`,
+    approvers: [newDocOwner.value],
+  })
+
+  isAddDialogOpen.value = false
+
+  // Navigate to the newly created document details
+  void router.push({
+    name: 'compliance-document-detail',
+    params: {
+      organizationSlug: orgSlug.value,
+      documentId: newDoc.id,
+    },
+  })
+}
 </script>
 
 <template>
@@ -163,7 +148,7 @@ function resetFilters() {
           <PhDownload :size="16" aria-hidden="true" />
           Export index
         </Button>
-        <Button size="sm">
+        <Button size="sm" @click="openAddDialog">
           <PhPlus :size="16" weight="bold" aria-hidden="true" />
           Add document
         </Button>
@@ -314,11 +299,15 @@ function resetFilters() {
                         {{ doc.version }}
                       </span>
                     </div>
-                    <p
-                      class="mt-1 font-medium text-foreground group-hover:text-success-emphasis transition-colors"
+                    <router-link
+                      :to="{
+                        name: 'compliance-document-detail',
+                        params: { organizationSlug: orgSlug, documentId: doc.id },
+                      }"
+                      class="block mt-1 font-medium text-foreground hover:text-primary hover:underline transition-colors"
                     >
                       {{ doc.title }}
-                    </p>
+                    </router-link>
                     <p class="mt-0.5 text-xs text-muted-foreground line-clamp-1 max-w-lg">
                       {{ doc.description }}
                     </p>
@@ -370,9 +359,16 @@ function resetFilters() {
                   <Button variant="ghost" size="icon" class="size-8" aria-label="Download document">
                     <PhDownload :size="15" />
                   </Button>
-                  <Button variant="ghost" size="icon" class="size-8" aria-label="View details">
-                    <PhArrowUpRight :size="15" />
-                  </Button>
+                  <router-link
+                    :to="{
+                      name: 'compliance-document-detail',
+                      params: { organizationSlug: orgSlug, documentId: doc.id },
+                    }"
+                  >
+                    <Button variant="ghost" size="icon" class="size-8" aria-label="View details">
+                      <PhArrowUpRight :size="15" />
+                    </Button>
+                  </router-link>
                 </div>
               </td>
             </tr>
@@ -402,5 +398,77 @@ function resetFilters() {
         </table>
       </div>
     </div>
+
+    <!-- Add Document Dialog -->
+    <Dialog :open="isAddDialogOpen" @update:open="isAddDialogOpen = $event">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Add Document</DialogTitle>
+          <DialogDescription>
+            Create a new compliance document (Policy, Procedure, or SOP) for your organization.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="grid gap-4 py-4">
+          <div class="grid gap-2">
+            <Label for="title">Title</Label>
+            <Input id="title" v-model="newDocTitle" placeholder="e.g. Encryption Policy" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="grid gap-2">
+              <Label for="category">Category</Label>
+              <Select v-model="newDocCategory">
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="policy">Policy</SelectItem>
+                  <SelectItem value="procedure">Procedure</SelectItem>
+                  <SelectItem value="sop">SOP (Standard Operating Procedure)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="grid gap-2">
+              <Label for="classification">Classification</Label>
+              <Select v-model="newDocClassification">
+                <SelectTrigger id="classification">
+                  <SelectValue placeholder="Select classification" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Public">Public</SelectItem>
+                  <SelectItem value="Internal">Internal</SelectItem>
+                  <SelectItem value="Confidential">Confidential</SelectItem>
+                  <SelectItem value="Restricted">Restricted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div class="grid gap-2">
+            <Label for="owner">Owner</Label>
+            <Input id="owner" v-model="newDocOwner" placeholder="e.g. Jane Doe" />
+          </div>
+
+          <div class="grid gap-2">
+            <Label for="description">Description</Label>
+            <Textarea
+              id="description"
+              v-model="newDocDescription"
+              placeholder="Provide a brief summary of this document's purpose..."
+              class="h-20"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="isAddDialogOpen = false">Cancel</Button>
+          <Button :disabled="!newDocTitle.trim()" @click="handleCreateDocument"
+            >Create Document</Button
+          >
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

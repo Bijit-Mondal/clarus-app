@@ -41,10 +41,7 @@ import {
 } from '@/components/ui/select'
 
 import type { Evidence } from '@/api/evidence'
-import {
-  useEvidencesQuery,
-  useDownloadEvidenceMutation,
-} from '@/composables/useEvidence'
+import { useEvidencesQuery, useDownloadEvidenceMutation } from '@/composables/useEvidence'
 import { useTenantUsersQuery } from '@/composables/useTenants'
 import { useTenantControlsQuery } from '@/composables/useControls'
 import { useTenantTasksQuery } from '@/composables/useTasks'
@@ -193,7 +190,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'link',
       extension: 'URL',
       icon: PhLink,
-      colorClass: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30',
+      colorClass:
+        'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30',
       iconColor: 'text-indigo-600 dark:text-indigo-400',
       themeColor: 'indigo',
     }
@@ -208,7 +206,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'image',
       extension: ext.toUpperCase(),
       icon: PhFileImage,
-      colorClass: 'bg-pink-500/10 text-pink-600 border-pink-500/20 dark:text-pink-400 dark:border-pink-500/30',
+      colorClass:
+        'bg-pink-500/10 text-pink-600 border-pink-500/20 dark:text-pink-400 dark:border-pink-500/30',
       iconColor: 'text-pink-600 dark:text-pink-400',
       themeColor: 'pink',
     }
@@ -219,7 +218,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'pdf',
       extension: 'PDF',
       icon: PhFilePdf,
-      colorClass: 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:text-rose-400 dark:border-rose-500/30',
+      colorClass:
+        'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:text-rose-400 dark:border-rose-500/30',
       iconColor: 'text-rose-600 dark:text-rose-400',
       themeColor: 'rose',
     }
@@ -230,7 +230,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'spreadsheet',
       extension: ext.toUpperCase(),
       icon: PhFileCsv,
-      colorClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30',
+      colorClass:
+        'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       themeColor: 'emerald',
     }
@@ -241,7 +242,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'document',
       extension: ext.toUpperCase(),
       icon: PhFileDoc,
-      colorClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400 dark:border-blue-500/30',
+      colorClass:
+        'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400 dark:border-blue-500/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
       themeColor: 'blue',
     }
@@ -252,7 +254,8 @@ function getFileInfo(evidence: Evidence) {
       type: 'archive',
       extension: 'ZIP',
       icon: PhFileZip,
-      colorClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
+      colorClass:
+        'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
       iconColor: 'text-amber-600 dark:text-amber-400',
       themeColor: 'amber',
     }
@@ -263,7 +266,8 @@ function getFileInfo(evidence: Evidence) {
     type: 'file',
     extension: ext.toUpperCase() || 'FILE',
     icon: PhFile,
-    colorClass: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-400 dark:border-slate-500/30',
+    colorClass:
+      'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-400 dark:border-slate-500/30',
     iconColor: 'text-slate-600 dark:text-slate-400',
     themeColor: 'slate',
   }
@@ -335,7 +339,8 @@ function getStatusDetails(status?: string) {
     return {
       label: 'Verified',
       icon: PhCheckCircle,
-      badgeClass: 'bg-success/10 text-success-emphasis border-success/20 dark:bg-success/15 dark:text-success dark:border-success/30',
+      badgeClass:
+        'bg-success/10 text-success-emphasis border-success/20 dark:bg-success/15 dark:text-success dark:border-success/30',
       iconColor: 'text-success-emphasis dark:text-success',
     }
   }
@@ -343,14 +348,16 @@ function getStatusDetails(status?: string) {
     return {
       label: 'Failed',
       icon: PhWarningCircle,
-      badgeClass: 'bg-destructive/10 text-destructive-emphasis border-destructive/20 dark:bg-destructive/15 dark:text-destructive dark:border-destructive/30',
+      badgeClass:
+        'bg-destructive/10 text-destructive-emphasis border-destructive/20 dark:bg-destructive/15 dark:text-destructive dark:border-destructive/30',
       iconColor: 'text-destructive-emphasis dark:text-destructive',
     }
   }
   return {
     label: 'Pending Review',
     icon: PhClock,
-    badgeClass: 'bg-warning/10 text-warning-emphasis border-warning/20 dark:bg-warning/15 dark:text-warning dark:border-warning/30',
+    badgeClass:
+      'bg-warning/10 text-warning-emphasis border-warning/20 dark:bg-warning/15 dark:text-warning dark:border-warning/30',
     iconColor: 'text-warning-emphasis dark:text-warning',
   }
 }
@@ -519,7 +526,8 @@ function getStatusDetails(status?: string) {
           </div>
           <h3 class="text-sm font-semibold text-foreground">No evidence matches your filters</h3>
           <p class="text-xs text-muted-foreground mt-1 max-w-sm">
-            Try adjusting your search query, source filter, or status filter to see other evidence files.
+            Try adjusting your search query, source filter, or status filter to see other evidence
+            files.
           </p>
           <div class="flex gap-3 mt-5">
             <Button
@@ -543,7 +551,9 @@ function getStatusDetails(status?: string) {
             <div class="overflow-x-auto">
               <table class="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr class="border-b border-border bg-muted/20 text-xs font-semibold text-muted-foreground">
+                  <tr
+                    class="border-b border-border bg-muted/20 text-xs font-semibold text-muted-foreground"
+                  >
                     <th scope="col" class="px-5 py-3 font-medium">Name</th>
                     <th scope="col" class="px-5 py-3 font-medium">Mapped Control</th>
                     <th scope="col" class="px-5 py-3 font-medium">Source</th>
@@ -624,10 +634,7 @@ function getStatusDetails(status?: string) {
                         class="gap-1.5 text-[10px] font-semibold py-0 px-2 h-5.5 select-none"
                         :class="getStatusDetails(item.status).badgeClass"
                       >
-                        <component
-                          :is="getStatusDetails(item.status).icon"
-                          :size="11"
-                        />
+                        <component :is="getStatusDetails(item.status).icon" :size="11" />
                         {{ getStatusDetails(item.status).label }}
                       </Badge>
                     </td>
@@ -675,7 +682,11 @@ function getStatusDetails(status?: string) {
               v-for="item in filteredEvidences"
               :key="item.$id"
               class="group relative flex flex-col justify-between rounded-lg border p-4 bg-card cursor-pointer hover:bg-muted/20 transition-all duration-200"
-              :class="activeId === item.$id ? 'border-primary ring-1 ring-primary bg-accent/10 shadow-sm' : 'border-border'"
+              :class="
+                activeId === item.$id
+                  ? 'border-primary ring-1 ring-primary bg-accent/10 shadow-sm'
+                  : 'border-border'
+              "
               @click="clickItem(item.$id)"
             >
               <!-- Card Top Row: File icon & Action button -->
@@ -714,10 +725,7 @@ function getStatusDetails(status?: string) {
 
               <!-- Title and ID -->
               <div class="mt-4 flex-1">
-                <h4
-                  class="text-xs font-semibold text-foreground line-clamp-2"
-                  :title="item.title"
-                >
+                <h4 class="text-xs font-semibold text-foreground line-clamp-2" :title="item.title">
                   {{ item.title }}
                 </h4>
                 <p class="mt-1 text-[9px] font-mono text-muted-foreground truncate">
@@ -726,17 +734,16 @@ function getStatusDetails(status?: string) {
               </div>
 
               <!-- Mapped control and status -->
-              <div class="mt-4 pt-3 border-t border-border/45 flex items-center justify-between gap-2">
+              <div
+                class="mt-4 pt-3 border-t border-border/45 flex items-center justify-between gap-2"
+              >
                 <!-- Status Badge -->
                 <Badge
                   variant="outline"
                   class="gap-1 text-[9px] font-semibold py-0 px-1.5 h-4.5 select-none"
                   :class="getStatusDetails(item.status).badgeClass"
                 >
-                  <component
-                    :is="getStatusDetails(item.status).icon"
-                    :size="9"
-                  />
+                  <component :is="getStatusDetails(item.status).icon" :size="9" />
                   {{ getStatusDetails(item.status).label }}
                 </Badge>
 
@@ -831,7 +838,9 @@ function getStatusDetails(status?: string) {
             >
               {{ getFileInfo(activeEvidence).extension }}
             </span>
-            <h4 class="mt-2.5 text-xs font-semibold text-foreground text-center break-all px-2 select-all leading-snug">
+            <h4
+              class="mt-2.5 text-xs font-semibold text-foreground text-center break-all px-2 select-all leading-snug"
+            >
               {{ activeEvidence.title }}
             </h4>
           </div>
@@ -840,17 +849,17 @@ function getStatusDetails(status?: string) {
           <div class="space-y-4 text-xs">
             <!-- Status Detail -->
             <div class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">Verification Status</span>
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >Verification Status</span
+              >
               <div class="flex items-center gap-1.5">
                 <Badge
                   variant="outline"
                   class="gap-1.5 text-[10px] font-semibold py-0 px-2 h-5.5 select-none"
                   :class="getStatusDetails(activeEvidence.status).badgeClass"
                 >
-                  <component
-                    :is="getStatusDetails(activeEvidence.status).icon"
-                    :size="11"
-                  />
+                  <component :is="getStatusDetails(activeEvidence.status).icon" :size="11" />
                   {{ getStatusDetails(activeEvidence.status).label }}
                 </Badge>
               </div>
@@ -858,7 +867,10 @@ function getStatusDetails(status?: string) {
 
             <!-- Mapped Control -->
             <div class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">Mapped Control</span>
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >Mapped Control</span
+              >
               <div v-if="activeEvidence.tenantControlId" class="flex flex-col gap-0.5">
                 <router-link
                   :to="{
@@ -890,7 +902,10 @@ function getStatusDetails(status?: string) {
 
             <!-- Linked Task -->
             <div class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">Linked Task</span>
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >Linked Task</span
+              >
               <div v-if="activeEvidence.tenantTaskId" class="flex flex-col gap-0.5">
                 <router-link
                   :to="{
@@ -947,7 +962,10 @@ function getStatusDetails(status?: string) {
 
             <!-- Attachment ID -->
             <div v-if="activeEvidence.attachmentId" class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">Attachment ID</span>
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >Attachment ID</span
+              >
               <div class="flex items-center gap-1 bg-muted p-1.5 rounded-md border border-border">
                 <span class="font-mono text-[10px] text-foreground truncate flex-1 select-all">
                   {{ activeEvidence.attachmentId }}
@@ -959,14 +977,21 @@ function getStatusDetails(status?: string) {
                   @click="copyAttachmentId(activeEvidence.attachmentId)"
                   :title="isCopied ? 'Copied!' : 'Copy ID'"
                 >
-                  <component :is="isCopied ? PhCheck : PhCopy" :size="12" :class="{ 'text-success': isCopied }" />
+                  <component
+                    :is="isCopied ? PhCheck : PhCopy"
+                    :size="12"
+                    :class="{ 'text-success': isCopied }"
+                  />
                 </Button>
               </div>
             </div>
 
             <!-- External Reference link -->
             <div v-if="activeEvidence.externalReference" class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">External Link</span>
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >External Link</span
+              >
               <a
                 :href="activeEvidence.externalReference"
                 target="_blank"
@@ -980,8 +1005,13 @@ function getStatusDetails(status?: string) {
 
             <!-- Description -->
             <div v-if="activeEvidence.description" class="py-1">
-              <span class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">Description</span>
-              <p class="text-foreground leading-relaxed bg-muted/40 p-2.5 rounded-lg border border-border/40 italic">
+              <span
+                class="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1"
+                >Description</span
+              >
+              <p
+                class="text-foreground leading-relaxed bg-muted/40 p-2.5 rounded-lg border border-border/40 italic"
+              >
                 "{{ activeEvidence.description }}"
               </p>
             </div>

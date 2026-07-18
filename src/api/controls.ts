@@ -10,6 +10,7 @@ export type TenantControl = {
   name: string
   statement: string
   implementationStatus: string
+  category?: string
   isCustom: boolean
   archivedAt: string
 }

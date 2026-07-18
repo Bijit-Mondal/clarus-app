@@ -122,6 +122,15 @@ const router = createRouter({
             title: 'Task Details',
           },
         },
+        {
+          path: 'compliance/documents/:documentId',
+          name: 'compliance-document-detail',
+          component: () => import('@/views/compliance/DocumentDetailPage.vue'),
+          meta: {
+            module: 'compliance',
+            title: 'Document Details',
+          },
+        },
       ],
     },
   ],
