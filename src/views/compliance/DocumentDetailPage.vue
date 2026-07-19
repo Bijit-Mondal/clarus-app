@@ -319,7 +319,9 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
           {{ getCategoryLabel(documentItem.category) }}
         </router-link>
         <PhCaretRight :size="13" class="text-muted-foreground/60" aria-hidden="true" />
-        <span class="max-w-[min(48vw,420px)] truncate font-medium text-foreground">{{ documentItem.title }}</span>
+        <span class="max-w-[min(48vw,420px)] truncate font-medium text-foreground">{{
+          documentItem.title
+        }}</span>
       </nav>
 
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -346,10 +348,14 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
               v-focus
             />
             <Button size="sm" class="h-10 px-4" @click="saveTitle">Save</Button>
-            <Button size="sm" variant="ghost" class="h-10 px-3" @click="isEditingTitle = false">Cancel</Button>
+            <Button size="sm" variant="ghost" class="h-10 px-3" @click="isEditingTitle = false"
+              >Cancel</Button
+            >
           </div>
           <div v-else class="group flex items-center gap-2">
-            <h1 class="min-w-0 truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            <h1
+              class="min-w-0 truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+            >
               {{ documentItem.title }}
             </h1>
             <button
@@ -378,7 +384,12 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="icon-sm" class="size-9" aria-label="More document actions">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                class="size-9"
+                aria-label="More document actions"
+              >
                 <PhDotsThree :size="18" weight="bold" />
               </Button>
             </DropdownMenuTrigger>
@@ -387,7 +398,10 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
                 <PhPencilSimple :size="15" />
                 Rename document
               </DropdownMenuItem>
-              <DropdownMenuItem @click="updateMetadata('classification', 'Confidential')" class="gap-2">
+              <DropdownMenuItem
+                @click="updateMetadata('classification', 'Confidential')"
+                class="gap-2"
+              >
                 <PhGear :size="15" />
                 Settings
               </DropdownMenuItem>
@@ -397,15 +411,23 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
       </div>
     </header>
 
-    <section class="overflow-hidden rounded-lg border border-border bg-card" aria-label="Document properties">
-      <div class="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-5">
+    <section
+      class="overflow-hidden rounded-lg border border-border bg-card"
+      aria-label="Document properties"
+    >
+      <div
+        class="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-5"
+      >
         <div class="min-w-0 p-4">
           <Label for="meta-category" class="text-xs font-medium text-muted-foreground">Type</Label>
           <Select
             :model-value="documentItem.category"
             @update:model-value="(val) => updateMetadata('category', val)"
           >
-            <SelectTrigger id="meta-category" class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2">
+            <SelectTrigger
+              id="meta-category"
+              class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2"
+            >
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent class="text-sm">
@@ -417,15 +439,22 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
         </div>
         <div class="p-4">
           <span class="text-xs font-medium text-muted-foreground">Version</span>
-          <p class="mt-2 font-mono text-sm font-semibold text-foreground">{{ documentItem.version }}</p>
+          <p class="mt-2 font-mono text-sm font-semibold text-foreground">
+            {{ documentItem.version }}
+          </p>
         </div>
         <div class="min-w-0 p-4">
-          <Label for="meta-classification" class="text-xs font-medium text-muted-foreground">Classification</Label>
+          <Label for="meta-classification" class="text-xs font-medium text-muted-foreground"
+            >Classification</Label
+          >
           <Select
             :model-value="documentItem.classification"
             @update:model-value="(val) => updateMetadata('classification', val)"
           >
-            <SelectTrigger id="meta-classification" class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2">
+            <SelectTrigger
+              id="meta-classification"
+              class="mt-2 h-9 w-full border-0 bg-muted/50 px-2.5 text-sm shadow-none focus:ring-2"
+            >
               <SelectValue placeholder="Select classification" />
             </SelectTrigger>
             <SelectContent class="text-sm">
@@ -440,11 +469,15 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
           <span class="text-xs font-medium text-muted-foreground">Owner</span>
           <div class="mt-2 flex items-center gap-2">
             <Avatar class="size-7">
-              <AvatarFallback class="bg-secondary text-[10px] font-semibold text-secondary-foreground">
+              <AvatarFallback
+                class="bg-secondary text-[10px] font-semibold text-secondary-foreground"
+              >
                 {{ getUserInitials(documentItem.owner) }}
               </AvatarFallback>
             </Avatar>
-            <span class="truncate text-sm font-medium text-foreground">{{ documentItem.owner }}</span>
+            <span class="truncate text-sm font-medium text-foreground">{{
+              documentItem.owner
+            }}</span>
           </div>
         </div>
         <div class="min-w-0 p-4 sm:col-span-2 lg:col-span-1">
@@ -459,7 +492,10 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
               >
                 {{ app }}
               </Badge>
-              <span v-if="documentItem.approvers.length > 2" class="self-center text-xs text-muted-foreground">
+              <span
+                v-if="documentItem.approvers.length > 2"
+                class="self-center text-xs text-muted-foreground"
+              >
                 +{{ documentItem.approvers.length - 2 }}
               </span>
             </div>
