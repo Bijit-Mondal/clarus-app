@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhFileText,
@@ -8,11 +8,12 @@ import {
   PhCheckCircle,
   PhClock,
   PhNoteBlank,
-  PhUser,
   PhLink,
   PhDownload,
   PhArrowUpRight,
   PhX,
+  PhCaretLeft,
+  PhCaretRight,
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useDocuments, type DocumentItem } from '@/composables/useDocuments'
+import {
+  useDocuments,
+  useDocumentsQuery,
+  mapTenantDocumentToItem,
+  type DocumentItem,
+} from '@/composables/useDocuments'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,25 +53,95 @@ const searchQuery = ref('')
 const activeCategory = ref<'all' | 'policy' | 'procedure' | 'sop'>('all')
 const activeStatus = ref<string>('all')
 
-const filteredDocuments = computed(() => {
-  return documents.value.filter((doc) => {
+// Pagination parameters
+const PAGE_SIZE = 8
+const page = ref(1)
+
+// Query params for the active paginated view
+const queryParams = computed(() => ({
+  limit: PAGE_SIZE,
+  offset: (page.value - 1) * PAGE_SIZE,
+  documentType: activeCategory.value !== 'all' ? activeCategory.value : undefined,
+}))
+
+const { data: documentsData, isPending: isListLoading } = useDocumentsQuery(queryParams)
+
+// Fetch all documents for global statistics and local search fallback
+const { data: allDocumentsData, isPending: isStatsLoading } = useDocumentsQuery(
+  computed(() => ({
+    limit: 1000,
+  })),
+)
+
+const isLoading = computed(() => isListLoading.value || (searchQuery.value && isStatsLoading.value))
+
+// Convert documents to UI items
+const paginatedList = computed(() => {
+  return (documentsData.value?.documents || []).map(mapTenantDocumentToItem)
+})
+
+const allList = computed(() => {
+  return (allDocumentsData.value?.documents || []).map(mapTenantDocumentToItem)
+})
+
+// Filtered list based on search/filters
+const filteredAllList = computed(() => {
+  return allList.value.filter((doc) => {
+    // Search filter
     const matchesSearch =
+      !searchQuery.value ||
       doc.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      doc.code.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       doc.description.toLowerCase().includes(searchQuery.value.toLowerCase())
 
+    // Category filter
     const matchesCategory = activeCategory.value === 'all' || doc.category === activeCategory.value
+
+    // Status filter
     const matchesStatus = activeStatus.value === 'all' || doc.status === activeStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
   })
 })
 
+// The final documents to display on the current page
+const pagedDocuments = computed(() => {
+  // If searching or filtering by status (which is also local), use the locally filtered and paged list
+  if (searchQuery.value || activeStatus.value !== 'all') {
+    const start = (page.value - 1) * PAGE_SIZE
+    return filteredAllList.value.slice(start, start + PAGE_SIZE)
+  }
+  // Otherwise, use the clean server-side paginated list directly
+  return paginatedList.value
+})
+
+// The total count to base pagination on
+const totalCountForPagination = computed(() => {
+  if (searchQuery.value || activeStatus.value !== 'all') {
+    return filteredAllList.value.length
+  }
+  return documentsData.value?.total || 0
+})
+
+const pageCount = computed(() => Math.max(1, Math.ceil(totalCountForPagination.value / PAGE_SIZE)))
+
+// Reset page to 1 when filters change
+watch([searchQuery, activeCategory, activeStatus], () => {
+  page.value = 1
+})
+
+const rangeStart = computed(() => {
+  return totalCountForPagination.value === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1
+})
+
+const rangeEnd = computed(() => {
+  return Math.min(page.value * PAGE_SIZE, totalCountForPagination.value)
+})
+
 // Statistics computed properties
-const totalCount = computed(() => documents.value.length)
-const approvedCount = computed(() => documents.value.filter((d) => d.status === 'approved').length)
-const inReviewCount = computed(() => documents.value.filter((d) => d.status === 'in-review').length)
-const draftCount = computed(() => documents.value.filter((d) => d.status === 'draft').length)
+const totalCount = computed(() => allList.value.length)
+const approvedCount = computed(() => allList.value.filter((d) => d.status === 'approved').length)
+const inReviewCount = computed(() => allList.value.filter((d) => d.status === 'in-review').length)
+const draftCount = computed(() => allList.value.filter((d) => d.status === 'draft').length)
 
 // Categories tabs
 const categories = [
@@ -101,6 +177,21 @@ const documentStatusConfig = {
     icon: PhNoteBlank,
     base: 'var(--muted-foreground)',
     iconWeight: 'regular' as const,
+  },
+} as const
+
+const documentTypeConfig = {
+  policy: {
+    label: 'Policy',
+    base: 'oklch(0.6 0.17 250)',
+  },
+  procedure: {
+    label: 'Procedure',
+    base: 'oklch(0.7 0.15 60)',
+  },
+  sop: {
+    label: 'SOP',
+    base: 'oklch(0.6 0.18 300)',
   },
 } as const
 
@@ -256,7 +347,7 @@ function handleCreateDocument() {
             <Input
               v-model="searchQuery"
               class="pl-9 bg-background"
-              placeholder="Search code, title or description..."
+              placeholder="Search title or description..."
             />
             <button
               v-if="searchQuery"
@@ -294,8 +385,8 @@ function handleCreateDocument() {
               class="border-b border-border bg-muted/20 text-xs text-muted-foreground font-medium"
             >
               <th class="px-5 py-3 w-[40%]">Document</th>
+              <th class="px-5 py-3 w-[15%]">Type</th>
               <th class="px-5 py-3 w-[15%]">Status</th>
-              <th class="px-5 py-3 w-[15%]">Owner</th>
               <th class="px-5 py-3 w-[15%]">Mapped Controls</th>
               <th class="px-5 py-3 w-[15%]">Updated</th>
               <th class="relative px-5 py-3 w-[10%]"><span class="sr-only">Actions</span></th>
@@ -303,12 +394,12 @@ function handleCreateDocument() {
           </thead>
           <tbody class="divide-y divide-border">
             <tr
-              v-for="doc in filteredDocuments"
+              v-for="doc in pagedDocuments"
               :key="doc.id"
               class="group border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30 cursor-pointer focus-visible:bg-muted/30 focus-visible:outline-hidden"
               tabindex="0"
               role="button"
-              :aria-label="`Open details for document ${doc.code}: ${doc.title}`"
+              :aria-label="`Open details for document: ${doc.title}`"
               @click="goToDetail(doc)"
               @keydown.enter="goToDetail(doc)"
               @keydown.space.prevent="goToDetail(doc)"
@@ -322,25 +413,38 @@ function handleCreateDocument() {
                     <PhFileText :size="16" />
                   </div>
                   <div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono text-xs text-muted-foreground">{{ doc.code }}</span>
+                    <div class="inline-flex items-center gap-2">
                       <span
-                        class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground tracking-wide"
+                        class="font-medium text-foreground group-hover:text-primary transition-colors"
+                      >
+                        {{ doc.title }}
+                      </span>
+                      <span
+                        class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground tracking-wide shrink-0"
                       >
                         {{ doc.version }}
                       </span>
                     </div>
-                    <span
-                      class="block mt-1 font-medium text-foreground group-hover:text-primary transition-colors"
-                    >
-                      {{ doc.title }}
-                    </span>
-                    <p class="mt-0.5 text-xs text-muted-foreground line-clamp-1 max-w-lg">
+                    <p class="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-lg">
                       {{ doc.description }}
                     </p>
                   </div>
                 </div>
               </td>
+              <!-- Type -->
+              <td class="px-5 py-4 whitespace-nowrap" @click.stop>
+                <span
+                  class="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none capitalize"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, ${documentTypeConfig[doc.category]?.base || 'var(--muted-foreground)'} 12%, transparent)`,
+                    color: documentTypeConfig[doc.category]?.base || 'var(--muted-foreground)',
+                    borderColor: `color-mix(in oklab, ${documentTypeConfig[doc.category]?.base || 'var(--muted-foreground)'} 20%, transparent)`,
+                  }"
+                >
+                  {{ documentTypeConfig[doc.category]?.label || doc.category }}
+                </span>
+              </td>
+              <!-- Status -->
               <td class="px-5 py-4 whitespace-nowrap" @click.stop>
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -358,12 +462,7 @@ function handleCreateDocument() {
                   {{ documentStatusConfig[doc.status].label }}
                 </span>
               </td>
-              <td class="px-5 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-1.5 text-foreground">
-                  <PhUser :size="14" class="text-muted-foreground" aria-hidden="true" />
-                  <span>{{ doc.owner }}</span>
-                </div>
-              </td>
+              <!-- Mapped Controls -->
               <td class="px-5 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-1 text-xs">
                   <PhLink :size="13" class="text-muted-foreground" aria-hidden="true" />
@@ -400,8 +499,22 @@ function handleCreateDocument() {
               </td>
             </tr>
 
+            <!-- Loading state -->
+            <tr v-if="isLoading">
+              <td colspan="6" class="px-5 py-16 text-center">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <div
+                    class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
+                  />
+                  <span class="text-xs font-medium text-muted-foreground"
+                    >Loading documents...</span
+                  >
+                </div>
+              </td>
+            </tr>
+
             <!-- Empty filter state -->
-            <tr v-if="filteredDocuments.length === 0">
+            <tr v-else-if="totalCountForPagination === 0">
               <td colspan="6" class="px-5 py-16 text-center">
                 <div class="flex flex-col items-center justify-center gap-3">
                   <span
@@ -428,6 +541,41 @@ function handleCreateDocument() {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div
+        v-if="totalCountForPagination > 0"
+        class="flex items-center justify-between border-t border-border px-4 py-3 bg-muted/10"
+      >
+        <p class="text-xs text-muted-foreground">
+          Showing
+          <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
+          <span class="font-medium text-foreground">{{ totalCountForPagination }}</span> documents
+        </p>
+        <div class="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            class="size-8"
+            :disabled="page === 1"
+            aria-label="Previous page"
+            @click="page = Math.max(1, page - 1)"
+          >
+            <PhCaretLeft :size="14" aria-hidden="true" />
+          </Button>
+          <span class="px-2 text-xs tabular-nums text-muted-foreground">
+            Page {{ page }} of {{ pageCount }}
+          </span>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            class="size-8"
+            :disabled="page === pageCount"
+            aria-label="Next page"
+            @click="page = Math.min(pageCount, page + 1)"
+          >
+            <PhCaretRight :size="14" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
     </div>
 

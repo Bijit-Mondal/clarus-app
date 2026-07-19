@@ -5,7 +5,6 @@ import {
   PhCaretRight,
   PhClock,
   PhCheckCircle,
-  PhArrowLeft,
   PhX,
   PhPlus,
   PhTrash,
@@ -337,7 +336,6 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
               <component :is="statusConfig.icon" :size="13" weight="fill" />
               {{ statusConfig.label }}
             </Badge>
-            <span class="text-xs text-muted-foreground">{{ documentItem.code }}</span>
           </div>
           <div v-if="isEditingTitle" class="flex max-w-2xl flex-wrap items-center gap-2">
             <Input
@@ -554,13 +552,6 @@ function updateMetadata(field: 'category' | 'classification', value: unknown) {
               Document Details
             </h3>
             <div class="flex flex-col gap-5">
-              <div>
-                <Label class="text-xs font-semibold text-muted-foreground">Document Code</Label>
-                <p class="mt-1 font-mono text-sm font-bold text-foreground">
-                  {{ documentItem.code }}
-                </p>
-              </div>
-
               <div>
                 <Label class="text-xs font-semibold text-muted-foreground">Description</Label>
                 <p class="mt-1.5 text-sm text-foreground leading-relaxed max-w-2xl">
