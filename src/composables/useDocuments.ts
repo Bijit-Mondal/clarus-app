@@ -4,8 +4,12 @@ import {
   getDocuments,
   getDocument,
   updateDocument as patchDocument,
+  writeDocument as patchWriteDocument,
   updateDocumentApprovers,
+  publishDocumentMajor,
+  publishDocumentMinor,
   type UpdateDocumentInput,
+  type WriteDocumentInput,
   type TenantDocument,
   type TenantDocumentDetail,
   type DocumentApprover,
@@ -236,7 +240,13 @@ export function formatTimeAgo(dateString: string) {
 export function normalizeVersionStatus(versionStatus: string): DocumentVersionStatus {
   const normalized = versionStatus.toLowerCase().replace(/_/g, '-')
   if (normalized === 'approved' || normalized === 'published') return 'approved'
-  if (normalized === 'in-review' || normalized === 'pending-review') return 'in-review'
+  if (
+    normalized === 'in-review' ||
+    normalized === 'pending-review' ||
+    normalized === 'needs-review'
+  ) {
+    return 'in-review'
+  }
   return 'draft'
 }
 
@@ -379,15 +389,25 @@ export function useUpdateDocumentMutation() {
   const tenantId = computed(() => organizationStore.activeOrganization?.id)
 
   return useMutation({
-    mutationFn: ({
-      documentId,
-      updates,
-    }: {
-      documentId: string
-      updates: UpdateDocumentInput
-    }) => patchDocument(tenantId.value!, documentId, updates),
+    mutationFn: ({ documentId, updates }: { documentId: string; updates: UpdateDocumentInput }) =>
+      patchDocument(tenantId.value!, documentId, updates),
     onSuccess: (doc) => {
       mergeDocumentIntoStore(mapTenantDocumentToItem(doc))
+      void queryClient.invalidateQueries({ queryKey: documentKeys.all })
+    },
+  })
+}
+
+export function useWriteDocumentMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useMutation({
+    mutationFn: ({ documentId, input }: { documentId: string; input: WriteDocumentInput }) =>
+      patchWriteDocument(tenantId.value!, documentId, input),
+    onSuccess: (doc) => {
+      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
       void queryClient.invalidateQueries({ queryKey: documentKeys.all })
     },
   })
@@ -400,18 +420,45 @@ export function useUpdateDocumentApproversMutation() {
   const { updateDocument } = useDocuments()
 
   return useMutation({
-    mutationFn: ({
-      documentId,
-      approverIds,
-    }: {
-      documentId: string
-      approverIds: string[]
-    }) => updateDocumentApprovers(tenantId.value!, documentId, { approverIds }),
+    mutationFn: ({ documentId, approverIds }: { documentId: string; approverIds: string[] }) =>
+      updateDocumentApprovers(tenantId.value!, documentId, { approverIds }),
     onSuccess: (_, { documentId, approverIds }) => {
       updateDocument(documentId, { approverIds })
       void queryClient.invalidateQueries({
         queryKey: documentKeys.detail(tenantId.value || '', documentId),
       })
+    },
+  })
+}
+
+export function usePublishDocumentMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const { addActivity } = useDocuments()
+
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      versionType,
+    }: {
+      documentId: string
+      versionType: 'major' | 'minor'
+    }) =>
+      versionType === 'major'
+        ? publishDocumentMajor(tenantId.value!, documentId)
+        : publishDocumentMinor(tenantId.value!, documentId),
+    onSuccess: (doc, { documentId, versionType }) => {
+      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
+      const versionLabel = formatDocumentVersion(doc)
+      const action =
+        versionType === 'minor'
+          ? `Published version ${versionLabel} (minor)`
+          : doc.versionStatus === 'needs_review'
+            ? `Requested approval for version ${versionLabel}`
+            : `Published version ${versionLabel} (major)`
+      addActivity(documentId, action)
+      void queryClient.invalidateQueries({ queryKey: documentKeys.all })
     },
   })
 }

@@ -16,9 +16,18 @@ export interface TiptapDocument extends TiptapNode {
   content?: TiptapNode[]
 }
 
+const EMPTY_PARAGRAPH: TiptapNode = { type: 'paragraph' }
+
 const EMPTY_DOCUMENT: TiptapDocument = {
   type: 'doc',
-  content: [],
+  content: [EMPTY_PARAGRAPH],
+}
+
+function normalizeEmptyDocument(document: TiptapDocument): TiptapDocument {
+  if (!document.content?.length) {
+    return { ...document, content: [EMPTY_PARAGRAPH] }
+  }
+  return document
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,7 +51,7 @@ export function isTiptapDocument(value: unknown): value is TiptapDocument {
  * Serialized TipTap JSON is preferred; HTML remains supported for older records.
  */
 export function parseTiptapContent(value: unknown): TiptapDocument | string {
-  if (isTiptapDocument(value)) return value
+  if (isTiptapDocument(value)) return normalizeEmptyDocument(value)
   if (typeof value !== 'string') return EMPTY_DOCUMENT
 
   const trimmed = value.trim()
@@ -50,12 +59,12 @@ export function parseTiptapContent(value: unknown): TiptapDocument | string {
 
   try {
     const parsed: unknown = JSON.parse(trimmed)
-    if (isTiptapDocument(parsed)) return parsed
+    if (isTiptapDocument(parsed)) return normalizeEmptyDocument(parsed)
 
     // Some transports can return a JSON string that was serialized twice.
     if (typeof parsed === 'string') {
       const nested: unknown = JSON.parse(parsed)
-      if (isTiptapDocument(nested)) return nested
+      if (isTiptapDocument(nested)) return normalizeEmptyDocument(nested)
     }
   } catch {
     // Non-JSON values are treated as legacy HTML by TipTap.

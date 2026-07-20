@@ -8,6 +8,7 @@ import {
   PhArrowClockwise,
   PhArrowCounterClockwise,
   PhCode,
+  PhDownloadSimple,
   PhFileText,
   PhLink,
   PhListBullets,
@@ -18,6 +19,9 @@ import {
   PhTextStrikethrough,
   PhTextUnderline,
 } from '@phosphor-icons/vue'
+import { downloadElementAsPdf } from '@/lib/downloadPdf'
+import { pdfLightThemeStyle } from '@/lib/pdfTheme'
+import { buildPdfWatermarkPattern, buildDownloadStamp } from '@/lib/pdfWatermark'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -40,17 +44,32 @@ const props = withDefaults(
     editable?: boolean
     title?: string
     version?: string
+    downloadUserEmail?: string
+    downloadFilename?: string
   }>(),
   { editable: true },
 )
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
+  (e: 'blur'): void
 }>()
 
 const viewMode = ref<'editor' | 'pdf'>('editor')
 const isLinkDialogOpen = ref(false)
 const linkUrl = ref('')
+const pdfPageRef = ref<HTMLElement | null>(null)
+const isDownloadingPdf = ref(false)
+const pdfDownloadStamp = ref<string | null>(null)
+
+const pdfWatermarkBackground = computed(() =>
+  props.downloadUserEmail
+    ? {
+        backgroundImage: buildPdfWatermarkPattern(props.downloadUserEmail),
+        backgroundSize: '300px 170px',
+      }
+    : undefined,
+)
 
 const editor = useEditor({
   content: parseTiptapContent(props.modelValue),
@@ -73,6 +92,9 @@ const editor = useEditor({
   },
   onUpdate: ({ editor: currentEditor }) => {
     emit('update:modelValue', serializeTiptapContent(currentEditor.getJSON() as TiptapDocument))
+  },
+  onBlur: () => {
+    emit('blur')
   },
 })
 
@@ -132,6 +154,35 @@ function focusEditor() {
   if (viewMode.value === 'editor') editor.value?.commands.focus()
 }
 
+async function downloadPdf() {
+  if (!pdfPageRef.value || !props.downloadUserEmail) return
+
+  isDownloadingPdf.value = true
+
+  try {
+    const safeTitle = (props.title || 'document').replace(/[^a-z0-9]/gi, '_')
+    const safeVersion = (props.version || 'draft').replace(/[^a-z0-9.]/gi, '')
+    const filename = props.downloadFilename || `${safeTitle}_${safeVersion}.pdf`
+    const downloadedAt = new Date()
+
+    pdfDownloadStamp.value = buildDownloadStamp(props.downloadUserEmail, downloadedAt)
+    await nextTick()
+
+    await downloadElementAsPdf({
+      element: pdfPageRef.value,
+      filename,
+      watermark: {
+        userEmail: props.downloadUserEmail,
+        downloadedAt,
+      },
+    })
+  } catch (error) {
+    console.error('Failed to generate PDF:', error)
+  } finally {
+    isDownloadingPdf.value = false
+  }
+}
+
 watch(
   () => props.modelValue,
   (newValue) => {
@@ -158,41 +209,61 @@ watch(
   (newValue) => editor.value?.setEditable(newValue),
 )
 
+watch(viewMode, (mode) => {
+  if (!editor.value) return
+  editor.value.setEditable(mode === 'editor' && props.editable)
+})
+
 onBeforeUnmount(() => editor.value?.destroy())
 </script>
 
 <template>
   <section class="document-editor" aria-label="Document editor">
-    <div
-      class="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
-      role="tablist"
-      aria-label="Document view"
-    >
+    <div class="document-editor__view-bar">
+      <div
+        class="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
+        role="tablist"
+        aria-label="Document view"
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          role="tab"
+          :aria-selected="viewMode === 'editor'"
+          class="h-8 gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+          :class="{ 'bg-card text-foreground shadow-xs': viewMode === 'editor' }"
+          @click="viewMode = 'editor'"
+        >
+          <PhFileText :size="16" />
+          Editor view
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          role="tab"
+          :aria-selected="viewMode === 'pdf'"
+          class="h-8 gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+          :class="{ 'bg-card text-foreground shadow-xs': viewMode === 'pdf' }"
+          @click="viewMode = 'pdf'"
+        >
+          <PhFileText :size="16" />
+          PDF view
+        </Button>
+      </div>
+
       <Button
-        variant="ghost"
+        v-if="viewMode === 'pdf'"
+        variant="outline"
         size="sm"
         type="button"
-        role="tab"
-        :aria-selected="viewMode === 'editor'"
-        class="h-8 gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
-        :class="{ 'bg-card text-foreground shadow-xs': viewMode === 'editor' }"
-        @click="viewMode = 'editor'"
+        class="document-editor__pdf-download h-8 gap-1.5 text-xs font-semibold"
+        :disabled="isDownloadingPdf || !downloadUserEmail"
+        @click="downloadPdf"
       >
-        <PhFileText :size="16" />
-        Editor view
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        type="button"
-        role="tab"
-        :aria-selected="viewMode === 'pdf'"
-        class="h-8 gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
-        :class="{ 'bg-card text-foreground shadow-xs': viewMode === 'pdf' }"
-        @click="viewMode = 'pdf'"
-      >
-        <PhFileText :size="16" />
-        PDF view
+        <PhDownloadSimple :size="15" :class="{ 'animate-bounce': isDownloadingPdf }" />
+        {{ isDownloadingPdf ? 'Generating…' : 'Download PDF' }}
       </Button>
     </div>
 
@@ -329,23 +400,40 @@ onBeforeUnmount(() => editor.value?.destroy())
 
     <div
       v-else
-      class="document-editor__pdf-frame overflow-auto rounded-lg border border-border bg-muted"
+      class="document-editor__pdf-section document-editor__pdf-light"
+      :style="pdfLightThemeStyle"
     >
-      <article class="document-editor__pdf-page">
-        <header class="document-editor__pdf-header">
-          <h1 v-if="title" class="document-editor__pdf-title">{{ title }}</h1>
-          <div class="document-editor__pdf-meta">
-            <span class="document-editor__pdf-kicker">Clarus · Controlled document</span>
-            <span v-if="version">{{ version }}</span>
-          </div>
-        </header>
-        <div class="document-editor__pdf-content">
-          <EditorContent :editor="editor" class="tiptap-content" />
+      <div class="document-editor__pdf-frame">
+        <div class="document-editor__pdf-page-wrap">
+          <article ref="pdfPageRef" class="document-editor__pdf-page">
+            <header class="document-editor__pdf-header">
+              <p class="document-editor__pdf-kicker">Clarus · Controlled document</p>
+              <div class="document-editor__pdf-meta">
+                <h1 v-if="title" class="document-editor__pdf-title">{{ title }}</h1>
+                <span v-if="version" class="document-editor__pdf-version">{{ version }}</span>
+              </div>
+            </header>
+            <div class="document-editor__pdf-content">
+              <EditorContent :editor="editor" class="tiptap-content document-editor__pdf-body" />
+            </div>
+            <footer class="document-editor__pdf-footer">
+              <div class="document-editor__pdf-footer-meta">
+                <span>Internal use only</span>
+                <span v-if="pdfDownloadStamp" class="document-editor__pdf-download-stamp">
+                  {{ pdfDownloadStamp }}
+                </span>
+              </div>
+              <span class="document-editor__pdf-page-label">Page 1</span>
+            </footer>
+          </article>
+          <div
+            v-if="downloadUserEmail"
+            class="document-editor__pdf-watermark"
+            :style="pdfWatermarkBackground"
+            aria-hidden="true"
+          />
         </div>
-        <footer class="document-editor__pdf-footer">
-          <span>Internal use only</span><span>Page 1</span>
-        </footer>
-      </article>
+      </div>
     </div>
 
     <Dialog v-model:open="isLinkDialogOpen">
@@ -395,6 +483,30 @@ onBeforeUnmount(() => editor.value?.destroy())
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.document-editor__view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.document-editor__pdf-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.document-editor__pdf-download {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.document-editor__pdf-download:hover:not(:disabled) {
+  background: var(--secondary);
+  color: var(--foreground);
 }
 
 .document-editor__toolbar {
@@ -478,6 +590,12 @@ onBeforeUnmount(() => editor.value?.destroy())
   font-size: 1rem;
   line-height: 1.7;
 }
+
+.document-editor__workspace .tiptap-content .tiptap {
+  caret-color: var(--foreground);
+  /* Global `*` color transitions can interfere with caret rendering in contenteditable. */
+  transition-property: background-color, border-color, box-shadow;
+}
 .tiptap-content .tiptap h1,
 .tiptap-content .tiptap h2,
 .tiptap-content .tiptap h3 {
@@ -504,6 +622,20 @@ onBeforeUnmount(() => editor.value?.destroy())
 .tiptap-content .tiptap p {
   margin: 0 0 16px;
   text-wrap: pretty;
+}
+
+/* Empty paragraphs collapse to 0 width in some browsers, hiding the caret until text exists. */
+.document-editor__workspace .tiptap-content .tiptap p {
+  display: block;
+  min-width: 1px;
+}
+
+.document-editor__workspace .tiptap-content .tiptap > p:first-child:empty::before {
+  content: 'Start writing…';
+  color: var(--muted-foreground);
+  pointer-events: none;
+  float: left;
+  height: 0;
 }
 .tiptap-content .tiptap ul,
 .tiptap-content .tiptap ol {
@@ -567,59 +699,149 @@ onBeforeUnmount(() => editor.value?.destroy())
 }
 
 .document-editor__pdf-frame {
-  padding: 34px 20px;
+  overflow: auto;
+  padding: 24px 16px 32px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--pdf-desk, #e8e8e8);
 }
-.document-editor__pdf-page {
-  width: min(100%, 794px);
-  min-height: 1123px;
+
+.document-editor__pdf-page-wrap {
+  position: relative;
+  width: min(100%, 680px);
   margin: 0 auto;
+}
+
+.document-editor__pdf-watermark {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.document-editor__pdf-page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--card);
-  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.12);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
 }
+
 .document-editor__pdf-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 52px 52px 26px;
+  gap: 10px;
+  padding: 36px 44px 20px;
   border-bottom: 1px solid var(--editor-border);
 }
+
+.document-editor__pdf-kicker {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.document-editor__pdf-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .document-editor__pdf-title {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 650;
+  flex: 1;
+  min-width: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--foreground);
   text-wrap: balance;
 }
-.document-editor__pdf-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--muted-foreground);
+
+.document-editor__pdf-version {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
   letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
-.document-editor__pdf-kicker {
-  color: var(--foreground);
-  font-weight: 600;
-}
+
 .document-editor__pdf-footer {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 26px 52px;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 16px 44px 28px;
   border-top: 1px solid var(--editor-border);
   color: var(--muted-foreground);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   letter-spacing: 0.02em;
 }
+
+.document-editor__pdf-footer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.document-editor__pdf-page-label {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.document-editor__pdf-download-stamp {
+  color: #757575;
+  font-size: 0.5625rem;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
 .document-editor__pdf-content {
-  flex: 1;
-  padding: 52px;
+  padding: 32px 44px 36px;
+}
+
+.document-editor__pdf-light .document-editor__pdf-body .tiptap {
+  min-height: 0;
+  max-width: none;
+  cursor: default;
+}
+
+.document-editor__pdf-light .document-editor__pdf-body .tiptap:focus {
+  outline: none;
+}
+
+.document-editor__pdf-light .document-editor__pdf-body .tiptap > :first-child {
+  margin-top: 0;
+}
+
+.document-editor__pdf-light .tiptap-content .tiptap,
+.document-editor__pdf-light .tiptap-content .tiptap h1,
+.document-editor__pdf-light .tiptap-content .tiptap h2,
+.document-editor__pdf-light .tiptap-content .tiptap h3 {
+  color: var(--foreground);
+}
+
+.document-editor__pdf-light .tiptap-content .tiptap blockquote,
+.document-editor__pdf-light .tiptap-content .tiptap pre,
+.document-editor__pdf-light .tiptap-content .tiptap code {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--editor-border);
+}
+
+.document-editor__pdf-light .tiptap-link {
+  color: var(--primary);
 }
 
 @media (max-width: 640px) {
@@ -633,11 +855,22 @@ onBeforeUnmount(() => editor.value?.destroy())
     padding: 24px 18px 36px;
   }
   .document-editor__pdf-content {
-    padding: 32px 24px;
+    padding: 24px 20px 28px;
   }
   .document-editor__pdf-header,
   .document-editor__pdf-footer {
-    padding: 18px 24px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .document-editor__pdf-header {
+    padding-top: 28px;
+  }
+  .document-editor__pdf-footer {
+    padding-bottom: 20px;
+  }
+  .document-editor__pdf-meta {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 

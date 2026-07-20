@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  isTiptapDocument,
-  parseTiptapContent,
-  serializeTiptapContent,
-} from './tiptapContent'
+import { isTiptapDocument, parseTiptapContent, serializeTiptapContent } from './tiptapContent'
 
 const document = {
   type: 'doc' as const,
@@ -25,7 +21,10 @@ describe('TipTap content serialization', () => {
   })
 
   it('accepts an empty TipTap document without a content field', () => {
-    expect(parseTiptapContent('{"type":"doc"}')).toEqual({ type: 'doc' })
+    expect(parseTiptapContent('{"type":"doc"}')).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph' }],
+    })
   })
 
   it('handles content serialized twice by a transport', () => {

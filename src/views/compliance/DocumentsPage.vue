@@ -490,7 +490,8 @@ function handleCreateDocument() {
                   class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none"
                   :style="{
                     backgroundColor: `color-mix(in oklab, ${classificationConfig[doc.classification]?.base || 'var(--muted-foreground)'} 12%, transparent)`,
-                    color: classificationConfig[doc.classification]?.base || 'var(--muted-foreground)',
+                    color:
+                      classificationConfig[doc.classification]?.base || 'var(--muted-foreground)',
                     borderColor: `color-mix(in oklab, ${classificationConfig[doc.classification]?.base || 'var(--muted-foreground)'} 20%, transparent)`,
                   }"
                 >

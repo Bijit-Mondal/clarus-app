@@ -43,6 +43,11 @@ export type UpdateDocumentInput = {
   classification?: string
 }
 
+export type WriteDocumentInput = {
+  title?: string
+  content?: string
+}
+
 export type UpdateDocumentApproversInput = {
   approverIds: string[]
 }
@@ -67,15 +72,22 @@ export function getDocument(tenantId: string, documentId: string) {
   })
 }
 
-export function updateDocument(
-  tenantId: string,
-  documentId: string,
-  input: UpdateDocumentInput,
-) {
+export function updateDocument(tenantId: string, documentId: string, input: UpdateDocumentInput) {
   return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}`, {
     method: 'PATCH',
     headers: {
       'x-tenant-id': tenantId,
+    },
+    body: input,
+  })
+}
+
+export function writeDocument(tenantId: string, documentId: string, input: WriteDocumentInput) {
+  return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}/write`, {
+    method: 'PATCH',
+    headers: {
+      'x-tenant-id': tenantId,
+      'content-type': 'application/json',
     },
     body: input,
   })
@@ -92,5 +104,23 @@ export function updateDocumentApprovers(
       'x-tenant-id': tenantId,
     },
     body: input,
+  })
+}
+
+export function publishDocumentMajor(tenantId: string, documentId: string) {
+  return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}/publish/major`, {
+    method: 'POST',
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}
+
+export function publishDocumentMinor(tenantId: string, documentId: string) {
+  return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}/publish/minor`, {
+    method: 'POST',
+    headers: {
+      'x-tenant-id': tenantId,
+    },
   })
 }
