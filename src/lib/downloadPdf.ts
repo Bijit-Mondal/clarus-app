@@ -107,7 +107,11 @@ function inlineSafeStyles(original: Element, clone: HTMLElement) {
   for (const prop of COLOR_PROPS) {
     const value = computed[prop]
     if (!value) continue
-    clone.style.setProperty(camelToKebab(prop), resolveColor(value, camelToKebab(prop)), 'important')
+    clone.style.setProperty(
+      camelToKebab(prop),
+      resolveColor(value, camelToKebab(prop)),
+      'important',
+    )
   }
 
   for (const prop of LAYOUT_PROPS) {
@@ -129,7 +133,11 @@ function inlineSafeStyles(original: Element, clone: HTMLElement) {
   }
 }
 
-function prepareCloneForCapture(clonedDoc: Document, originalElement: HTMLElement, clonedElement: HTMLElement) {
+function prepareCloneForCapture(
+  clonedDoc: Document,
+  originalElement: HTMLElement,
+  clonedElement: HTMLElement,
+) {
   clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => node.remove())
   applyPdfLightTheme(clonedElement)
   inlineSafeStyles(originalElement, clonedElement)
@@ -147,9 +155,7 @@ export interface DownloadPdfOptions {
 
 export async function downloadElementAsPdf({ element, filename, watermark }: DownloadPdfOptions) {
   const downloadedAt = watermark?.downloadedAt ?? new Date()
-  const downloadStamp = watermark
-    ? buildDownloadStamp(watermark.userEmail, downloadedAt)
-    : null
+  const downloadStamp = watermark ? buildDownloadStamp(watermark.userEmail, downloadedAt) : null
 
   const canvas = await html2canvas(element, {
     scale: 2,

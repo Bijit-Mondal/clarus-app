@@ -57,15 +57,25 @@ export function getDocumentStatusConfig(status: DocumentVersionStatus) {
 
 export type ApprovalRecordStatus = 'approved' | 'pending' | 'rejected'
 
-export function getApprovalStatusConfig(status: ApprovalRecordStatus) {
-  if (status === 'approved') {
+export function normalizeApprovalStatus(status: string): ApprovalRecordStatus {
+  const normalized = status.toLowerCase().replace(/_/g, '-')
+  if (normalized === 'approved' || normalized === 'accepted') return 'approved'
+  if (normalized === 'rejected' || normalized === 'declined' || normalized === 'denied') {
+    return 'rejected'
+  }
+  return 'pending'
+}
+
+export function getApprovalStatusConfig(status: ApprovalRecordStatus | string) {
+  const resolved = normalizeApprovalStatus(status)
+  if (resolved === 'approved') {
     return {
       label: 'Approved',
       icon: PhCheckCircle,
       class: 'border-success/30 bg-success/10 text-success-emphasis',
     }
   }
-  if (status === 'rejected') {
+  if (resolved === 'rejected') {
     return {
       label: 'Rejected',
       icon: PhXCircle,

@@ -76,3 +76,19 @@ export function parseTiptapContent(value: unknown): TiptapDocument | string {
 export function serializeTiptapContent(document: TiptapDocument): string {
   return JSON.stringify(document)
 }
+
+/** True when content is missing or an empty TipTap doc (single blank paragraph). */
+export function isEmptyTiptapContent(value: unknown): boolean {
+  if (value == null) return true
+  if (typeof value === 'string' && !value.trim()) return true
+
+  const parsed = parseTiptapContent(value)
+  if (typeof parsed === 'string') return !parsed.trim()
+
+  const nodes = parsed.content ?? []
+  if (nodes.length === 0) return true
+  if (nodes.length > 1) return false
+
+  const only = nodes[0]
+  return only?.type === 'paragraph' && (only.content == null || only.content.length === 0)
+}

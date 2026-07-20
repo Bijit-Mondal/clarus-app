@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   useDocuments,
   useDocumentQuery,
+  useDocumentVersionsQuery,
+  useDocumentControlsQuery,
+  useDocumentApprovalsQuery,
   useWriteDocumentMutation,
   usePublishDocumentMutation,
   type DocumentControlLink,
@@ -34,6 +37,32 @@ const documentId = computed(() => route.params.documentId as string)
 const orgSlug = computed(() => route.params.organizationSlug as string)
 
 const { isPending: isDocumentLoading, isError: isDocumentError } = useDocumentQuery(documentId)
+const { data: versionsResponse } = useDocumentVersionsQuery(documentId)
+const versionsCount = computed(() => versionsResponse.value?.total ?? 0)
+
+const { data: approvalsResponse } = useDocumentApprovalsQuery(documentId, {
+  limit: 8,
+  offset: 0,
+})
+const approvalsCount = computed(() => approvalsResponse.value?.total ?? 0)
+
+const {
+  data: controlsResponse,
+  isPending: isControlsLoading,
+  isError: isControlsError,
+} = useDocumentControlsQuery(documentId, { limit: 25, offset: 0 })
+const documentControls = computed(() => controlsResponse.value?.tenantControls ?? [])
+const controlsCount = computed(() => controlsResponse.value?.total ?? 0)
+
+const linkedControlsForDialog = computed<DocumentControlLink[]>(() =>
+  documentControls.value.map((control) => ({
+    tenantControlId: control.$id,
+    controlKey: control.controlKey,
+    name: control.name,
+    implementationStatus: control.implementationStatus,
+  })),
+)
+
 const { mutateAsync: writeDocument } = useWriteDocumentMutation()
 const { mutateAsync: publishDocument, isPending: isPublishing } = usePublishDocumentMutation()
 const { data: tenantUsersData } = useTenantUsersQuery()
@@ -42,29 +71,17 @@ const tenantUsers = computed(() => tenantUsersData.value?.users ?? [])
 const { accountQuery } = useAuth()
 const currentUserEmail = computed(() => accountQuery.data.value?.email ?? '')
 
-const {
-  getDocumentById,
-  addActivity,
-  getDocumentControls,
-  linkDocumentControl,
-  unlinkDocumentControl,
-} = useDocuments()
+const { getDocumentById, addActivity, linkDocumentControl } = useDocuments()
 
 const documentItem = computed(() => getDocumentById(documentId.value))
-const linkedControls = computed(() => getDocumentControls(documentId.value))
 
-const {
-  draftTitle,
-  draftContent,
-  saveStatus,
-  flushAutosave,
-  ensureDocumentSaved,
-} = useDocumentAutosave({
-  documentId,
-  documentItem,
-  writeDocument,
-  addActivity,
-})
+const { draftTitle, draftContent, saveStatus, flushAutosave, ensureDocumentSaved } =
+  useDocumentAutosave({
+    documentId,
+    documentItem,
+    writeDocument,
+    addActivity,
+  })
 
 const activeTab = ref<DocumentTab>('content')
 const isEditDialogOpen = ref(false)
@@ -81,11 +98,11 @@ const tabs = computed(
   () =>
     [
       { id: 'content' as const, label: 'Content', count: 0 },
-      { id: 'controls' as const, label: 'Controls', count: linkedControls.value.length },
+      { id: 'controls' as const, label: 'Controls', count: controlsCount.value },
       {
         id: 'versions' as const,
         label: 'Versions',
-        count: documentItem.value?.versions.length || 0,
+        count: versionsCount.value,
       },
       {
         id: 'activity' as const,
@@ -95,7 +112,7 @@ const tabs = computed(
       {
         id: 'approvals' as const,
         label: 'Approvals',
-        count: documentItem.value?.approvers.length || 0,
+        count: approvalsCount.value,
       },
       { id: 'signatures' as const, label: 'Signatures', count: signatureCount.value },
     ] as const,
@@ -113,22 +130,30 @@ function openPublishDialog() {
   isPublishDialogOpen.value = true
 }
 
-async function handlePublishMinor() {
+async function handlePublishMinor(changeLog: string) {
   if (!documentItem.value || isPublishing.value) return
   await ensureDocumentSaved()
   try {
-    await publishDocument({ documentId: documentItem.value.id, versionType: 'minor' })
+    await publishDocument({
+      documentId: documentItem.value.id,
+      versionType: 'minor',
+      changeLog,
+    })
     isPublishDialogOpen.value = false
   } catch {
     // Dialog stays open for retry
   }
 }
 
-async function handlePublishMajor() {
+async function handlePublishMajor(changeLog: string) {
   if (!documentItem.value || isPublishing.value) return
   await ensureDocumentSaved()
   try {
-    await publishDocument({ documentId: documentItem.value.id, versionType: 'major' })
+    await publishDocument({
+      documentId: documentItem.value.id,
+      versionType: 'major',
+      changeLog,
+    })
     isPublishDialogOpen.value = false
     activeTab.value = 'approvals'
   } catch {
@@ -143,7 +168,7 @@ function handleLinkControl(control: DocumentControlLink) {
 }
 
 function restoreVersion(versionContent: string, versionLabel: string) {
-  if (!documentItem.value) return
+  if (!documentItem.value || !versionContent.trim()) return
   activeTab.value = 'content'
   draftContent.value = versionContent
   flushAutosave()
@@ -194,15 +219,16 @@ function restoreVersion(versionContent: string, versionLabel: string) {
 
         <DocumentControlsTab
           v-else-if="activeTab === 'controls'"
-          :linked-controls="linkedControls"
-          :org-slug="orgSlug"
+          :controls="documentControls"
+          :is-loading="isControlsLoading"
+          :is-error="isControlsError"
+          :organization-slug="orgSlug"
           @link="isLinkControlDialogOpen = true"
-          @unlink="unlinkDocumentControl(documentItem.id, $event)"
         />
 
         <DocumentVersionsTab
           v-else-if="activeTab === 'versions'"
-          :versions="documentItem.versions"
+          :document-id="documentId"
           @restore="restoreVersion"
         />
 
@@ -211,12 +237,7 @@ function restoreVersion(versionContent: string, versionLabel: string) {
           :activity="documentItem.activity"
         />
 
-        <DocumentApprovalsTab
-          v-else-if="activeTab === 'approvals'"
-          :document="documentItem"
-          @edit-approvers="isEditDialogOpen = true"
-          @request-approval="openPublishDialog()"
-        />
+        <DocumentApprovalsTab v-else-if="activeTab === 'approvals'" :document-id="documentId" />
 
         <DocumentSignaturesTab v-else-if="activeTab === 'signatures'" :document="documentItem" />
       </div>
@@ -233,7 +254,7 @@ function restoreVersion(versionContent: string, versionLabel: string) {
 
     <DocumentLinkControlDialog
       v-model:open="isLinkControlDialogOpen"
-      :linked-controls="linkedControls"
+      :linked-controls="linkedControlsForDialog"
       @link="handleLinkControl"
     />
 

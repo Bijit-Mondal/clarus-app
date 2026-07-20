@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api'
+import type { TenantControlsResponse } from '@/api/controls'
 
 export type TenantDocument = {
   $id: string
@@ -38,6 +39,66 @@ export type TenantDocumentsResponse = {
   documents: TenantDocument[]
 }
 
+export type DocumentVersionItem = {
+  $id: string
+  $createdAt: string
+  $updatedAt: string
+  documentId: string
+  major: number
+  minor: number
+  title: string
+  changeLog: string
+  status: string
+  publishedAt: string
+}
+
+export type DocumentVersionsResponse = {
+  total: number
+  documentVersions: DocumentVersionItem[]
+}
+
+export type DocumentApprovalDecisionApprover = {
+  $id: string
+  $createdAt: string
+  name: string
+  email: string
+  emailVerified: boolean
+  status: string
+}
+
+export type DocumentApprovalDecision = {
+  $id: string
+  $createdAt: string
+  $updatedAt: string
+  approvalRequestId: string
+  approverId: string
+  state: string
+  comment: string
+  decidedAt: string
+  approver: DocumentApprovalDecisionApprover
+}
+
+export type DocumentVersionApprovalRequest = {
+  $id: string
+  $createdAt: string
+  $updatedAt: string
+  status: string
+  completedAt: string
+  documentVersionId: string
+  documentId: string
+  documentType: string
+  documentKey: string
+  title: string
+  major: number
+  minor: number
+  decisions: DocumentApprovalDecision[]
+}
+
+export type DocumentApprovalsResponse = {
+  total: number
+  documentVersionApprovalRequests: DocumentVersionApprovalRequest[]
+}
+
 export type UpdateDocumentInput = {
   documentType?: string
   classification?: string
@@ -69,6 +130,45 @@ export function getDocument(tenantId: string, documentId: string) {
     headers: {
       'x-tenant-id': tenantId,
     },
+  })
+}
+
+export function getDocumentVersions(
+  tenantId: string,
+  documentId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<DocumentVersionsResponse>(`/v1/documents/${documentId}/versions`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: options,
+  })
+}
+
+export function getDocumentControls(
+  tenantId: string,
+  documentId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<TenantControlsResponse>(`/v1/documents/${documentId}/controls`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: options,
+  })
+}
+
+export function getDocumentApprovals(
+  tenantId: string,
+  documentId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<DocumentApprovalsResponse>(`/v1/documents/${documentId}/approvals`, {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: options,
   })
 }
 
@@ -107,20 +207,36 @@ export function updateDocumentApprovers(
   })
 }
 
-export function publishDocumentMajor(tenantId: string, documentId: string) {
+export type PublishDocumentInput = {
+  changeLog: string
+}
+
+export function publishDocumentMajor(
+  tenantId: string,
+  documentId: string,
+  input: PublishDocumentInput,
+) {
   return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}/publish/major`, {
     method: 'POST',
     headers: {
       'x-tenant-id': tenantId,
+      'content-type': 'application/json',
     },
+    body: input,
   })
 }
 
-export function publishDocumentMinor(tenantId: string, documentId: string) {
+export function publishDocumentMinor(
+  tenantId: string,
+  documentId: string,
+  input: PublishDocumentInput,
+) {
   return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}/publish/minor`, {
     method: 'POST',
     headers: {
       'x-tenant-id': tenantId,
+      'content-type': 'application/json',
     },
+    body: input,
   })
 }

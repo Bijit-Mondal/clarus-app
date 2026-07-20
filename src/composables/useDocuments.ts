@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   getDocuments,
@@ -8,6 +8,9 @@ import {
   updateDocumentApprovers,
   publishDocumentMajor,
   publishDocumentMinor,
+  getDocumentVersions,
+  getDocumentControls as fetchDocumentControls,
+  getDocumentApprovals as fetchDocumentApprovals,
   type UpdateDocumentInput,
   type WriteDocumentInput,
   type TenantDocument,
@@ -219,6 +222,12 @@ export const documentKeys = {
     [...documentKeys.all, tenantId, 'list', options] as const,
   detail: (tenantId: string, documentId: string) =>
     [...documentKeys.all, 'detail', tenantId, documentId] as const,
+  versions: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
+    [...documentKeys.all, 'versions', tenantId, documentId, options || {}] as const,
+  controls: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
+    [...documentKeys.all, 'controls', tenantId, documentId, options || {}] as const,
+  approvals: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
+    [...documentKeys.all, 'approvals', tenantId, documentId, options || {}] as const,
 }
 
 export function formatTimeAgo(dateString: string) {
@@ -273,6 +282,8 @@ function mergeDocumentIntoStore(item: DocumentItem, fromDetail = false) {
     const existing = documentsList.value[index]!
     documentsList.value[index] = {
       ...item,
+      // List payloads often omit or empty `content`; never wipe a detail-hydrated body.
+      content: fromDetail || item.content ? item.content : existing.content,
       versions: existing.versions.length ? existing.versions : item.versions,
       activity: existing.activity.length ? existing.activity : item.activity,
       approvers: fromDetail
@@ -344,13 +355,87 @@ export function useDocumentQuery(documentId: Ref<string> | string) {
     typeof documentId === 'string' ? documentId : documentId.value,
   )
 
-  return useQuery({
+  const query = useQuery({
     queryKey: computed(() => documentKeys.detail(tenantId.value || '', documentIdVal.value || '')),
-    queryFn: async () => {
-      const doc = await getDocument(tenantId.value!, documentIdVal.value!)
-      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
-      return doc
+    queryFn: () => getDocument(tenantId.value!, documentIdVal.value!),
+    enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
+    staleTime: 300_000,
+  })
+
+  // Re-hydrate the module store from cache/network data. queryFn alone is not enough:
+  // returning to a detail page within staleTime skips queryFn, so the editor would
+  // otherwise bind to a store entry that list merges may have emptied.
+  watch(
+    () => query.data.value,
+    (doc) => {
+      if (doc) mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
     },
+    { immediate: true },
+  )
+
+  return query
+}
+
+export function useDocumentVersionsQuery(
+  documentId: Ref<string> | string,
+  options?: Ref<{ limit?: number; offset?: number }> | { limit?: number; offset?: number },
+) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const documentIdVal = computed(() =>
+    typeof documentId === 'string' ? documentId : documentId.value,
+  )
+  const optionsVal = computed(() => (options && 'value' in options ? options.value : options))
+
+  return useQuery({
+    queryKey: computed(() =>
+      documentKeys.versions(tenantId.value || '', documentIdVal.value || '', optionsVal.value),
+    ),
+    queryFn: async () => {
+      return getDocumentVersions(tenantId.value!, documentIdVal.value!, optionsVal.value)
+    },
+    enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
+    staleTime: 300_000,
+  })
+}
+
+export function useDocumentControlsQuery(
+  documentId: Ref<string> | string,
+  options?: Ref<{ limit?: number; offset?: number }> | { limit?: number; offset?: number },
+) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const documentIdVal = computed(() =>
+    typeof documentId === 'string' ? documentId : documentId.value,
+  )
+  const optionsVal = computed(() => (options && 'value' in options ? options.value : options))
+
+  return useQuery({
+    queryKey: computed(() =>
+      documentKeys.controls(tenantId.value || '', documentIdVal.value || '', optionsVal.value),
+    ),
+    queryFn: () => fetchDocumentControls(tenantId.value!, documentIdVal.value!, optionsVal.value),
+    enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
+    staleTime: 300_000,
+  })
+}
+
+export function useDocumentApprovalsQuery(
+  documentId: Ref<string> | string,
+  options?: Ref<{ limit?: number; offset?: number }> | { limit?: number; offset?: number },
+) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const documentIdVal = computed(() =>
+    typeof documentId === 'string' ? documentId : documentId.value,
+  )
+  const optionsVal = computed(() => (options && 'value' in options ? options.value : options))
+
+  return useQuery({
+    queryKey: computed(() =>
+      documentKeys.approvals(tenantId.value || '', documentIdVal.value || '', optionsVal.value),
+    ),
+    queryFn: () => fetchDocumentApprovals(tenantId.value!, documentIdVal.value!, optionsVal.value),
     enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
     staleTime: 300_000,
   })
@@ -441,13 +526,15 @@ export function usePublishDocumentMutation() {
     mutationFn: ({
       documentId,
       versionType,
+      changeLog,
     }: {
       documentId: string
       versionType: 'major' | 'minor'
+      changeLog: string
     }) =>
       versionType === 'major'
-        ? publishDocumentMajor(tenantId.value!, documentId)
-        : publishDocumentMinor(tenantId.value!, documentId),
+        ? publishDocumentMajor(tenantId.value!, documentId, { changeLog })
+        : publishDocumentMinor(tenantId.value!, documentId, { changeLog }),
     onSuccess: (doc, { documentId, versionType }) => {
       mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
       const versionLabel = formatDocumentVersion(doc)

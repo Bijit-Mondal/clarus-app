@@ -131,6 +131,16 @@ const router = createRouter({
             title: 'Document Details',
           },
         },
+        {
+          path: 'compliance/documents/:documentId/approvals/:approvalRequestId',
+          name: 'compliance-document-approval-review',
+          component: () => import('@/views/compliance/DocumentApprovalReviewPage.vue'),
+          meta: {
+            module: 'compliance',
+            title: 'Review document',
+            immersive: true,
+          },
+        },
       ],
     },
   ],

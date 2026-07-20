@@ -1,6 +1,7 @@
 import { ref, watch, onBeforeUnmount, type ComputedRef } from 'vue'
 import type { DocumentItem } from '@/composables/useDocuments'
 import type { SaveStatus } from '@/components/compliance/document-detail/types'
+import { isEmptyTiptapContent } from '@/lib/tiptapContent'
 
 const AUTOSAVE_DELAY_MS = 1000
 const AUTOSAVE_MAX_WAIT_MS = 5000
@@ -169,15 +170,20 @@ export function useDocumentAutosave(options: {
   })
 
   watch(
-    () =>
-      [
-        documentItem.value?.id,
-        documentItem.value?.title,
-        documentItem.value?.content,
-      ] as const,
+    () => [documentItem.value?.id, documentItem.value?.title, documentItem.value?.content] as const,
     ([id, , content]) => {
       if (!id || id !== documentId.value || content === undefined) return
       if (lastSyncedContent.value === null || !hasLocalEditsSinceSync()) {
+        syncDraftFromDocument()
+        return
+      }
+      // TipTap can normalize '' → empty JSON before cached detail content rehydrates.
+      // Don't treat that as a user edit that blocks applying real server content.
+      if (
+        !isEmptyTiptapContent(content) &&
+        isEmptyTiptapContent(draftContent.value) &&
+        isEmptyTiptapContent(lastSyncedContent.value)
+      ) {
         syncDraftFromDocument()
       }
     },

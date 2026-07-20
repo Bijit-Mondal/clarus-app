@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isTiptapDocument, parseTiptapContent, serializeTiptapContent } from './tiptapContent'
+import {
+  isEmptyTiptapContent,
+  isTiptapDocument,
+  parseTiptapContent,
+  serializeTiptapContent,
+} from './tiptapContent'
 
 const document = {
   type: 'doc' as const,
@@ -48,5 +53,11 @@ describe('TipTap content serialization', () => {
 
     expect(isTiptapDocument(document)).toBe(true)
     expect(JSON.parse(serialized)).toEqual(document)
+  })
+
+  it('detects empty TipTap content', () => {
+    expect(isEmptyTiptapContent('')).toBe(true)
+    expect(isEmptyTiptapContent('{"type":"doc","content":[{"type":"paragraph"}]}')).toBe(true)
+    expect(isEmptyTiptapContent(JSON.stringify(document))).toBe(false)
   })
 })

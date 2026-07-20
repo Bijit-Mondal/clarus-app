@@ -92,11 +92,7 @@ const signatureSummary = computed(() => {
                 getSignatureStatusConfig(sig.status).class,
               ]"
             >
-              <component
-                :is="getSignatureStatusConfig(sig.status).icon"
-                :size="11"
-                weight="fill"
-              />
+              <component :is="getSignatureStatusConfig(sig.status).icon" :size="11" weight="fill" />
               {{ getSignatureStatusConfig(sig.status).label }}
             </Badge>
           </td>

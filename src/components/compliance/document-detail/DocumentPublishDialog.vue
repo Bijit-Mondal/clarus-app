@@ -31,8 +31,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [open: boolean]
-  publishMinor: []
-  publishMajor: []
+  publishMinor: [changeLog: string]
+  publishMajor: [changeLog: string]
 }>()
 
 const publishChangelog = ref('')
@@ -142,7 +142,12 @@ function removeApprover(name: string) {
       </div>
 
       <DialogFooter class="flex items-center gap-2 sm:justify-between">
-        <Button variant="outline" size="sm" :disabled="isPublishing" @click="emit('update:open', false)">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="isPublishing"
+          @click="emit('update:open', false)"
+        >
           Cancel
         </Button>
         <div class="flex gap-2">
@@ -150,8 +155,8 @@ function removeApprover(name: string) {
             variant="outline"
             size="sm"
             class="gap-1 text-xs"
-            :disabled="isPublishing"
-            @click="emit('publishMinor')"
+            :disabled="isPublishing || !publishChangelog.trim()"
+            @click="emit('publishMinor', publishChangelog.trim())"
           >
             <PhUploadSimple :size="14" />
             {{ isPublishing ? 'Publishing…' : 'Publish as minor' }}
@@ -159,8 +164,8 @@ function removeApprover(name: string) {
           <Button
             size="sm"
             class="gap-1 bg-primary text-xs text-primary-foreground"
-            :disabled="isPublishing"
-            @click="emit('publishMajor')"
+            :disabled="isPublishing || !publishChangelog.trim()"
+            @click="emit('publishMajor', publishChangelog.trim())"
           >
             <PhPaperPlaneTilt :size="14" />
             {{

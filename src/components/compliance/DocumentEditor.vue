@@ -42,12 +42,13 @@ const props = withDefaults(
   defineProps<{
     modelValue: string
     editable?: boolean
+    previewOnly?: boolean
     title?: string
     version?: string
     downloadUserEmail?: string
     downloadFilename?: string
   }>(),
-  { editable: true },
+  { editable: true, previewOnly: false },
 )
 
 const emit = defineEmits<{
@@ -55,7 +56,7 @@ const emit = defineEmits<{
   (e: 'blur'): void
 }>()
 
-const viewMode = ref<'editor' | 'pdf'>('editor')
+const viewMode = ref<'editor' | 'pdf'>(props.previewOnly ? 'pdf' : 'editor')
 const isLinkDialogOpen = ref(false)
 const linkUrl = ref('')
 const pdfPageRef = ref<HTMLElement | null>(null)
@@ -83,7 +84,7 @@ const editor = useEditor({
       HTMLAttributes: { class: 'tiptap-link' },
     }),
   ],
-  editable: props.editable,
+  editable: props.editable && !props.previewOnly,
   editorProps: {
     attributes: {
       'aria-label': 'Document content',
@@ -183,26 +184,31 @@ async function downloadPdf() {
   }
 }
 
-watch(
-  () => props.modelValue,
-  (newValue) => {
-    if (!editor.value || editor.value.isFocused) return
+function applyModelValueToEditor(newValue: string) {
+  const currentEditor = editor.value
+  if (!currentEditor || currentEditor.isFocused) return
 
-    const parsedContent = parseTiptapContent(newValue)
-    const currentContent = serializeTiptapContent(editor.value.getJSON() as TiptapDocument)
-    const incomingContent =
-      typeof parsedContent === 'string' ? parsedContent : serializeTiptapContent(parsedContent)
+  const parsedContent = parseTiptapContent(newValue)
+  const currentContent = serializeTiptapContent(currentEditor.getJSON() as TiptapDocument)
+  const incomingContent =
+    typeof parsedContent === 'string' ? parsedContent : serializeTiptapContent(parsedContent)
 
-    if (
-      (typeof parsedContent === 'string' && editor.value.getHTML() === incomingContent) ||
-      currentContent === incomingContent
-    ) {
-      return
-    }
+  if (
+    (typeof parsedContent === 'string' && currentEditor.getHTML() === incomingContent) ||
+    currentContent === incomingContent
+  ) {
+    return
+  }
 
-    editor.value.commands.setContent(parsedContent, { emitUpdate: false })
-  },
-)
+  currentEditor.commands.setContent(parsedContent, { emitUpdate: false })
+}
+
+// useEditor creates the instance in onMounted with setup-time options. If modelValue
+// changes before that (or the editor remounts with stale options), re-apply content
+// when either the value or the editor instance becomes ready.
+watch([() => props.modelValue, editor], ([newValue]) => {
+  applyModelValueToEditor(newValue)
+})
 
 watch(
   () => props.editable,
@@ -219,7 +225,7 @@ onBeforeUnmount(() => editor.value?.destroy())
 
 <template>
   <section class="document-editor" aria-label="Document editor">
-    <div class="document-editor__view-bar">
+    <div v-if="!previewOnly" class="document-editor__view-bar">
       <div
         class="inline-flex w-fit items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
         role="tablist"
@@ -260,6 +266,23 @@ onBeforeUnmount(() => editor.value?.destroy())
         type="button"
         class="document-editor__pdf-download h-8 gap-1.5 text-xs font-semibold"
         :disabled="isDownloadingPdf || !downloadUserEmail"
+        @click="downloadPdf"
+      >
+        <PhDownloadSimple :size="15" :class="{ 'animate-bounce': isDownloadingPdf }" />
+        {{ isDownloadingPdf ? 'Generating…' : 'Download PDF' }}
+      </Button>
+    </div>
+
+    <div
+      v-else-if="downloadUserEmail"
+      class="mb-3 flex justify-end px-1"
+    >
+      <Button
+        variant="outline"
+        size="sm"
+        type="button"
+        class="document-editor__pdf-download h-8 gap-1.5 text-xs font-semibold"
+        :disabled="isDownloadingPdf"
         @click="downloadPdf"
       >
         <PhDownloadSimple :size="15" :class="{ 'animate-bounce': isDownloadingPdf }" />

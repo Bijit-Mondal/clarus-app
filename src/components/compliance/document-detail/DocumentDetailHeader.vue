@@ -10,10 +10,7 @@ import {
 } from '@phosphor-icons/vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  getCategoryLabel,
-  getDocumentStatusConfig,
-} from '@/lib/documentDisplay'
+import { getCategoryLabel, getDocumentStatusConfig } from '@/lib/documentDisplay'
 import type { DocumentItem } from '@/composables/useDocuments'
 import type { SaveStatus } from '@/components/compliance/document-detail/types'
 
@@ -80,7 +77,9 @@ function cancelTitleEdit() {
   isEditingTitle.value = false
 }
 
-function handleTitleInput() {
+function handleTitleInput(event: Event) {
+  const value = (event.target as HTMLInputElement).value
+  emit('update:draftTitle', value)
   if (titleValidationError.value) {
     titleValidationError.value = null
   }
@@ -107,10 +106,7 @@ function handleTitleInput() {
         <div class="flex items-center gap-3">
           <Badge
             variant="outline"
-            :class="[
-              'gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
-              statusConfig.class,
-            ]"
+            :class="['gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold', statusConfig.class]"
           >
             <component :is="statusConfig.icon" :size="13" weight="fill" />
             {{ statusConfig.label }}
@@ -144,10 +140,7 @@ function handleTitleInput() {
                     ? 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20'
                     : 'border-input',
                 ]"
-                @input="
-                  emit('update:draftTitle', ($event.target as HTMLInputElement).value);
-                  handleTitleInput()
-                "
+                @input="handleTitleInput"
                 @keydown.enter="saveTitleEdit"
                 @keydown.escape="cancelTitleEdit"
               />
@@ -225,11 +218,7 @@ function handleTitleInput() {
           <PhPencilSimple :size="15" />
           Edit
         </Button>
-        <Button
-          size="sm"
-          class="h-8 gap-1.5 px-3.5 text-xs font-semibold"
-          @click="emit('publish')"
-        >
+        <Button size="sm" class="h-8 gap-1.5 px-3.5 text-xs font-semibold" @click="emit('publish')">
           <PhUploadSimple :size="15" weight="bold" />
           Publish
         </Button>
