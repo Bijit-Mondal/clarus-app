@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import {
   PhArrowCounterClockwise,
   PhClock,
+  PhEye,
   PhWarningCircle,
   PhArrowLeft,
   PhArrowRight,
@@ -10,11 +11,27 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
+import DocumentEditor from '@/components/compliance/DocumentEditor.vue'
+import {
   useDocumentVersionsQuery,
+  useDocumentVersionQuery,
   normalizeVersionStatus,
   formatTimeAgo,
+  documentKeys,
 } from '@/composables/useDocuments'
+import { getDocumentVersion } from '@/api/documents'
 import { getDocumentStatusConfig } from '@/lib/documentDisplay'
+import { useAuth } from '@/composables/useAuth'
+import { useOrganizationStore } from '@/stores/organization'
+import { useQueryClient } from '@tanstack/vue-query'
 import type { DocumentVersionItem } from '@/api/documents'
 
 const props = defineProps<{
@@ -24,6 +41,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   restore: [content: string, versionLabel: string]
 }>()
+
+const { accountQuery } = useAuth()
+const currentUserEmail = computed(() => accountQuery.data.value?.email ?? '')
+const organizationStore = useOrganizationStore()
+const queryClient = useQueryClient()
 
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
@@ -44,6 +66,45 @@ const {
 const versionsList = computed(() => versionsResponse.value?.documentVersions ?? [])
 const totalVersions = computed(() => versionsResponse.value?.total ?? 0)
 const totalPages = computed(() => Math.ceil(totalVersions.value / itemsPerPage.value))
+
+const viewingVersion = ref<DocumentVersionItem | null>(null)
+const viewingVersionId = computed(() => viewingVersion.value?.$id ?? null)
+const isPreviewOpen = computed({
+  get: () => viewingVersion.value !== null,
+  set: (open: boolean) => {
+    if (!open) viewingVersion.value = null
+  },
+})
+
+const {
+  data: versionDetail,
+  isPending: isVersionDetailLoading,
+  isError: isVersionDetailError,
+  isFetching: isVersionDetailFetching,
+} = useDocumentVersionQuery(
+  computed(() => props.documentId),
+  viewingVersionId,
+)
+
+const previewContent = computed(() => versionDetail.value?.content?.trim() ?? '')
+const previewTitle = computed(
+  () => versionDetail.value?.title || viewingVersion.value?.title || 'Untitled document',
+)
+const previewVersionLabel = computed(() => {
+  if (versionDetail.value) {
+    return `v${versionDetail.value.major}.${versionDetail.value.minor}`
+  }
+  if (viewingVersion.value) return versionLabel(viewingVersion.value)
+  return ''
+})
+
+const isPreviewLoading = computed(
+  () =>
+    !!viewingVersionId.value &&
+    (isVersionDetailLoading.value || (isVersionDetailFetching.value && !versionDetail.value)),
+)
+
+const restoringVersionId = ref<string | null>(null)
 
 function versionLabel(v: DocumentVersionItem) {
   return `v${v.major}.${v.minor}`
@@ -75,21 +136,40 @@ function formatFullDateTime(dateString: string) {
   })
 }
 
-function versionContent(v: DocumentVersionItem): string | undefined {
-  if ('content' in v && typeof v.content === 'string' && v.content.trim()) {
-    return v.content
+function openPreview(version: DocumentVersionItem) {
+  viewingVersion.value = version
+}
+
+async function fetchVersionContent(version: DocumentVersionItem) {
+  const tenantId = organizationStore.activeOrganization?.id
+  if (!tenantId) return null
+
+  const detail = await queryClient.fetchQuery({
+    queryKey: documentKeys.versionDetail(tenantId, props.documentId, version.$id),
+    queryFn: () => getDocumentVersion(tenantId, props.documentId, version.$id),
+    staleTime: 300_000,
+  })
+
+  const content = detail.content?.trim()
+  return content ? content : null
+}
+
+async function handleRestore(version: DocumentVersionItem) {
+  if (restoringVersionId.value) return
+  restoringVersionId.value = version.$id
+  try {
+    const content = await fetchVersionContent(version)
+    if (!content) return
+    emit('restore', content, versionLabel(version))
+    viewingVersion.value = null
+  } finally {
+    restoringVersionId.value = null
   }
-  return undefined
 }
 
-function canRestore(v: DocumentVersionItem, index: number) {
-  return !isCurrentVersion(index) && Boolean(versionContent(v))
-}
-
-function handleRestore(v: DocumentVersionItem) {
-  const content = versionContent(v)
-  if (!content) return
-  emit('restore', content, versionLabel(v))
+async function handleRestoreFromPreview() {
+  if (!viewingVersion.value) return
+  await handleRestore(viewingVersion.value)
 }
 </script>
 
@@ -99,7 +179,7 @@ function handleRestore(v: DocumentVersionItem) {
       <div class="min-w-0">
         <h2 class="text-sm font-semibold text-foreground text-balance">Version history</h2>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          Past revisions of this document, with changelogs and restore when available.
+          Browse past revisions, open a read-only preview, or restore content into the editor.
         </p>
       </div>
       <span
@@ -193,16 +273,27 @@ function handleRestore(v: DocumentVersionItem) {
               >
                 {{ formatRelativeTime(v.$updatedAt) }}
               </time>
-              <Button
-                v-if="canRestore(v, index)"
-                variant="outline"
-                size="sm"
-                class="h-8 gap-1.5 px-2.5 text-xs"
-                @click="handleRestore(v)"
-              >
-                <PhArrowCounterClockwise :size="13" />
-                Restore
-              </Button>
+              <template v-if="!isCurrentVersion(index)">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-8 gap-1.5 px-2.5 text-xs"
+                  @click="openPreview(v)"
+                >
+                  <PhEye :size="13" />
+                  View
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-8 gap-1.5 px-2.5 text-xs"
+                  :disabled="restoringVersionId === v.$id"
+                  @click="handleRestore(v)"
+                >
+                  <PhArrowCounterClockwise :size="13" />
+                  {{ restoringVersionId === v.$id ? 'Restoring…' : 'Restore' }}
+                </Button>
+              </template>
             </div>
           </div>
 
@@ -276,4 +367,79 @@ function handleRestore(v: DocumentVersionItem) {
       </div>
     </template>
   </div>
+
+  <Dialog v-model:open="isPreviewOpen">
+    <DialogContent
+      class="flex max-h-[min(90vh,880px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl"
+    >
+      <DialogHeader class="shrink-0 space-y-1 border-b border-border px-6 py-4 pr-12 text-left">
+        <DialogTitle class="text-balance">{{ previewTitle }}</DialogTitle>
+        <DialogDescription class="font-mono text-xs tabular-nums">
+          {{ previewVersionLabel }}
+          <span class="text-muted-foreground"> · Read-only preview</span>
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="min-h-0 flex-1 overflow-y-auto bg-muted/30 px-4 py-4 md:px-6">
+        <ClarusLoadingState
+          v-if="isPreviewLoading"
+          variant="compact"
+          label="Loading version…"
+          class="py-16"
+        />
+
+        <div
+          v-else-if="isVersionDetailError"
+          class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-12 text-center"
+        >
+          <PhWarningCircle :size="22" class="text-destructive" />
+          <p class="mt-3 text-sm font-medium text-foreground">Couldn’t load this version</p>
+          <p class="mt-1 text-xs text-muted-foreground text-pretty">
+            Try closing this preview and opening the version again.
+          </p>
+        </div>
+
+        <div
+          v-else-if="!previewContent"
+          class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center"
+        >
+          <PhClock :size="22" class="text-muted-foreground/50" />
+          <p class="mt-3 text-sm font-medium text-foreground">This version has no content</p>
+          <p class="mt-1 text-xs text-muted-foreground text-pretty">
+            There is nothing to preview or restore from this revision.
+          </p>
+        </div>
+
+        <DocumentEditor
+          v-else
+          :key="`${viewingVersionId}-${previewContent.length}`"
+          :model-value="previewContent"
+          :editable="false"
+          :preview-only="true"
+          :title="previewTitle"
+          :version="previewVersionLabel"
+          :download-user-email="currentUserEmail"
+          :download-filename="`${previewTitle.replace(/[^a-z0-9]/gi, '_')}_${previewVersionLabel}.pdf`"
+        />
+      </div>
+
+      <DialogFooter
+        class="shrink-0 gap-2 border-t border-border bg-card px-6 py-3 sm:justify-between"
+      >
+        <p class="text-xs text-muted-foreground text-pretty sm:max-w-[55%]">
+          Restore copies this version into the current draft. It does not change published history.
+        </p>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" @click="isPreviewOpen = false">Close</Button>
+          <Button
+            :disabled="!previewContent || !!restoringVersionId"
+            @click="handleRestoreFromPreview"
+          >
+            <PhArrowCounterClockwise :size="14" class="mr-1.5" />
+            {{ restoringVersionId ? 'Restoring…' : 'Restore into editor' }}
+          </Button>
+        </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

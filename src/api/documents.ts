@@ -52,6 +52,12 @@ export type DocumentVersionItem = {
   publishedAt: string
 }
 
+/** Single version with body — from GET /v1/documents/:id/versions/:versionId */
+export type DocumentVersionDetail = DocumentVersionItem & {
+  /** Serialized TipTap JSON. Empty when the version has no body. */
+  content: string
+}
+
 export type DocumentVersionsResponse = {
   total: number
   documentVersions: DocumentVersionItem[]
@@ -144,6 +150,17 @@ export function getDocumentVersions(
     },
     query: options,
   })
+}
+
+export function getDocumentVersion(tenantId: string, documentId: string, versionId: string) {
+  return apiRequest<DocumentVersionDetail>(
+    `/v1/documents/${documentId}/versions/${versionId}`,
+    {
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+    },
+  )
 }
 
 export function getDocumentControls(

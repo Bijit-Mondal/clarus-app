@@ -9,6 +9,7 @@ import {
   publishDocumentMajor,
   publishDocumentMinor,
   getDocumentVersions,
+  getDocumentVersion,
   getDocumentControls as fetchDocumentControls,
   getDocumentApprovals as fetchDocumentApprovals,
   type UpdateDocumentInput,
@@ -224,6 +225,8 @@ export const documentKeys = {
     [...documentKeys.all, 'detail', tenantId, documentId] as const,
   versions: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
     [...documentKeys.all, 'versions', tenantId, documentId, options || {}] as const,
+  versionDetail: (tenantId: string, documentId: string, versionId: string) =>
+    [...documentKeys.all, 'version', tenantId, documentId, versionId] as const,
   controls: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
     [...documentKeys.all, 'controls', tenantId, documentId, options || {}] as const,
   approvals: (tenantId: string, documentId: string, options?: Record<string, unknown>) =>
@@ -395,6 +398,38 @@ export function useDocumentVersionsQuery(
       return getDocumentVersions(tenantId.value!, documentIdVal.value!, optionsVal.value)
     },
     enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
+    staleTime: 300_000,
+  })
+}
+
+export function useDocumentVersionQuery(
+  documentId: Ref<string> | string,
+  versionId: Ref<string | null | undefined> | string | null | undefined,
+) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const documentIdVal = computed(() =>
+    typeof documentId === 'string' ? documentId : documentId.value,
+  )
+  const versionIdVal = computed(() => {
+    if (versionId == null) return ''
+    if (typeof versionId === 'string') return versionId
+    return versionId.value ?? ''
+  })
+
+  return useQuery({
+    queryKey: computed(() =>
+      documentKeys.versionDetail(
+        tenantId.value || '',
+        documentIdVal.value || '',
+        versionIdVal.value || '',
+      ),
+    ),
+    queryFn: () =>
+      getDocumentVersion(tenantId.value!, documentIdVal.value!, versionIdVal.value!),
+    enabled: computed(
+      () => !!tenantId.value && !!documentIdVal.value && !!versionIdVal.value,
+    ),
     staleTime: 300_000,
   })
 }

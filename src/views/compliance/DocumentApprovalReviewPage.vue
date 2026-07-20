@@ -24,13 +24,11 @@ import {
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import DocumentEditor from '@/components/compliance/DocumentEditor.vue'
 import {
-  useDocuments,
-  useDocumentQuery,
   useDocumentVersionsQuery,
+  useDocumentVersionQuery,
   useDocumentApprovalsQuery,
   formatTimeAgo,
   normalizeVersionStatus,
-  getClassificationLabel,
 } from '@/composables/useDocuments'
 import { useAuth } from '@/composables/useAuth'
 import {
@@ -51,10 +49,6 @@ const { accountQuery } = useAuth()
 const currentUserEmail = computed(() => accountQuery.data.value?.email ?? '')
 const currentUserId = computed(() => accountQuery.data.value?.$id ?? '')
 
-const { getDocumentById } = useDocuments()
-const { isPending: isDocumentLoading, isError: isDocumentError } = useDocumentQuery(documentId)
-const documentItem = computed(() => getDocumentById(documentId.value))
-
 const {
   data: versionsResponse,
   isPending: isVersionsLoading,
@@ -74,18 +68,25 @@ const approvalRequest = computed<DocumentVersionApprovalRequest | undefined>(() 
 
 const versions = computed(() => versionsResponse.value?.documentVersions ?? [])
 
+/** Version waiting for this approval — preferred default selection. */
+const reviewTargetVersionId = computed(() => approvalRequest.value?.documentVersionId ?? null)
+
 const selectedVersionId = ref<string | null>(null)
+const userPickedVersion = ref(false)
 
 watch(
-  [approvalRequest, versions],
+  [reviewTargetVersionId, versions],
   () => {
-    if (selectedVersionId.value) return
-    const fromRequest = approvalRequest.value?.documentVersionId
-    if (fromRequest && versions.value.some((v) => v.$id === fromRequest)) {
-      selectedVersionId.value = fromRequest
+    if (userPickedVersion.value) return
+
+    const targetId = reviewTargetVersionId.value
+    if (targetId && versions.value.some((v) => v.$id === targetId)) {
+      selectedVersionId.value = targetId
       return
     }
-    if (versions.value[0]) selectedVersionId.value = versions.value[0].$id
+    if (!selectedVersionId.value && versions.value[0]) {
+      selectedVersionId.value = versions.value[0].$id
+    }
   },
   { immediate: true },
 )
@@ -94,29 +95,39 @@ const selectedVersion = computed(() =>
   versions.value.find((version) => version.$id === selectedVersionId.value),
 )
 
+const {
+  data: versionDetail,
+  isPending: isVersionDetailLoading,
+  isError: isVersionDetailError,
+  isFetching: isVersionDetailFetching,
+} = useDocumentVersionQuery(documentId, selectedVersionId)
+
 const isReviewTarget = computed(() => {
-  if (!approvalRequest.value || !selectedVersion.value) return false
-  return selectedVersion.value.$id === approvalRequest.value.documentVersionId
+  if (!reviewTargetVersionId.value || !selectedVersionId.value) return false
+  return selectedVersionId.value === reviewTargetVersionId.value
 })
 
 const previewTitle = computed(
-  () => selectedVersion.value?.title || documentItem.value?.title || 'Untitled document',
+  () =>
+    versionDetail.value?.title ||
+    selectedVersion.value?.title ||
+    approvalRequest.value?.title ||
+    'Untitled document',
 )
 
 const previewVersionLabel = computed(() => {
-  if (!selectedVersion.value) return documentItem.value?.version ?? ''
-  return `v${selectedVersion.value.major}.${selectedVersion.value.minor}`
-})
-
-const previewContent = computed(() => {
-  const version = selectedVersion.value
-  if (version && 'content' in version && typeof version.content === 'string' && version.content.trim()) {
-    return version.content
+  const detail = versionDetail.value
+  if (detail) return `v${detail.major}.${detail.minor}`
+  if (selectedVersion.value) {
+    return `v${selectedVersion.value.major}.${selectedVersion.value.minor}`
   }
-  // Until version-content APIs land, fall back to the live document for the review target.
-  if (isReviewTarget.value) return documentItem.value?.content ?? ''
+  if (approvalRequest.value) {
+    return `v${approvalRequest.value.major}.${approvalRequest.value.minor}`
+  }
   return ''
 })
+
+const previewContent = computed(() => versionDetail.value?.content?.trim() ?? '')
 
 const myDecision = computed(() => {
   if (!currentUserId.value || !approvalRequest.value) return undefined
@@ -137,8 +148,12 @@ const isDecisionDialogOpen = ref(false)
 const decisionComment = ref('')
 const pendingDecision = ref<'approved' | 'rejected' | null>(null)
 
-const isPageLoading = computed(
-  () => isDocumentLoading.value || isVersionsLoading.value || isApprovalsLoading.value,
+const isRailLoading = computed(() => isVersionsLoading.value || isApprovalsLoading.value)
+
+const isPreviewLoading = computed(
+  () =>
+    !!selectedVersionId.value &&
+    (isVersionDetailLoading.value || (isVersionDetailFetching.value && !versionDetail.value)),
 )
 
 function versionLabel(version: DocumentVersionItem) {
@@ -171,6 +186,7 @@ function formatFullDate(dateString: string) {
 }
 
 function selectVersion(versionId: string) {
+  userPickedVersion.value = true
   selectedVersionId.value = versionId
 }
 
@@ -217,7 +233,7 @@ function confirmDecision() {
         <div class="min-w-0 flex-1">
           <p class="text-xs text-muted-foreground">Approval review</p>
           <h1 class="mt-0.5 text-base font-semibold text-foreground text-balance">
-            {{ documentItem?.title || approvalRequest?.title || 'Document review' }}
+            {{ approvalRequest?.title || previewTitle || 'Document review' }}
           </h1>
           <div v-if="approvalRequest" class="mt-2 flex flex-wrap items-center gap-2">
             <Badge
@@ -249,23 +265,26 @@ function confirmDecision() {
           </span>
         </div>
         <p class="mb-3 text-xs text-muted-foreground text-pretty">
-          Select a version to compare. The version under review is marked.
+          Open another version to compare. Your decision applies only to the one marked Under
+          review.
         </p>
 
         <ClarusLoadingState
-          v-if="isPageLoading"
+          v-if="isRailLoading"
           variant="compact"
           label="Loading versions…"
           class="py-10"
         />
 
         <div
-          v-else-if="isVersionsError || isDocumentError"
+          v-else-if="isVersionsError"
           class="rounded-lg border border-border bg-muted/20 px-3 py-6 text-center"
         >
           <PhWarningCircle :size="20" class="mx-auto text-destructive" />
-          <p class="mt-2 text-sm font-medium text-foreground">Couldn’t load review data</p>
-          <p class="mt-1 text-xs text-muted-foreground">Try going back and opening review again.</p>
+          <p class="mt-2 text-sm font-medium text-foreground">Couldn’t load versions</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            Check your connection, then go back and open this review again.
+          </p>
         </div>
 
         <div
@@ -273,9 +292,9 @@ function confirmDecision() {
           class="rounded-lg border border-border bg-muted/20 px-3 py-6 text-center"
         >
           <PhWarningCircle :size="20" class="mx-auto text-muted-foreground" />
-          <p class="mt-2 text-sm font-medium text-foreground">Approval request not found</p>
+          <p class="mt-2 text-sm font-medium text-foreground">This approval request isn’t here</p>
           <p class="mt-1 text-xs text-muted-foreground">
-            It may have been completed or removed. Return to the document to continue.
+            It may already be finished or removed. Return to the document for the latest requests.
           </p>
           <Button variant="outline" size="sm" class="mt-3" @click="goBack">Back to document</Button>
         </div>
@@ -315,7 +334,7 @@ function confirmDecision() {
                     {{ versionLabel(version) }}
                   </span>
                   <Badge
-                    v-if="version.$id === approvalRequest?.documentVersionId"
+                    v-if="version.$id === reviewTargetVersionId"
                     variant="outline"
                     class="rounded-full border-warning/30 bg-warning/10 px-1.5 py-0 text-[10px] font-semibold text-warning-emphasis"
                   >
@@ -356,23 +375,22 @@ function confirmDecision() {
           class="rounded-lg border border-dashed border-border px-3 py-8 text-center"
         >
           <PhClock :size="20" class="mx-auto text-muted-foreground/50" />
-          <p class="mt-2 text-sm font-medium text-foreground">No versions yet</p>
+          <p class="mt-2 text-sm font-medium text-foreground">No versions to review</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            Versions appear after this document is published.
+          </p>
         </div>
       </div>
 
       <div class="border-t border-border bg-muted/20 px-4 py-4">
-        <p class="text-xs text-muted-foreground text-pretty">
-          Review the selected version carefully before recording your decision.
-        </p>
-
-        <div v-if="canDecide" class="mt-3 flex flex-col gap-2">
+        <div v-if="canDecide" class="flex flex-col gap-2">
           <Button
             class="h-10 w-full gap-2 text-sm font-semibold"
             :disabled="!isReviewTarget"
             @click="openDecision('approved')"
           >
             <PhCheckCircle :size="16" weight="fill" />
-            Approve
+            Approve version
           </Button>
           <Button
             variant="outline"
@@ -381,17 +399,17 @@ function confirmDecision() {
             @click="openDecision('rejected')"
           >
             <PhXCircle :size="15" />
-            Reject
+            Reject version
           </Button>
           <p v-if="!isReviewTarget" class="text-[11px] text-muted-foreground text-pretty">
-            Switch back to the version under review to record a decision.
+            Select the Under review version to record your decision.
           </p>
         </div>
         <div
           v-else-if="myDecision && normalizeApprovalStatus(myDecision.state) !== 'pending'"
-          class="mt-3 rounded-lg border border-border bg-background px-3 py-2.5"
+          class="rounded-lg border border-border bg-background px-3 py-2.5"
         >
-          <p class="text-xs font-medium text-foreground">Your decision is recorded</p>
+          <p class="text-xs font-medium text-foreground">You already decided on this request</p>
           <Badge
             variant="outline"
             :class="[
@@ -407,13 +425,8 @@ function confirmDecision() {
             {{ getApprovalStatusConfig(myDecision.state).label }}
           </Badge>
         </div>
-        <p v-else class="mt-3 text-xs text-muted-foreground">
-          You don’t have a pending decision on this request.
-        </p>
-
-        <p class="mt-3 text-[11px] leading-relaxed text-muted-foreground/80 text-pretty">
-          Your decision applies to the version under review, not a prior version you open for
-          comparison.
+        <p v-else class="text-xs text-muted-foreground text-pretty">
+          No decision is needed from you on this request.
         </p>
       </div>
     </aside>
@@ -427,36 +440,54 @@ function confirmDecision() {
           <p class="truncate text-sm font-medium text-foreground">{{ previewTitle }}</p>
           <p class="text-xs text-muted-foreground">
             <span class="font-mono tabular-nums">{{ previewVersionLabel }}</span>
-            <span v-if="documentItem" class="text-muted-foreground/70">
-              · {{ getClassificationLabel(documentItem.classification) }}
-            </span>
-            <span v-if="isReviewTarget" class="text-warning-emphasis"> · Version under review</span>
-            <span v-else class="text-muted-foreground/70"> · Comparing prior version</span>
+            <span v-if="isReviewTarget" class="text-warning-emphasis"> · Under review</span>
+            <span v-else class="text-muted-foreground/70"> · Comparing another version</span>
           </p>
         </div>
         <div class="flex items-center gap-2 text-xs text-muted-foreground">
           <PhDownloadSimple :size="14" class="opacity-60" />
-          <span>PDF preview</span>
+          <span>Read-only preview</span>
         </div>
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
         <ClarusLoadingState
-          v-if="isPageLoading"
+          v-if="isRailLoading || isPreviewLoading"
           variant="compact"
-          label="Loading document…"
+          label="Loading version…"
           class="py-20"
         />
+
+        <div
+          v-else-if="isVersionDetailError"
+          class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-16 text-center"
+        >
+          <PhWarningCircle :size="22" class="text-destructive" />
+          <p class="mt-3 text-sm font-medium text-foreground">Couldn’t load this version</p>
+          <p class="mt-1 text-xs text-muted-foreground text-pretty">
+            Try selecting it again, or go back to the document and reopen the review.
+          </p>
+        </div>
+
+        <div
+          v-else-if="!selectedVersionId"
+          class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center"
+        >
+          <PhClock :size="22" class="text-muted-foreground/50" />
+          <p class="mt-3 text-sm font-medium text-foreground">Select a version</p>
+          <p class="mt-1 text-xs text-muted-foreground text-pretty">
+            Choose a version in the list to read its content here.
+          </p>
+        </div>
 
         <div
           v-else-if="!previewContent"
           class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center"
         >
           <PhClock :size="22" class="text-muted-foreground/50" />
-          <p class="mt-3 text-sm font-medium text-foreground">Content not available yet</p>
+          <p class="mt-3 text-sm font-medium text-foreground">This version has no content</p>
           <p class="mt-1 text-xs text-muted-foreground text-pretty">
-            Version content will load here once the review APIs are connected. The under-review
-            version uses the current document body as a stand-in.
+            Ask the document owners to publish content before you approve or reject.
           </p>
         </div>
 
@@ -478,13 +509,17 @@ function confirmDecision() {
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {{ pendingDecision === 'approved' ? 'Approve this version?' : 'Reject this version?' }}
+            {{
+              pendingDecision === 'approved'
+                ? `Approve ${previewVersionLabel}?`
+                : `Reject ${previewVersionLabel}?`
+            }}
           </DialogTitle>
           <DialogDescription>
             {{
               pendingDecision === 'approved'
-                ? 'Confirm that you have reviewed the document and approve this version.'
-                : 'Rejecting will send this version back. Add a short comment so authors know why.'
+                ? 'Confirm you have reviewed this version and are ready to approve it.'
+                : 'This sends the version back to authors. Add a comment so they know what to fix.'
             }}
           </DialogDescription>
         </DialogHeader>
@@ -499,20 +534,24 @@ function confirmDecision() {
             id="decision-comment"
             v-model="decisionComment"
             rows="3"
-            placeholder="Add context for the document owners…"
+            :placeholder="
+              pendingDecision === 'rejected'
+                ? 'What should authors change before resubmitting?'
+                : 'Optional note for the document owners…'
+            "
           />
         </div>
 
         <Separator />
 
         <DialogFooter class="gap-2 sm:gap-0">
-          <Button variant="outline" @click="isDecisionDialogOpen = false">Cancel</Button>
+          <Button variant="outline" @click="isDecisionDialogOpen = false">Keep reviewing</Button>
           <Button
             :variant="pendingDecision === 'rejected' ? 'destructive' : 'default'"
             :disabled="pendingDecision === 'rejected' && !decisionComment.trim()"
             @click="confirmDecision"
           >
-            {{ pendingDecision === 'approved' ? 'Confirm approval' : 'Confirm rejection' }}
+            {{ pendingDecision === 'approved' ? 'Approve version' : 'Reject version' }}
           </Button>
         </DialogFooter>
       </DialogContent>
