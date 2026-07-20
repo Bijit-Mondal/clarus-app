@@ -11,7 +11,8 @@ const props = defineProps<{
 
 const publishedVersionLabel = computed(() => {
   const published = props.document.currentPublishedVersion
-  return published ? published : 'Not published'
+  // Human version label (e.g. "v1.1"), never a raw record id.
+  return published || 'Not published'
 })
 
 const visibleApprovers = computed(() => props.document.approvers.slice(0, 3))

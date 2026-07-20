@@ -9,6 +9,7 @@ export type TenantDocument = {
   classification: string
   /** Document record lifecycle (e.g. active, archived). */
   status: string
+  /** Version record id of the current published version; empty when never published. */
   currentVersion: string
   major: number
   minor: number

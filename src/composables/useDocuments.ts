@@ -331,7 +331,10 @@ export function mapTenantDocumentToItem(doc: TenantDocument): DocumentItem {
     description: documentKey.replace(/\./g, ' · '),
     category: normalizeDocumentType(doc.documentType),
     version: formatDocumentVersion(doc),
-    currentPublishedVersion: doc.currentVersion?.trim() || null,
+    // API `currentVersion` is a version record id — never show it; format major.minor for UI.
+    currentPublishedVersion: doc.currentVersion?.trim()
+      ? formatDocumentVersion(doc)
+      : null,
     status: normalizeVersionStatus(doc.versionStatus || 'draft'),
     lifecycleStatus: doc.status || 'active',
     owner: '',
