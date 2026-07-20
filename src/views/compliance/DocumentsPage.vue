@@ -11,6 +11,7 @@ import {
   PhDownload,
   PhArrowUpRight,
   PhX,
+  PhXCircle,
   PhCaretLeft,
   PhCaretRight,
   PhShield,
@@ -159,6 +160,7 @@ const statusFilters = [
   { id: 'all', label: 'All statuses' },
   { id: 'approved', label: 'Approved' },
   { id: 'in-review', label: 'In review' },
+  { id: 'rejected', label: 'Rejected' },
   { id: 'draft', label: 'Draft' },
 ] as const
 
@@ -173,6 +175,12 @@ const documentStatusConfig = {
     label: 'In review',
     icon: PhClock,
     base: 'var(--warning-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+  rejected: {
+    label: 'Rejected',
+    icon: PhXCircle,
+    base: 'var(--destructive)',
     iconWeight: 'fill' as const,
   },
   draft: {

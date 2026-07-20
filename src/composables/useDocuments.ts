@@ -12,8 +12,10 @@ import {
   getDocumentVersion,
   getDocumentControls as fetchDocumentControls,
   getDocumentApprovals as fetchDocumentApprovals,
+  decideDocumentApproval as patchDecideDocumentApproval,
   type UpdateDocumentInput,
   type WriteDocumentInput,
+  type DecideDocumentApprovalInput,
   type TenantDocument,
   type TenantDocumentDetail,
   type DocumentApprover,
@@ -42,7 +44,7 @@ export interface DocumentControlLink {
   implementationStatus: string
 }
 
-export type DocumentVersionStatus = 'approved' | 'in-review' | 'draft'
+export type DocumentVersionStatus = 'approved' | 'in-review' | 'draft' | 'rejected'
 export type DocumentClassification = 'public' | 'internal'
 
 export interface DocumentItem {
@@ -258,6 +260,9 @@ export function normalizeVersionStatus(versionStatus: string): DocumentVersionSt
     normalized === 'needs-review'
   ) {
     return 'in-review'
+  }
+  if (normalized === 'rejected' || normalized === 'declined' || normalized === 'denied') {
+    return 'rejected'
   }
   return 'draft'
 }
@@ -580,6 +585,36 @@ export function usePublishDocumentMutation() {
             ? `Requested approval for version ${versionLabel}`
             : `Published version ${versionLabel} (major)`
       addActivity(documentId, action)
+      void queryClient.invalidateQueries({ queryKey: documentKeys.all })
+    },
+  })
+}
+
+export function useDecideDocumentApprovalMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const { addActivity } = useDocuments()
+
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      approvalRequestId,
+      input,
+    }: {
+      documentId: string
+      approvalRequestId: string
+      input: DecideDocumentApprovalInput
+    }) =>
+      patchDecideDocumentApproval(tenantId.value!, documentId, approvalRequestId, input),
+    onSuccess: (request, { documentId, input }) => {
+      const versionLabel = `v${request.major}.${request.minor}`
+      addActivity(
+        documentId,
+        input.action === 'approve'
+          ? `Approved version ${versionLabel}`
+          : `Rejected version ${versionLabel}`,
+      )
       void queryClient.invalidateQueries({ queryKey: documentKeys.all })
     },
   })

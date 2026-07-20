@@ -111,8 +111,10 @@ function formatFullDateTime(dateString: string) {
 function decisionTimeDisplay(decision: DocumentApprovalDecision) {
   const state = normalizeApprovalStatus(decision.state)
   if (decision.decidedAt && state !== 'pending') {
+    const prefix =
+      state === 'approved' ? 'Approved' : state === 'rejected' ? 'Rejected' : 'Voided'
     return {
-      prefix: state === 'approved' ? 'Approved' : 'Rejected',
+      prefix,
       time: decision.decidedAt,
     }
   }
@@ -282,9 +284,9 @@ function handleReview(request: DocumentVersionApprovalRequest) {
             <li
               v-for="decision in request.decisions"
               :key="decision.$id"
-              class="flex items-center gap-3 border-t border-border/50 py-2.5 first:border-t-0 first:pt-0"
+              class="flex items-start gap-3 border-t border-border/50 py-2.5 first:border-t-0 first:pt-0"
             >
-              <Avatar class="size-7 shrink-0">
+              <Avatar class="mt-0.5 size-7 shrink-0">
                 <AvatarFallback
                   class="bg-secondary text-[10px] font-semibold text-secondary-foreground"
                 >
@@ -317,8 +319,15 @@ function handleReview(request: DocumentVersionApprovalRequest) {
                 >
                   {{ decision.approver.email }}
                 </p>
+                <p
+                  v-if="decision.comment?.trim()"
+                  class="mt-1.5 line-clamp-3 break-words text-xs text-foreground/80 text-pretty"
+                  :title="decision.comment"
+                >
+                  “{{ decision.comment.trim() }}”
+                </p>
               </div>
-              <div class="shrink-0 text-right">
+              <div class="shrink-0 pt-0.5 text-right">
                 <p class="text-[11px] text-muted-foreground">
                   {{ decisionTimeDisplay(decision).prefix }}
                 </p>

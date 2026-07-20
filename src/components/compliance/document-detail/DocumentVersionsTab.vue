@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import {
   PhArrowCounterClockwise,
+  PhCircleNotch,
   PhClock,
   PhEye,
   PhWarningCircle,
@@ -55,6 +56,8 @@ const {
   data: versionsResponse,
   isPending,
   isError,
+  isFetching,
+  refetch: refetchVersions,
 } = useDocumentVersionsQuery(
   computed(() => props.documentId),
   computed(() => ({
@@ -66,6 +69,22 @@ const {
 const versionsList = computed(() => versionsResponse.value?.documentVersions ?? [])
 const totalVersions = computed(() => versionsResponse.value?.total ?? 0)
 const totalPages = computed(() => Math.ceil(totalVersions.value / itemsPerPage.value))
+
+const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+
+  const pages = new Set<number>([1, total, current])
+  for (let delta = 1; delta <= 1; delta++) {
+    if (current - delta > 1) pages.add(current - delta)
+    if (current + delta < total) pages.add(current + delta)
+  }
+
+  return [...pages].sort((a, b) => a - b)
+})
 
 const viewingVersion = ref<DocumentVersionItem | null>(null)
 const viewingVersionId = computed(() => viewingVersion.value?.$id ?? null)
@@ -81,6 +100,7 @@ const {
   isPending: isVersionDetailLoading,
   isError: isVersionDetailError,
   isFetching: isVersionDetailFetching,
+  refetch: refetchVersionDetail,
 } = useDocumentVersionQuery(
   computed(() => props.documentId),
   viewingVersionId,
@@ -105,6 +125,7 @@ const isPreviewLoading = computed(
 )
 
 const restoringVersionId = ref<string | null>(null)
+const isRestoring = computed(() => restoringVersionId.value !== null)
 
 function versionLabel(v: DocumentVersionItem) {
   return `v${v.major}.${v.minor}`
@@ -116,6 +137,10 @@ function isCurrentVersion(index: number) {
 
 function getStatusConfig(status: string) {
   return getDocumentStatusConfig(normalizeVersionStatus(status))
+}
+
+function versionTimestamp(version: DocumentVersionItem) {
+  return version.publishedAt || version.$updatedAt || version.$createdAt
 }
 
 function formatRelativeTime(dateString: string) {
@@ -155,21 +180,38 @@ async function fetchVersionContent(version: DocumentVersionItem) {
 }
 
 async function handleRestore(version: DocumentVersionItem) {
-  if (restoringVersionId.value) return
+  if (isRestoring.value) return
   restoringVersionId.value = version.$id
   try {
     const content = await fetchVersionContent(version)
-    if (!content) return
+    if (!content) {
+      // Surface empty/error state in the preview instead of failing silently.
+      viewingVersion.value = version
+      return
+    }
     emit('restore', content, versionLabel(version))
     viewingVersion.value = null
+  } catch {
+    viewingVersion.value = version
   } finally {
     restoringVersionId.value = null
   }
 }
 
 async function handleRestoreFromPreview() {
-  if (!viewingVersion.value) return
-  await handleRestore(viewingVersion.value)
+  if (!viewingVersion.value || !previewContent.value || isRestoring.value) return
+  restoringVersionId.value = viewingVersion.value.$id
+  try {
+    emit('restore', previewContent.value, versionLabel(viewingVersion.value))
+    viewingVersion.value = null
+  } finally {
+    restoringVersionId.value = null
+  }
+}
+
+function goToPage(page: number) {
+  if (page < 1 || page > totalPages.value || page === currentPage.value) return
+  currentPage.value = page
 }
 </script>
 
@@ -178,45 +220,69 @@ async function handleRestoreFromPreview() {
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
       <div class="min-w-0">
         <h2 class="text-sm font-semibold text-foreground text-balance">Version history</h2>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          Browse past revisions, open a read-only preview, or restore content into the editor.
+        <p class="mt-0.5 text-xs text-muted-foreground text-pretty">
+          Browse past revisions, preview a version, or restore content into the current draft.
         </p>
       </div>
       <span
         v-if="!isPending && !isError"
         class="shrink-0 tabular-nums text-xs text-muted-foreground"
+        aria-live="polite"
       >
         {{ totalVersions }} {{ totalVersions === 1 ? 'version' : 'versions' }}
       </span>
     </div>
 
-    <div v-if="isPending" class="divide-y divide-border/60">
+    <div
+      v-if="isPending"
+      class="divide-y divide-border/60"
+      role="status"
+      aria-label="Loading version history"
+    >
       <div v-for="i in 3" :key="i" class="animate-pulse space-y-2.5 px-4 py-3.5">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <div class="h-5 w-10 rounded bg-muted" />
             <div class="h-5 w-16 rounded-full bg-muted" />
+            <div class="h-5 w-14 rounded-full bg-muted" />
           </div>
-          <div class="h-3.5 w-14 rounded bg-muted" />
+          <div class="flex items-center gap-2">
+            <div class="h-3.5 w-14 rounded bg-muted" />
+            <div class="h-8 w-16 rounded-md bg-muted" />
+            <div class="h-8 w-20 rounded-md bg-muted" />
+          </div>
         </div>
         <div class="h-3.5 w-2/3 rounded bg-muted" />
         <div class="h-3 w-1/2 rounded bg-muted" />
       </div>
+      <span class="sr-only">Loading version history…</span>
     </div>
 
     <div
       v-else-if="isError"
       class="flex flex-col items-center justify-center px-4 py-12 text-center"
+      role="alert"
     >
       <span
         class="mb-3 flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+        aria-hidden="true"
       >
         <PhWarningCircle :size="20" />
       </span>
       <p class="text-sm font-medium text-foreground">Couldn’t load versions</p>
-      <p class="mt-1 max-w-[280px] text-xs text-muted-foreground">
-        Something went wrong fetching version history. Try reloading the page.
+      <p class="mt-1 max-w-[280px] text-xs text-muted-foreground text-pretty">
+        Something went wrong fetching version history. Try again.
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        class="mt-4 gap-1.5"
+        :disabled="isFetching"
+        @click="refetchVersions()"
+      >
+        <PhCircleNotch v-if="isFetching" :size="14" class="animate-spin" aria-hidden="true" />
+        {{ isFetching ? 'Retrying…' : 'Try again' }}
+      </Button>
     </div>
 
     <div
@@ -224,12 +290,13 @@ async function handleRestoreFromPreview() {
       class="flex flex-col items-center justify-center px-4 py-12 text-center"
     >
       <span
-        class="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground/50"
+        class="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+        aria-hidden="true"
       >
         <PhClock :size="20" />
       </span>
       <p class="text-sm font-medium text-foreground">No versions yet</p>
-      <p class="mt-1 max-w-[280px] text-xs text-muted-foreground">
+      <p class="mt-1 max-w-[280px] text-xs text-muted-foreground text-pretty">
         Versions appear here when this document is published or sent for review.
       </p>
     </div>
@@ -239,7 +306,8 @@ async function handleRestoreFromPreview() {
         <li
           v-for="(v, index) in versionsList"
           :key="v.$id"
-          class="group flex flex-col gap-2 px-4 py-3.5 transition-colors duration-150 hover:bg-muted/10"
+          class="flex flex-col gap-2 px-4 py-3.5 transition-colors duration-150 hover:bg-muted/10"
+          :class="{ 'bg-muted/15': isCurrentVersion(index) }"
         >
           <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
             <div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -260,40 +328,51 @@ async function handleRestoreFromPreview() {
                   getStatusConfig(v.status).class,
                 ]"
               >
-                <component :is="getStatusConfig(v.status).icon" :size="10" weight="fill" />
+                <component
+                  :is="getStatusConfig(v.status).icon"
+                  :size="10"
+                  weight="fill"
+                  aria-hidden="true"
+                />
                 {{ getStatusConfig(v.status).label }}
               </Badge>
             </div>
 
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <time
                 class="text-xs tabular-nums text-muted-foreground"
-                :datetime="v.$updatedAt"
-                :title="formatFullDateTime(v.$updatedAt)"
+                :datetime="versionTimestamp(v)"
+                :title="formatFullDateTime(versionTimestamp(v))"
               >
-                {{ formatRelativeTime(v.$updatedAt) }}
+                {{ formatRelativeTime(versionTimestamp(v)) }}
               </time>
-              <template v-if="!isCurrentVersion(index)">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  class="h-8 gap-1.5 px-2.5 text-xs"
-                  @click="openPreview(v)"
-                >
-                  <PhEye :size="13" />
-                  View
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  class="h-8 gap-1.5 px-2.5 text-xs"
-                  :disabled="restoringVersionId === v.$id"
-                  @click="handleRestore(v)"
-                >
-                  <PhArrowCounterClockwise :size="13" />
-                  {{ restoringVersionId === v.$id ? 'Restoring…' : 'Restore' }}
-                </Button>
-              </template>
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-8 gap-1.5 px-2.5 text-xs"
+                @click="openPreview(v)"
+              >
+                <PhEye :size="13" aria-hidden="true" />
+                View
+              </Button>
+              <Button
+                v-if="!isCurrentVersion(index)"
+                variant="outline"
+                size="sm"
+                class="h-8 gap-1.5 px-2.5 text-xs"
+                :disabled="isRestoring"
+                :aria-busy="restoringVersionId === v.$id"
+                @click="handleRestore(v)"
+              >
+                <PhCircleNotch
+                  v-if="restoringVersionId === v.$id"
+                  :size="13"
+                  class="animate-spin"
+                  aria-hidden="true"
+                />
+                <PhArrowCounterClockwise v-else :size="13" aria-hidden="true" />
+                {{ restoringVersionId === v.$id ? 'Restoring…' : 'Restore' }}
+              </Button>
             </div>
           </div>
 
@@ -311,9 +390,10 @@ async function handleRestoreFromPreview() {
         </li>
       </ul>
 
-      <div
+      <nav
         v-if="totalVersions > itemsPerPage"
         class="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3"
+        aria-label="Version history pagination"
       >
         <span class="text-xs text-muted-foreground">
           Showing
@@ -329,42 +409,49 @@ async function handleRestoreFromPreview() {
         <div class="flex items-center gap-1">
           <Button
             variant="outline"
-            size="sm"
-            class="size-8 p-0"
+            size="icon-sm"
             :disabled="currentPage === 1"
-            @click="currentPage--"
+            @click="goToPage(currentPage - 1)"
           >
             <span class="sr-only">Previous page</span>
-            <PhArrowLeft :size="14" />
+            <PhArrowLeft :size="14" aria-hidden="true" />
           </Button>
 
-          <Button
-            v-for="page in totalPages"
-            :key="page"
-            variant="outline"
-            size="sm"
-            class="size-8 p-0 font-mono text-xs"
-            :class="{
-              'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground':
-                currentPage === page,
-            }"
-            @click="currentPage = page"
-          >
-            {{ page }}
-          </Button>
+          <template v-for="(page, pageIndex) in visiblePages" :key="page">
+            <span
+              v-if="pageIndex > 0 && page - visiblePages[pageIndex - 1]! > 1"
+              class="px-1 font-mono text-xs text-muted-foreground"
+              aria-hidden="true"
+            >
+              …
+            </span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              class="font-mono text-xs"
+              :class="{
+                'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground':
+                  currentPage === page,
+              }"
+              :aria-label="`Page ${page}`"
+              :aria-current="currentPage === page ? 'page' : undefined"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </Button>
+          </template>
 
           <Button
             variant="outline"
-            size="sm"
-            class="size-8 p-0"
+            size="icon-sm"
             :disabled="currentPage === totalPages"
-            @click="currentPage++"
+            @click="goToPage(currentPage + 1)"
           >
             <span class="sr-only">Next page</span>
-            <PhArrowRight :size="14" />
+            <PhArrowRight :size="14" aria-hidden="true" />
           </Button>
         </div>
-      </div>
+      </nav>
     </template>
   </div>
 
@@ -391,19 +478,35 @@ async function handleRestoreFromPreview() {
         <div
           v-else-if="isVersionDetailError"
           class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-12 text-center"
+          role="alert"
         >
-          <PhWarningCircle :size="22" class="text-destructive" />
+          <PhWarningCircle :size="22" class="text-destructive" aria-hidden="true" />
           <p class="mt-3 text-sm font-medium text-foreground">Couldn’t load this version</p>
           <p class="mt-1 text-xs text-muted-foreground text-pretty">
-            Try closing this preview and opening the version again.
+            Check your connection and try loading the preview again.
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            class="mt-4 gap-1.5"
+            :disabled="isVersionDetailFetching"
+            @click="refetchVersionDetail()"
+          >
+            <PhCircleNotch
+              v-if="isVersionDetailFetching"
+              :size="14"
+              class="animate-spin"
+              aria-hidden="true"
+            />
+            {{ isVersionDetailFetching ? 'Retrying…' : 'Try again' }}
+          </Button>
         </div>
 
         <div
           v-else-if="!previewContent"
           class="mx-auto flex max-w-md flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center"
         >
-          <PhClock :size="22" class="text-muted-foreground/50" />
+          <PhClock :size="22" class="text-muted-foreground" aria-hidden="true" />
           <p class="mt-3 text-sm font-medium text-foreground">This version has no content</p>
           <p class="mt-1 text-xs text-muted-foreground text-pretty">
             There is nothing to preview or restore from this revision.
@@ -432,11 +535,18 @@ async function handleRestoreFromPreview() {
         <div class="flex flex-wrap items-center justify-end gap-2">
           <Button variant="outline" @click="isPreviewOpen = false">Close</Button>
           <Button
-            :disabled="!previewContent || !!restoringVersionId"
+            :disabled="!previewContent || isRestoring"
+            :aria-busy="isRestoring"
             @click="handleRestoreFromPreview"
           >
-            <PhArrowCounterClockwise :size="14" class="mr-1.5" />
-            {{ restoringVersionId ? 'Restoring…' : 'Restore into editor' }}
+            <PhCircleNotch
+              v-if="isRestoring"
+              :size="14"
+              class="animate-spin"
+              aria-hidden="true"
+            />
+            <PhArrowCounterClockwise v-else :size="14" aria-hidden="true" />
+            {{ isRestoring ? 'Restoring…' : 'Restore into editor' }}
           </Button>
         </div>
       </DialogFooter>

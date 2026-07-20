@@ -81,7 +81,14 @@ export type DocumentApprovalDecision = {
   state: string
   comment: string
   decidedAt: string
-  approver: DocumentApprovalDecisionApprover
+  approver?: DocumentApprovalDecisionApprover | null
+}
+
+export type DecideDocumentApprovalAction = 'approve' | 'reject'
+
+export type DecideDocumentApprovalInput = {
+  action: DecideDocumentApprovalAction
+  comment?: string
 }
 
 export type DocumentVersionApprovalRequest = {
@@ -187,6 +194,28 @@ export function getDocumentApprovals(
     },
     query: options,
   })
+}
+
+export function decideDocumentApproval(
+  tenantId: string,
+  documentId: string,
+  approvalRequestId: string,
+  input: DecideDocumentApprovalInput,
+) {
+  return apiRequest<DocumentVersionApprovalRequest>(
+    `/v1/documents/${documentId}/approvals/${approvalRequestId}/decide`,
+    {
+      method: 'PATCH',
+      headers: {
+        'x-tenant-id': tenantId,
+        'content-type': 'application/json',
+      },
+      body: {
+        action: input.action,
+        comment: input.comment ?? '',
+      },
+    },
+  )
 }
 
 export function updateDocument(tenantId: string, documentId: string, input: UpdateDocumentInput) {

@@ -48,6 +48,13 @@ export function getDocumentStatusConfig(status: DocumentVersionStatus) {
       class: 'border-warning/30 bg-warning/10 text-warning-emphasis',
     }
   }
+  if (status === 'rejected') {
+    return {
+      label: 'Rejected',
+      icon: PhXCircle,
+      class: 'border-destructive/30 bg-destructive/10 text-destructive',
+    }
+  }
   return {
     label: 'Draft',
     icon: PhNoteBlank,
@@ -55,13 +62,16 @@ export function getDocumentStatusConfig(status: DocumentVersionStatus) {
   }
 }
 
-export type ApprovalRecordStatus = 'approved' | 'pending' | 'rejected'
+export type ApprovalRecordStatus = 'approved' | 'pending' | 'rejected' | 'void'
 
 export function normalizeApprovalStatus(status: string): ApprovalRecordStatus {
   const normalized = status.toLowerCase().replace(/_/g, '-')
   if (normalized === 'approved' || normalized === 'accepted') return 'approved'
   if (normalized === 'rejected' || normalized === 'declined' || normalized === 'denied') {
     return 'rejected'
+  }
+  if (normalized === 'void' || normalized === 'voided' || normalized === 'cancelled') {
+    return 'void'
   }
   return 'pending'
 }
@@ -80,6 +90,13 @@ export function getApprovalStatusConfig(status: ApprovalRecordStatus | string) {
       label: 'Rejected',
       icon: PhXCircle,
       class: 'border-destructive/30 bg-destructive/10 text-destructive',
+    }
+  }
+  if (resolved === 'void') {
+    return {
+      label: 'Void',
+      icon: PhXCircle,
+      class: 'border-border bg-muted/40 text-muted-foreground',
     }
   }
   return {

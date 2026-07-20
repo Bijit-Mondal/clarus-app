@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   PhArrowLeft,
   PhCheckCircle,
+  PhCircleNotch,
   PhClock,
   PhDownloadSimple,
   PhWarningCircle,
@@ -27,6 +28,7 @@ import {
   useDocumentVersionsQuery,
   useDocumentVersionQuery,
   useDocumentApprovalsQuery,
+  useDecideDocumentApprovalMutation,
   formatTimeAgo,
   normalizeVersionStatus,
 } from '@/composables/useDocuments'
@@ -36,7 +38,14 @@ import {
   getDocumentStatusConfig,
   normalizeApprovalStatus,
 } from '@/lib/documentDisplay'
-import type { DocumentVersionItem, DocumentVersionApprovalRequest } from '@/api/documents'
+import { getApiErrorMessage, getApiErrorStatus } from '@/lib/api'
+import type {
+  DecideDocumentApprovalAction,
+  DocumentVersionItem,
+  DocumentVersionApprovalRequest,
+} from '@/api/documents'
+
+const COMMENT_MAX_LENGTH = 4096
 
 const route = useRoute()
 const router = useRouter()
@@ -59,6 +68,12 @@ const { data: approvalsResponse, isPending: isApprovalsLoading } = useDocumentAp
   documentId,
   { limit: 50, offset: 0 },
 )
+
+const {
+  mutateAsync: decideApproval,
+  isPending: isSubmittingDecision,
+  reset: resetDecideMutation,
+} = useDecideDocumentApprovalMutation()
 
 const approvalRequest = computed<DocumentVersionApprovalRequest | undefined>(() =>
   approvalsResponse.value?.documentVersionApprovalRequests.find(
@@ -136,17 +151,45 @@ const myDecision = computed(() => {
   )
 })
 
+const isDecisionDialogOpen = ref(false)
+const decisionComment = ref('')
+const pendingDecision = ref<'approved' | 'rejected' | null>(null)
+const decisionError = ref('')
+/** Keeps the rail in “already decided” while approvals refetch after submit. */
+const localDecisionState = ref<'approved' | 'rejected' | null>(null)
+const localDecisionComment = ref('')
+
+const trimmedComment = computed(() => decisionComment.value.trim())
+const commentTooLong = computed(() => decisionComment.value.length > COMMENT_MAX_LENGTH)
+const rejectNeedsComment = computed(
+  () => pendingDecision.value === 'rejected' && !trimmedComment.value,
+)
+const canSubmitDecision = computed(
+  () =>
+    !!pendingDecision.value &&
+    !isSubmittingDecision.value &&
+    !commentTooLong.value &&
+    !rejectNeedsComment.value,
+)
+
+const effectiveMyDecisionState = computed(() => {
+  if (localDecisionState.value) return localDecisionState.value
+  return myDecision.value?.state
+})
+
+const effectiveMyDecisionComment = computed(() => {
+  if (localDecisionState.value) return localDecisionComment.value
+  return myDecision.value?.comment ?? ''
+})
+
 const canDecide = computed(() => {
+  if (localDecisionState.value) return false
   if (!approvalRequest.value || !myDecision.value) return false
   return (
     normalizeApprovalStatus(approvalRequest.value.status) === 'pending' &&
     normalizeApprovalStatus(myDecision.value.state) === 'pending'
   )
 })
-
-const isDecisionDialogOpen = ref(false)
-const decisionComment = ref('')
-const pendingDecision = ref<'approved' | 'rejected' | null>(null)
 
 const isRailLoading = computed(() => isVersionsLoading.value || isApprovalsLoading.value)
 
@@ -200,18 +243,88 @@ function goBack() {
   })
 }
 
+function mapDecisionToAction(decision: 'approved' | 'rejected'): DecideDocumentApprovalAction {
+  return decision === 'approved' ? 'approve' : 'reject'
+}
+
 function openDecision(decision: 'approved' | 'rejected') {
+  if (!canDecide.value || !isReviewTarget.value || isSubmittingDecision.value) return
   pendingDecision.value = decision
   decisionComment.value = ''
+  decisionError.value = ''
+  resetDecideMutation()
   isDecisionDialogOpen.value = true
 }
 
-function confirmDecision() {
-  // Decision API lands later — keep the dialog UX ready.
+function closeDecisionDialog() {
+  if (isSubmittingDecision.value) return
   isDecisionDialogOpen.value = false
   pendingDecision.value = null
   decisionComment.value = ''
+  decisionError.value = ''
+  resetDecideMutation()
 }
+
+function onDecisionDialogOpenChange(open: boolean) {
+  if (open) {
+    isDecisionDialogOpen.value = true
+    return
+  }
+  closeDecisionDialog()
+}
+
+function decisionErrorFallback(error: unknown) {
+  const status = getApiErrorStatus(error)
+  if (status === 403) {
+    return 'You are not an assigned approver on this request.'
+  }
+  if (status === 404) {
+    return 'This approval request was not found. It may have been removed.'
+  }
+  if (status === 429) {
+    return 'Too many attempts. Wait a moment, then try again.'
+  }
+  if (status && status >= 500) {
+    return 'The server could not record your decision. Try again in a moment.'
+  }
+  return 'Could not submit your decision. Check your connection and try again.'
+}
+
+async function confirmDecision() {
+  if (!canSubmitDecision.value || !pendingDecision.value) return
+
+  decisionError.value = ''
+  const action = mapDecisionToAction(pendingDecision.value)
+  const comment = trimmedComment.value
+
+  try {
+    await decideApproval({
+      documentId: documentId.value,
+      approvalRequestId: approvalRequestId.value,
+      input: {
+        action,
+        comment,
+      },
+    })
+    localDecisionState.value = pendingDecision.value
+    localDecisionComment.value = comment
+    isDecisionDialogOpen.value = false
+    pendingDecision.value = null
+    decisionComment.value = ''
+    decisionError.value = ''
+  } catch (error) {
+    decisionError.value = getApiErrorMessage(error, decisionErrorFallback(error))
+  }
+}
+
+watch(isDecisionDialogOpen, (open) => {
+  if (!open && !isSubmittingDecision.value) {
+    pendingDecision.value = null
+    decisionComment.value = ''
+    decisionError.value = ''
+    resetDecideMutation()
+  }
+})
 </script>
 
 <template>
@@ -386,7 +499,7 @@ function confirmDecision() {
         <div v-if="canDecide" class="flex flex-col gap-2">
           <Button
             class="h-10 w-full gap-2 text-sm font-semibold"
-            :disabled="!isReviewTarget"
+            :disabled="!isReviewTarget || isSubmittingDecision"
             @click="openDecision('approved')"
           >
             <PhCheckCircle :size="16" weight="fill" />
@@ -395,7 +508,7 @@ function confirmDecision() {
           <Button
             variant="outline"
             class="h-9 w-full gap-2 text-sm"
-            :disabled="!isReviewTarget"
+            :disabled="!isReviewTarget || isSubmittingDecision"
             @click="openDecision('rejected')"
           >
             <PhXCircle :size="15" />
@@ -406,7 +519,10 @@ function confirmDecision() {
           </p>
         </div>
         <div
-          v-else-if="myDecision && normalizeApprovalStatus(myDecision.state) !== 'pending'"
+          v-else-if="
+            effectiveMyDecisionState &&
+            normalizeApprovalStatus(effectiveMyDecisionState) !== 'pending'
+          "
           class="rounded-lg border border-border bg-background px-3 py-2.5"
         >
           <p class="text-xs font-medium text-foreground">You already decided on this request</p>
@@ -414,16 +530,23 @@ function confirmDecision() {
             variant="outline"
             :class="[
               'mt-1.5 gap-1 rounded-full px-2 py-0 text-[10px] font-semibold',
-              getApprovalStatusConfig(myDecision.state).class,
+              getApprovalStatusConfig(effectiveMyDecisionState).class,
             ]"
           >
             <component
-              :is="getApprovalStatusConfig(myDecision.state).icon"
+              :is="getApprovalStatusConfig(effectiveMyDecisionState).icon"
               :size="10"
               weight="fill"
             />
-            {{ getApprovalStatusConfig(myDecision.state).label }}
+            {{ getApprovalStatusConfig(effectiveMyDecisionState).label }}
           </Badge>
+          <p
+            v-if="effectiveMyDecisionComment"
+            class="mt-2 line-clamp-3 break-words text-xs text-muted-foreground text-pretty"
+            :title="effectiveMyDecisionComment"
+          >
+            {{ effectiveMyDecisionComment }}
+          </p>
         </div>
         <p v-else class="text-xs text-muted-foreground text-pretty">
           No decision is needed from you on this request.
@@ -505,8 +628,14 @@ function confirmDecision() {
       </div>
     </section>
 
-    <Dialog v-model:open="isDecisionDialogOpen">
-      <DialogContent class="sm:max-w-md">
+    <Dialog :open="isDecisionDialogOpen" @update:open="onDecisionDialogOpenChange">
+      <DialogContent
+        class="sm:max-w-md"
+        :show-close-button="!isSubmittingDecision"
+        @escape-key-down="(event) => isSubmittingDecision && event.preventDefault()"
+        @pointer-down-outside="(event) => isSubmittingDecision && event.preventDefault()"
+        @interact-outside="(event) => isSubmittingDecision && event.preventDefault()"
+      >
         <DialogHeader>
           <DialogTitle>
             {{
@@ -525,33 +654,94 @@ function confirmDecision() {
         </DialogHeader>
 
         <div class="space-y-2">
-          <label class="text-sm font-medium text-foreground" for="decision-comment">
-            Comment
-            <span v-if="pendingDecision === 'rejected'" class="text-destructive">*</span>
-            <span v-else class="font-normal text-muted-foreground">(optional)</span>
-          </label>
+          <div class="flex items-baseline justify-between gap-2">
+            <label class="text-sm font-medium text-foreground" for="decision-comment">
+              Comment
+              <span v-if="pendingDecision === 'rejected'" class="text-destructive">*</span>
+              <span v-else class="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <span
+              class="text-[11px] tabular-nums"
+              :class="
+                commentTooLong ? 'font-medium text-destructive' : 'text-muted-foreground'
+              "
+            >
+              {{ decisionComment.length }}/{{ COMMENT_MAX_LENGTH }}
+            </span>
+          </div>
           <Textarea
             id="decision-comment"
             v-model="decisionComment"
             rows="3"
+            :maxlength="COMMENT_MAX_LENGTH"
+            :disabled="isSubmittingDecision"
+            :aria-invalid="commentTooLong || (!!decisionError && pendingDecision === 'rejected')"
+            :aria-describedby="
+              decisionError
+                ? 'decision-error'
+                : commentTooLong
+                  ? 'decision-comment-hint'
+                  : undefined
+            "
+            class="min-w-0 break-words"
             :placeholder="
               pendingDecision === 'rejected'
                 ? 'What should authors change before resubmitting?'
                 : 'Optional note for the document owners…'
             "
           />
+          <p
+            v-if="commentTooLong"
+            id="decision-comment-hint"
+            class="text-xs text-destructive"
+          >
+            Comments can be up to {{ COMMENT_MAX_LENGTH }} characters.
+          </p>
+        </div>
+
+        <div
+          v-if="decisionError"
+          id="decision-error"
+          role="alert"
+          class="flex gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5"
+        >
+          <PhWarningCircle :size="16" class="mt-0.5 shrink-0 text-destructive" />
+          <p class="min-w-0 break-words text-sm text-destructive text-pretty">
+            {{ decisionError }}
+          </p>
         </div>
 
         <Separator />
 
         <DialogFooter class="gap-2 sm:gap-0">
-          <Button variant="outline" @click="isDecisionDialogOpen = false">Keep reviewing</Button>
+          <Button
+            variant="outline"
+            :disabled="isSubmittingDecision"
+            @click="closeDecisionDialog"
+          >
+            Keep reviewing
+          </Button>
           <Button
             :variant="pendingDecision === 'rejected' ? 'destructive' : 'default'"
-            :disabled="pendingDecision === 'rejected' && !decisionComment.trim()"
+            :disabled="!canSubmitDecision"
+            :aria-busy="isSubmittingDecision"
             @click="confirmDecision"
           >
-            {{ pendingDecision === 'approved' ? 'Approve version' : 'Reject version' }}
+            <PhCircleNotch
+              v-if="isSubmittingDecision"
+              :size="14"
+              class="animate-spin"
+              aria-hidden="true"
+            />
+            {{
+              isSubmittingDecision
+                ? pendingDecision === 'approved'
+                  ? 'Approving…'
+                  : 'Rejecting…'
+                : pendingDecision === 'approved'
+                  ? 'Approve version'
+                  : 'Reject version'
+            }}
           </Button>
         </DialogFooter>
       </DialogContent>
