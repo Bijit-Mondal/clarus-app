@@ -199,21 +199,13 @@ const documentTypeConfig = {
 } as const
 
 const classificationConfig = {
-  Public: {
+  public: {
     label: 'Public',
     base: 'var(--success-emphasis)',
   },
-  Internal: {
+  internal: {
     label: 'Internal',
     base: 'var(--info)',
-  },
-  Confidential: {
-    label: 'Confidential',
-    base: 'var(--warning-emphasis)',
-  },
-  Restricted: {
-    label: 'Restricted',
-    base: 'var(--destructive)',
   },
 } as const
 
@@ -241,14 +233,14 @@ function exportIndex() {
 const isAddDialogOpen = ref(false)
 const newDocTitle = ref('')
 const newDocCategory = ref<'policy' | 'procedure' | 'sop'>('policy')
-const newDocClassification = ref<'Public' | 'Internal' | 'Confidential' | 'Restricted'>('Internal')
+const newDocClassification = ref<'public' | 'internal'>('internal')
 const newDocOwnerId = ref('')
 const newDocDescription = ref('')
 
 function openAddDialog() {
   newDocTitle.value = ''
   newDocCategory.value = 'policy'
-  newDocClassification.value = 'Internal'
+  newDocClassification.value = 'internal'
   newDocOwnerId.value = ''
   newDocDescription.value = ''
   isAddDialogOpen.value = true
@@ -640,10 +632,8 @@ function handleCreateDocument() {
                   <SelectValue placeholder="Select classification" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Public">Public</SelectItem>
-                  <SelectItem value="Internal">Internal</SelectItem>
-                  <SelectItem value="Confidential">Confidential</SelectItem>
-                  <SelectItem value="Restricted">Restricted</SelectItem>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="internal">Internal</SelectItem>
                 </SelectContent>
               </Select>
             </div>

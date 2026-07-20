@@ -38,6 +38,8 @@ const props = withDefaults(
   defineProps<{
     modelValue: string
     editable?: boolean
+    title?: string
+    version?: string
   }>(),
   { editable: true },
 )
@@ -331,8 +333,11 @@ onBeforeUnmount(() => editor.value?.destroy())
     >
       <article class="document-editor__pdf-page">
         <header class="document-editor__pdf-header">
-          <span class="document-editor__pdf-kicker">Clarus · Controlled document</span>
-          <span>Version 1.0</span>
+          <h1 v-if="title" class="document-editor__pdf-title">{{ title }}</h1>
+          <div class="document-editor__pdf-meta">
+            <span class="document-editor__pdf-kicker">Clarus · Controlled document</span>
+            <span v-if="version">{{ version }}</span>
+          </div>
         </header>
         <div class="document-editor__pdf-content">
           <EditorContent :editor="editor" class="tiptap-content" />
@@ -573,30 +578,48 @@ onBeforeUnmount(() => editor.value?.destroy())
   background: var(--card);
   box-shadow: 0 4px 16px hsl(0 0% 0% / 0.12);
 }
-.document-editor__pdf-header,
-.document-editor__pdf-footer {
+.document-editor__pdf-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 52px 52px 26px;
+  border-bottom: 1px solid var(--editor-border);
+}
+.document-editor__pdf-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+.document-editor__pdf-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 26px 52px;
   color: var(--muted-foreground);
   font-size: 0.6875rem;
   letter-spacing: 0.02em;
-}
-.document-editor__pdf-header {
-  border-bottom: 1px solid var(--editor-border);
   text-transform: uppercase;
 }
 .document-editor__pdf-kicker {
   color: var(--foreground);
   font-weight: 600;
 }
+.document-editor__pdf-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 26px 52px;
+  border-top: 1px solid var(--editor-border);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
 .document-editor__pdf-content {
   flex: 1;
   padding: 52px;
-}
-.document-editor__pdf-footer {
-  border-top: 1px solid var(--editor-border);
 }
 
 @media (max-width: 640px) {

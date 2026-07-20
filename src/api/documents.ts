@@ -27,6 +27,11 @@ export type TenantDocumentsResponse = {
   documents: TenantDocument[]
 }
 
+export type UpdateDocumentInput = {
+  documentType?: string
+  classification?: string
+}
+
 export function getDocuments(
   tenantId: string,
   options?: { documentType?: string; limit?: number; offset?: number },
@@ -44,5 +49,19 @@ export function getDocument(tenantId: string, documentId: string) {
     headers: {
       'x-tenant-id': tenantId,
     },
+  })
+}
+
+export function updateDocument(
+  tenantId: string,
+  documentId: string,
+  input: UpdateDocumentInput,
+) {
+  return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}`, {
+    method: 'PATCH',
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    body: input,
   })
 }

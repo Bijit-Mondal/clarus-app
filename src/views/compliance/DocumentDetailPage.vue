@@ -24,6 +24,8 @@ import {
 import {
   useDocuments,
   useDocumentQuery,
+  useUpdateDocumentMutation,
+  getClassificationLabel,
   type DocumentClassification,
   type DocumentItem,
 } from '@/composables/useDocuments'
@@ -78,6 +80,8 @@ const documentId = computed(() => route.params.documentId as string)
 const orgSlug = computed(() => route.params.organizationSlug as string)
 
 const { isPending: isDocumentLoading, isError: isDocumentError } = useDocumentQuery(documentId)
+const { mutateAsync: updateDocumentMutation, isPending: isUpdatingDocument } =
+  useUpdateDocumentMutation()
 const { data: tenantUsersData } = useTenantUsersQuery()
 const tenantUsers = computed(() => tenantUsersData.value?.users ?? [])
 
@@ -162,10 +166,33 @@ function getCategoryDisplayLabel(category: string) {
   return category
 }
 
+const isEditingTitle = ref(false)
+const inlineTitle = ref('')
+
+function startTitleEdit() {
+  if (!documentItem.value) return
+  inlineTitle.value = documentItem.value.title
+  isEditingTitle.value = true
+}
+
+function saveTitleEdit() {
+  if (!documentItem.value || !inlineTitle.value.trim()) return
+  const oldTitle = documentItem.value.title
+  const newTitle = inlineTitle.value.trim()
+  if (newTitle !== oldTitle) {
+    updateDocument(documentItem.value.id, { title: newTitle })
+    addActivity(documentItem.value.id, `Renamed from "${oldTitle}" to "${newTitle}"`)
+  }
+  isEditingTitle.value = false
+}
+
+function cancelTitleEdit() {
+  isEditingTitle.value = false
+}
+
 const isEditDialogOpen = ref(false)
-const editTitle = ref('')
 const editCategory = ref<DocumentItem['category']>('policy')
-const editClassification = ref<DocumentClassification>('Internal')
+const editClassification = ref<DocumentClassification>('internal')
 const editApprovers = ref<string[]>([])
 const approverSearch = ref('')
 const approverDropdownOpen = ref(false)
@@ -183,7 +210,6 @@ const filteredApproverPool = computed(() =>
 
 function openEditDialog() {
   if (!documentItem.value) return
-  editTitle.value = documentItem.value.title
   editCategory.value = documentItem.value.category
   editClassification.value = documentItem.value.classification
   editApprovers.value = [...documentItem.value.approvers]
@@ -251,31 +277,32 @@ const hasMetadataChanges = computed(() => {
   if (!documentItem.value) return false
   const doc = documentItem.value
   return (
-    editTitle.value.trim() !== doc.title ||
     editCategory.value !== doc.category ||
     editClassification.value !== doc.classification
   )
 })
 
-function saveEditDialog() {
-  if (!documentItem.value || !editTitle.value.trim() || !hasMetadataChanges.value) return
+async function saveEditDialog() {
+  if (!documentItem.value || !hasMetadataChanges.value) return
 
   const doc = documentItem.value
-  if (editTitle.value.trim() !== doc.title) {
-    addActivity(doc.id, `Renamed from "${doc.title}" to "${editTitle.value.trim()}"`)
+  const updates: { documentType?: string; classification?: string } = {}
+  if (editCategory.value !== doc.category) updates.documentType = editCategory.value
+  if (editClassification.value !== doc.classification) {
+    updates.classification = editClassification.value
   }
+
+  await updateDocumentMutation({
+    documentId: doc.id,
+    updates,
+  })
+
   if (editCategory.value !== doc.category) {
     addActivity(doc.id, `Changed type to ${getCategoryDisplayLabel(editCategory.value)}`)
   }
   if (editClassification.value !== doc.classification) {
-    addActivity(doc.id, `Changed classification to ${editClassification.value}`)
+    addActivity(doc.id, `Changed classification to ${getClassificationLabel(editClassification.value)}`)
   }
-
-  updateDocument(doc.id, {
-    title: editTitle.value.trim(),
-    category: editCategory.value,
-    classification: editClassification.value,
-  })
 
   isEditDialogOpen.value = false
 }
@@ -569,12 +596,53 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
             </Badge>
             <span class="font-mono text-xs text-muted-foreground">{{ documentItem.version }}</span>
           </div>
-          <h1
-            class="text-xl font-semibold tracking-tight text-foreground sm:text-2xl"
-            style="text-wrap: balance"
-          >
-            {{ documentItem.title }}
-          </h1>
+          <div class="group/title inline-flex max-w-full items-baseline gap-1.5">
+            <h1
+              v-if="!isEditingTitle"
+              class="text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
+              style="text-wrap: balance"
+            >
+              {{ documentItem.title }}
+            </h1>
+            <Input
+              v-else
+              v-model="inlineTitle"
+              class="h-auto border-primary/40 bg-transparent px-1.5 py-0.5 text-xl font-semibold leading-tight tracking-tight text-foreground focus-visible:ring-primary sm:text-2xl"
+              @keydown.enter="saveTitleEdit"
+              @keydown.escape="cancelTitleEdit"
+              @vue:mounted="($event: { el: HTMLInputElement }) => $event.el.focus()"
+            />
+            <Button
+              v-if="!isEditingTitle"
+              variant="ghost"
+              size="icon-sm"
+              class="size-6 shrink-0 translate-y-[0.12em] text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/title:opacity-100 group-focus-within/title:opacity-100 focus-visible:opacity-100"
+              aria-label="Edit title"
+              @click="startTitleEdit"
+            >
+              <PhPencilSimple :size="14" />
+            </Button>
+            <template v-else>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-6 shrink-0 translate-y-[0.12em] text-muted-foreground hover:text-success"
+                aria-label="Save title"
+                @click="saveTitleEdit"
+              >
+                <PhCheckCircle :size="14" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-6 shrink-0 translate-y-[0.12em] text-muted-foreground hover:text-destructive"
+                aria-label="Cancel editing"
+                @click="cancelTitleEdit"
+              >
+                <PhX :size="14" />
+              </Button>
+            </template>
+          </div>
         </div>
 
         <div class="flex shrink-0 items-center gap-2">
@@ -612,7 +680,9 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
       <div class="inline-flex items-center gap-1.5">
         <PhShieldCheck :size="14" class="text-info/80" />
         <span class="text-muted-foreground">Classification:</span>
-        <span class="font-semibold text-foreground">{{ documentItem.classification }}</span>
+        <span class="font-semibold text-foreground">{{
+          getClassificationLabel(documentItem.classification)
+        }}</span>
       </div>
 
       <span class="select-none text-muted-foreground/35" aria-hidden="true">&bull;</span>
@@ -721,7 +791,11 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
             <span class="text-muted-foreground/70">Autosaves as you type</span>
           </div>
 
-          <DocumentEditor v-model="documentItem.content" />
+          <DocumentEditor
+            v-model="documentItem.content"
+            :title="documentItem.title"
+            :version="documentItem.version"
+          />
         </div>
 
         <!-- Controls -->
@@ -1300,16 +1374,6 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
           </DialogDescription>
         </DialogHeader>
         <form class="space-y-5" @submit.prevent="saveEditDialog">
-          <div class="space-y-2">
-            <Label for="edit-doc-title">Title</Label>
-            <Input
-              id="edit-doc-title"
-              v-model="editTitle"
-              placeholder="Document title"
-              required
-            />
-          </div>
-
           <div class="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="space-y-2">
@@ -1332,10 +1396,8 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
                       <SelectValue placeholder="Select classification" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Public">Public</SelectItem>
-                      <SelectItem value="Internal">Internal</SelectItem>
-                      <SelectItem value="Confidential">Confidential</SelectItem>
-                      <SelectItem value="Restricted">Restricted</SelectItem>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="internal">Internal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1404,7 +1466,9 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
             <Button type="button" variant="outline" @click="isEditDialogOpen = false">
               {{ hasMetadataChanges ? 'Cancel' : 'Close' }}
             </Button>
-            <Button type="submit" :disabled="!hasMetadataChanges">Save changes</Button>
+            <Button type="submit" :disabled="!hasMetadataChanges || isUpdatingDocument">
+              Save changes
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,8 +1,10 @@
 import { ref, computed, type Ref } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import {
   getDocuments,
   getDocument,
+  updateDocument as patchDocument,
+  type UpdateDocumentInput,
   type TenantDocument,
   type TenantDocumentDetail,
 } from '@/api/documents'
@@ -31,7 +33,7 @@ export interface DocumentControlLink {
 }
 
 export type DocumentVersionStatus = 'approved' | 'in-review' | 'draft'
-export type DocumentClassification = 'Public' | 'Internal' | 'Confidential' | 'Restricted'
+export type DocumentClassification = 'public' | 'internal'
 
 export interface DocumentItem {
   id: string
@@ -240,11 +242,11 @@ export function formatDocumentVersion(doc: Pick<TenantDocument, 'major' | 'minor
 }
 
 function normalizeClassification(value: string): DocumentClassification {
-  const normalized = value.toLowerCase()
-  if (normalized === 'public') return 'Public'
-  if (normalized === 'confidential') return 'Confidential'
-  if (normalized === 'restricted') return 'Restricted'
-  return 'Internal'
+  return value.toLowerCase() === 'public' ? 'public' : 'internal'
+}
+
+export function getClassificationLabel(classification: DocumentClassification): string {
+  return classification === 'public' ? 'Public' : 'Internal'
 }
 
 function normalizeDocumentType(value: string): DocumentItem['category'] {
@@ -344,5 +346,25 @@ export function useDocumentsQuery(
     },
     enabled: computed(() => !!tenantId.value),
     staleTime: 300_000,
+  })
+}
+
+export function useUpdateDocumentMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      updates,
+    }: {
+      documentId: string
+      updates: UpdateDocumentInput
+    }) => patchDocument(tenantId.value!, documentId, updates),
+    onSuccess: (doc) => {
+      mergeDocumentIntoStore(mapTenantDocumentToItem(doc))
+      void queryClient.invalidateQueries({ queryKey: documentKeys.all })
+    },
   })
 }
