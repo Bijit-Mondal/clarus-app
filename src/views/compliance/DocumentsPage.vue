@@ -8,14 +8,15 @@ import {
   PhCheckCircle,
   PhClock,
   PhNoteBlank,
-  PhLink,
   PhDownload,
   PhArrowUpRight,
   PhX,
   PhCaretLeft,
   PhCaretRight,
+  PhShield,
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
+import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,12 +42,15 @@ import {
   mapTenantDocumentToItem,
   type DocumentItem,
 } from '@/composables/useDocuments'
+import { useTenantUsersQuery } from '@/composables/useTenants'
 
 const route = useRoute()
 const router = useRouter()
 const orgSlug = computed(() => (route.params.organizationSlug as string) || '')
 
 const { documents, createDocument } = useDocuments()
+const { data: tenantUsersData } = useTenantUsersQuery()
+const tenantUsers = computed(() => tenantUsersData.value?.users ?? [])
 
 // Search & filter state
 const searchQuery = ref('')
@@ -86,17 +90,16 @@ const allList = computed(() => {
 
 // Filtered list based on search/filters
 const filteredAllList = computed(() => {
-  return allList.value.filter((doc) => {
-    // Search filter
-    const matchesSearch =
-      !searchQuery.value ||
-      doc.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      doc.description.toLowerCase().includes(searchQuery.value.toLowerCase())
+  const query = searchQuery.value.trim().toLowerCase()
 
-    // Category filter
+  return allList.value.filter((doc) => {
+    const matchesSearch =
+      !query ||
+      doc.title.toLowerCase().includes(query) ||
+      doc.documentKey.toLowerCase().includes(query)
+
     const matchesCategory = activeCategory.value === 'all' || doc.category === activeCategory.value
 
-    // Status filter
     const matchesStatus = activeStatus.value === 'all' || doc.status === activeStatus.value
 
     return matchesSearch && matchesCategory && matchesStatus
@@ -138,7 +141,7 @@ const rangeEnd = computed(() => {
 })
 
 // Statistics computed properties
-const totalCount = computed(() => allList.value.length)
+const totalCount = computed(() => allDocumentsData.value?.total ?? allList.value.length)
 const approvedCount = computed(() => allList.value.filter((d) => d.status === 'approved').length)
 const inReviewCount = computed(() => allList.value.filter((d) => d.status === 'in-review').length)
 const draftCount = computed(() => allList.value.filter((d) => d.status === 'draft').length)
@@ -183,15 +186,34 @@ const documentStatusConfig = {
 const documentTypeConfig = {
   policy: {
     label: 'Policy',
-    base: 'oklch(0.6 0.17 250)',
+    base: 'var(--info)',
   },
   procedure: {
     label: 'Procedure',
-    base: 'oklch(0.7 0.15 60)',
+    base: 'var(--warning-emphasis)',
   },
   sop: {
     label: 'SOP',
-    base: 'oklch(0.6 0.18 300)',
+    base: 'var(--chart-5)',
+  },
+} as const
+
+const classificationConfig = {
+  Public: {
+    label: 'Public',
+    base: 'var(--success-emphasis)',
+  },
+  Internal: {
+    label: 'Internal',
+    base: 'var(--info)',
+  },
+  Confidential: {
+    label: 'Confidential',
+    base: 'var(--warning-emphasis)',
+  },
+  Restricted: {
+    label: 'Restricted',
+    base: 'var(--destructive)',
   },
 } as const
 
@@ -211,10 +233,6 @@ function goToDetail(doc: DocumentItem) {
   })
 }
 
-function downloadDocument(doc: DocumentItem) {
-  alert(`Downloading ${doc.title} (${doc.fileSize})...`)
-}
-
 function exportIndex() {
   alert('Exporting document index...')
 }
@@ -224,14 +242,14 @@ const isAddDialogOpen = ref(false)
 const newDocTitle = ref('')
 const newDocCategory = ref<'policy' | 'procedure' | 'sop'>('policy')
 const newDocClassification = ref<'Public' | 'Internal' | 'Confidential' | 'Restricted'>('Internal')
-const newDocOwner = ref('Virat Kohli')
+const newDocOwnerId = ref('')
 const newDocDescription = ref('')
 
 function openAddDialog() {
   newDocTitle.value = ''
   newDocCategory.value = 'policy'
   newDocClassification.value = 'Internal'
-  newDocOwner.value = 'Virat Kohli'
+  newDocOwnerId.value = ''
   newDocDescription.value = ''
   isAddDialogOpen.value = true
 }
@@ -244,15 +262,22 @@ function handleCreateDocument() {
   const codeNum = documents.value.filter((d) => d.category === newDocCategory.value).length + 1
   const code = `${prefix}-${String(codeNum).padStart(2, '0')}`
 
+  const selectedOwner = tenantUsers.value.find((user) => user.$id === newDocOwnerId.value)
+
   const newDoc = createDocument({
     code,
+    documentKey: newDocTitle.value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, ''),
     title: newDocTitle.value,
     category: newDocCategory.value,
     classification: newDocClassification.value,
-    owner: newDocOwner.value,
-    description: newDocDescription.value || `Document policy outline for ${newDocTitle.value}`,
-    content: `<h1>${newDocTitle.value}</h1><p>Start writing the content for ${newDocTitle.value} here...</p>`,
-    approvers: [newDocOwner.value],
+    owner: selectedOwner?.name ?? '',
+    description: newDocDescription.value || newDocTitle.value,
+    content: '',
+    approvers: [],
   })
 
   isAddDialogOpen.value = false
@@ -296,16 +321,18 @@ function handleCreateDocument() {
     <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4" aria-label="Document statistics">
       <div
         v-for="stat in [
-          { label: 'Total index', value: totalCount, description: 'Active documents' },
-          { label: 'Approved', value: approvedCount, description: 'Published and active' },
-          { label: 'In review', value: inReviewCount, description: 'Pending revisions' },
-          { label: 'Drafts', value: draftCount, description: 'Work in progress' },
+          { label: 'Total index', value: totalCount, description: 'Registered documents' },
+          { label: 'Approved', value: approvedCount, description: 'Published versions' },
+          { label: 'In review', value: inReviewCount, description: 'Awaiting sign-off' },
+          { label: 'Drafts', value: draftCount, description: 'Unpublished versions' },
         ]"
         :key="stat.label"
-        class="rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-sm"
+        class="rounded-lg border border-border bg-card p-4"
       >
         <p class="text-xs font-medium text-muted-foreground">{{ stat.label }}</p>
-        <p class="mt-2 text-2xl font-semibold tracking-tight text-foreground">{{ stat.value }}</p>
+        <p class="mt-2 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+          {{ isStatsLoading && stat.label === 'Total index' ? '—' : stat.value }}
+        </p>
         <p class="mt-0.5 text-xs text-muted-foreground">{{ stat.description }}</p>
       </div>
     </section>
@@ -347,7 +374,7 @@ function handleCreateDocument() {
             <Input
               v-model="searchQuery"
               class="pl-9 bg-background"
-              placeholder="Search title or description..."
+              placeholder="Search title or document key..."
             />
             <button
               v-if="searchQuery"
@@ -384,11 +411,11 @@ function handleCreateDocument() {
             <tr
               class="border-b border-border bg-muted/20 text-xs text-muted-foreground font-medium"
             >
-              <th class="px-5 py-3 w-[40%]">Document</th>
-              <th class="px-5 py-3 w-[15%]">Type</th>
-              <th class="px-5 py-3 w-[15%]">Status</th>
-              <th class="px-5 py-3 w-[15%]">Mapped Controls</th>
-              <th class="px-5 py-3 w-[15%]">Updated</th>
+              <th class="px-5 py-3 w-[38%]">Document</th>
+              <th class="px-5 py-3 w-[12%]">Type</th>
+              <th class="px-5 py-3 w-[14%]">Version status</th>
+              <th class="px-5 py-3 w-[14%]">Classification</th>
+              <th class="px-5 py-3 w-[12%]">Updated</th>
               <th class="relative px-5 py-3 w-[10%]"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -420,13 +447,15 @@ function handleCreateDocument() {
                         {{ doc.title }}
                       </span>
                       <span
-                        class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground tracking-wide shrink-0"
+                        class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border border-border bg-muted/50 text-muted-foreground tracking-wide shrink-0"
                       >
                         {{ doc.version }}
                       </span>
                     </div>
-                    <p class="mt-1 text-xs text-muted-foreground line-clamp-1 max-w-lg">
-                      {{ doc.description }}
+                    <p
+                      class="mt-1 font-mono text-[11px] text-muted-foreground line-clamp-1 max-w-lg"
+                    >
+                      {{ doc.documentKey }}
                     </p>
                   </div>
                 </div>
@@ -444,7 +473,7 @@ function handleCreateDocument() {
                   {{ documentTypeConfig[doc.category]?.label || doc.category }}
                 </span>
               </td>
-              <!-- Status -->
+              <!-- Version status -->
               <td class="px-5 py-4 whitespace-nowrap" @click.stop>
                 <span
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -462,13 +491,19 @@ function handleCreateDocument() {
                   {{ documentStatusConfig[doc.status].label }}
                 </span>
               </td>
-              <!-- Mapped Controls -->
-              <td class="px-5 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-1 text-xs">
-                  <PhLink :size="13" class="text-muted-foreground" aria-hidden="true" />
-                  <span class="font-semibold text-foreground">{{ doc.controlsCount }}</span>
-                  <span class="text-muted-foreground">controls linked</span>
-                </div>
+              <!-- Classification -->
+              <td class="px-5 py-4 whitespace-nowrap" @click.stop>
+                <span
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, ${classificationConfig[doc.classification]?.base || 'var(--muted-foreground)'} 12%, transparent)`,
+                    color: classificationConfig[doc.classification]?.base || 'var(--muted-foreground)',
+                    borderColor: `color-mix(in oklab, ${classificationConfig[doc.classification]?.base || 'var(--muted-foreground)'} 20%, transparent)`,
+                  }"
+                >
+                  <PhShield :size="12" aria-hidden="true" />
+                  {{ classificationConfig[doc.classification]?.label || doc.classification }}
+                </span>
               </td>
               <td class="px-5 py-4 whitespace-nowrap text-muted-foreground">
                 {{ doc.updatedAt }}
@@ -477,15 +512,6 @@ function handleCreateDocument() {
                 <div
                   class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    class="size-8 text-muted-foreground hover:text-foreground"
-                    aria-label="Download document"
-                    @click.stop="downloadDocument(doc)"
-                  >
-                    <PhDownload :size="15" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -500,21 +526,18 @@ function handleCreateDocument() {
             </tr>
 
             <!-- Loading state -->
-            <tr v-if="isLoading">
-              <td colspan="6" class="px-5 py-16 text-center">
-                <div class="flex flex-col items-center justify-center gap-2">
-                  <div
-                    class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                  />
-                  <span class="text-xs font-medium text-muted-foreground"
-                    >Loading documents...</span
-                  >
-                </div>
+            <tr v-if="isLoading && pagedDocuments.length === 0">
+              <td colspan="6" class="p-0">
+                <ClarusLoadingState
+                  variant="table-rows"
+                  :rows="PAGE_SIZE"
+                  label="Loading documents"
+                />
               </td>
             </tr>
 
             <!-- Empty filter state -->
-            <tr v-else-if="totalCountForPagination === 0">
+            <tr v-else-if="!isLoading && totalCountForPagination === 0">
               <td colspan="6" class="px-5 py-16 text-center">
                 <div class="flex flex-col items-center justify-center gap-3">
                   <span
@@ -628,7 +651,16 @@ function handleCreateDocument() {
 
           <div class="grid gap-2">
             <Label for="owner">Owner</Label>
-            <Input id="owner" v-model="newDocOwner" placeholder="e.g. Jane Doe" />
+            <Select v-model="newDocOwnerId">
+              <SelectTrigger id="owner">
+                <SelectValue placeholder="Select owner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="user in tenantUsers" :key="user.$id" :value="user.$id">
+                  {{ user.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div class="grid gap-2">

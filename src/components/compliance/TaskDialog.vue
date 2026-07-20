@@ -125,6 +125,20 @@ const isOpenComputed = computed({
   set: (val) => emit('update:open', val),
 })
 
+const hasChanges = computed(() => {
+  if (!isEditing.value || !props.task) return true
+  const t = props.task
+  return (
+    taskTitle.value.trim() !== (t.title || '') ||
+    taskDescription.value.trim() !== (t.description || '') ||
+    taskStatus.value !== (t.status || 'pending') ||
+    taskAssigneeId.value !== (t.assigneeId || t.assignee?.$id || t.assignee?.id || 'unassigned') ||
+    taskDepartment.value !== (t.department || 'general') ||
+    taskType.value !== (t.type || 'manual') ||
+    taskFrequency.value !== (t.frequency || 'one_time')
+  )
+})
+
 function handleSubmit() {
   if (!taskTitle.value.trim() || !taskDueDate.value) return
 
@@ -289,8 +303,10 @@ function handleSubmit() {
         </div>
 
         <DialogFooter class="border-t border-border pt-4">
-          <Button type="button" variant="outline" @click="isOpenComputed = false"> Cancel </Button>
-          <Button type="submit">
+          <Button type="button" variant="outline" @click="isOpenComputed = false">
+            {{ isEditing && !hasChanges ? 'Close' : 'Cancel' }}
+          </Button>
+          <Button type="submit" :disabled="isEditing && !hasChanges">
             {{ isEditing ? 'Save changes' : 'Add task' }}
           </Button>
         </DialogFooter>

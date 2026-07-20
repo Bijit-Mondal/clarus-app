@@ -28,6 +28,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  parseTiptapContent,
+  serializeTiptapContent,
+  type TiptapDocument,
+} from '@/lib/tiptapContent'
 
 const props = withDefaults(
   defineProps<{
@@ -46,7 +51,7 @@ const isLinkDialogOpen = ref(false)
 const linkUrl = ref('')
 
 const editor = useEditor({
-  content: props.modelValue,
+  content: parseTiptapContent(props.modelValue),
   extensions: [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -65,7 +70,7 @@ const editor = useEditor({
     },
   },
   onUpdate: ({ editor: currentEditor }) => {
-    emit('update:modelValue', currentEditor.getHTML())
+    emit('update:modelValue', serializeTiptapContent(currentEditor.getJSON() as TiptapDocument))
   },
 })
 
@@ -128,8 +133,21 @@ function focusEditor() {
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (!editor.value || editor.value.isFocused || editor.value.getHTML() === newValue) return
-    editor.value.commands.setContent(newValue, { emitUpdate: false })
+    if (!editor.value || editor.value.isFocused) return
+
+    const parsedContent = parseTiptapContent(newValue)
+    const currentContent = serializeTiptapContent(editor.value.getJSON() as TiptapDocument)
+    const incomingContent =
+      typeof parsedContent === 'string' ? parsedContent : serializeTiptapContent(parsedContent)
+
+    if (
+      (typeof parsedContent === 'string' && editor.value.getHTML() === incomingContent) ||
+      currentContent === incomingContent
+    ) {
+      return
+    }
+
+    editor.value.commands.setContent(parsedContent, { emitUpdate: false })
   },
 )
 

@@ -184,6 +184,15 @@ const updateMutation = useUpdateTenantControlMutation()
 const linkRequirementMutation = useLinkControlRequirementMutation()
 const unlinkRequirementMutation = useUnlinkControlRequirementMutation()
 
+const hasControlChanges = computed(() => {
+  if (!control.value) return false
+  return (
+    editStatement.value.trim() !== (control.value.statement || '').trim() ||
+    editImplementationStatus.value !== (control.value.implementationStatus || 'not_started') ||
+    editArchive.value !== !!control.value.archivedAt
+  )
+})
+
 function openEditDialog() {
   if (control.value) {
     editStatement.value = control.value.statement
@@ -1049,11 +1058,12 @@ function goToRequirement(map: ControlRequirementMap) {
               @click="isEditDialogOpen = false"
               class="h-9"
             >
-              Cancel
+              {{ hasControlChanges ? 'Cancel' : 'Close' }}
             </Button>
             <Button
               type="submit"
               size="sm"
+              :disabled="!hasControlChanges"
               class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 font-semibold"
             >
               Save changes

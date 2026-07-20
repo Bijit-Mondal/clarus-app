@@ -1,6 +1,11 @@
 import { ref, computed, type Ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { getDocuments, type TenantDocument } from '@/api/documents'
+import {
+  getDocuments,
+  getDocument,
+  type TenantDocument,
+  type TenantDocumentDetail,
+} from '@/api/documents'
 import { useOrganizationStore } from '@/stores/organization'
 
 export interface DocumentVersion {
@@ -18,48 +23,64 @@ export interface DocumentActivity {
   timestamp: string
 }
 
-export interface DocumentComment {
-  id: string
-  user: string
-  content: string
-  timestamp: string
-}
-
-export interface MappedControl {
+export interface DocumentControlLink {
+  tenantControlId: string
   controlKey: string
   name: string
-  implementationStatus: 'implemented' | 'in_progress' | 'not_started' | 'not_applicable'
+  implementationStatus: string
 }
+
+export type DocumentVersionStatus = 'approved' | 'in-review' | 'draft'
+export type DocumentClassification = 'Public' | 'Internal' | 'Confidential' | 'Restricted'
 
 export interface DocumentItem {
   id: string
   code: string
+  documentKey: string
   title: string
   description: string
   category: 'policy' | 'procedure' | 'sop'
   version: string
-  status: 'approved' | 'in-review' | 'draft'
+  /** Last published version label (e.g. "v1.0"). Null when never published. */
+  currentPublishedVersion: string | null
+  /** Version workflow status mapped from API `versionStatus`. */
+  status: DocumentVersionStatus
+  /** Document record lifecycle mapped from API `status`. */
+  lifecycleStatus: string
   owner: string
   updatedAt: string
-  controlsCount: number
-  fileSize: string
-  classification: 'Public' | 'Internal' | 'Confidential' | 'Restricted'
+  classification: DocumentClassification
   approvers: string[]
   content: string
   versions: DocumentVersion[]
   activity: DocumentActivity[]
-  comments: DocumentComment[]
-  mappedControls: MappedControl[]
 }
 
 // Create a globally accessible reactive reference for documents to act as a singleton store
 const documentsList = ref<DocumentItem[]>([])
+const documentControlLinks = ref<Record<string, DocumentControlLink[]>>({})
 
 export function useDocuments() {
   const documents = computed(() => documentsList.value)
 
   function getDocumentById(id: string): DocumentItem | undefined {
     return documentsList.value.find((doc) => doc.id === id)
+  }
+
+  function getDocumentControls(id: string): DocumentControlLink[] {
+    return documentControlLinks.value[id] ?? []
+  }
+
+  function linkDocumentControl(id: string, control: DocumentControlLink) {
+    const currentLinks = getDocumentControls(id)
+    if (currentLinks.some((link) => link.tenantControlId === control.tenantControlId)) return
+    documentControlLinks.value[id] = [...currentLinks, control]
+  }
+
+  function unlinkDocumentControl(id: string, tenantControlId: string) {
+    documentControlLinks.value[id] = getDocumentControls(id).filter(
+      (link) => link.tenantControlId !== tenantControlId,
+    )
   }
 
   function updateDocument(id: string, updates: Partial<DocumentItem>) {
@@ -75,7 +96,7 @@ export function useDocuments() {
     }
   }
 
-  function addActivity(id: string, action: string, user: string = 'Virat Kohli') {
+  function addActivity(id: string, action: string, user = '') {
     const doc = getDocumentById(id)
     if (doc) {
       const newActivity: DocumentActivity = {
@@ -85,20 +106,6 @@ export function useDocuments() {
         timestamp: 'Just now',
       }
       doc.activity.unshift(newActivity)
-    }
-  }
-
-  function addComment(id: string, content: string, user: string = 'Virat Kohli') {
-    const doc = getDocumentById(id)
-    if (doc) {
-      const newComment: DocumentComment = {
-        id: `com-${Date.now()}`,
-        user,
-        content,
-        timestamp: 'Just now',
-      }
-      doc.comments.unshift(newComment)
-      addActivity(id, 'Added a comment', user)
     }
   }
 
@@ -146,48 +153,29 @@ export function useDocuments() {
     }
   }
 
-  function addMappedControl(id: string, control: MappedControl) {
-    const doc = getDocumentById(id)
-    if (doc && !doc.mappedControls.some((c) => c.controlKey === control.controlKey)) {
-      doc.mappedControls.push(control)
-      doc.controlsCount = doc.mappedControls.length
-      addActivity(id, `Linked control ${control.controlKey}`, doc.owner)
-    }
-  }
-
-  function removeMappedControl(id: string, controlKey: string) {
-    const doc = getDocumentById(id)
-    if (doc) {
-      doc.mappedControls = doc.mappedControls.filter((c) => c.controlKey !== controlKey)
-      doc.controlsCount = doc.mappedControls.length
-      addActivity(id, `Unlinked control ${controlKey}`, doc.owner)
-    }
-  }
-
   function createDocument(
     payload: Omit<
       DocumentItem,
       | 'id'
       | 'version'
+      | 'currentPublishedVersion'
       | 'status'
+      | 'lifecycleStatus'
       | 'updatedAt'
-      | 'controlsCount'
-      | 'fileSize'
       | 'versions'
       | 'activity'
-      | 'comments'
-      | 'mappedControls'
     >,
   ) {
     const id = `doc-${Date.now()}`
     const newDoc: DocumentItem = {
       ...payload,
       id,
-      version: 'v1.0',
+      documentKey: payload.documentKey || payload.code.toLowerCase(),
+      version: 'v0.0',
+      currentPublishedVersion: null,
       status: 'draft',
+      lifecycleStatus: 'active',
       updatedAt: 'Just now',
-      controlsCount: 0,
-      fileSize: '10 KB',
       versions: [],
       activity: [
         {
@@ -197,8 +185,6 @@ export function useDocuments() {
           timestamp: 'Just now',
         },
       ],
-      comments: [],
-      mappedControls: [],
     }
     documentsList.value.push(newDoc)
     return newDoc
@@ -207,13 +193,13 @@ export function useDocuments() {
   return {
     documents,
     getDocumentById,
+    getDocumentControls,
+    linkDocumentControl,
+    unlinkDocumentControl,
     updateDocument,
     addActivity,
-    addComment,
     publishVersion,
     requestApproval,
-    addMappedControl,
-    removeMappedControl,
     createDocument,
   }
 }
@@ -222,6 +208,8 @@ export const documentKeys = {
   all: ['documents'] as const,
   list: (tenantId: string, options: Record<string, unknown>) =>
     [...documentKeys.all, tenantId, 'list', options] as const,
+  detail: (tenantId: string, documentId: string) =>
+    [...documentKeys.all, 'detail', tenantId, documentId] as const,
 }
 
 export function formatTimeAgo(dateString: string) {
@@ -240,31 +228,96 @@ export function formatTimeAgo(dateString: string) {
   return `${days}d ago`
 }
 
+export function normalizeVersionStatus(versionStatus: string): DocumentVersionStatus {
+  const normalized = versionStatus.toLowerCase().replace(/_/g, '-')
+  if (normalized === 'approved' || normalized === 'published') return 'approved'
+  if (normalized === 'in-review' || normalized === 'pending-review') return 'in-review'
+  return 'draft'
+}
+
+export function formatDocumentVersion(doc: Pick<TenantDocument, 'major' | 'minor'>) {
+  return `v${doc.major}.${doc.minor}`
+}
+
+function normalizeClassification(value: string): DocumentClassification {
+  const normalized = value.toLowerCase()
+  if (normalized === 'public') return 'Public'
+  if (normalized === 'confidential') return 'Confidential'
+  if (normalized === 'restricted') return 'Restricted'
+  return 'Internal'
+}
+
+function normalizeDocumentType(value: string): DocumentItem['category'] {
+  if (value === 'policy' || value === 'procedure' || value === 'sop') return value
+  return 'policy'
+}
+
+function mergeDocumentIntoStore(item: DocumentItem) {
+  const index = documentsList.value.findIndex((d) => d.id === item.id)
+  if (index !== -1) {
+    const existing = documentsList.value[index]!
+    documentsList.value[index] = {
+      ...item,
+      versions: existing.versions.length ? existing.versions : item.versions,
+      activity: existing.activity.length ? existing.activity : item.activity,
+      approvers: existing.approvers.length ? existing.approvers : item.approvers,
+    }
+  } else {
+    documentsList.value.push(item)
+  }
+}
+
 export function mapTenantDocumentToItem(doc: TenantDocument): DocumentItem {
   const prefix = (doc.documentType || 'doc').toUpperCase().slice(0, 3)
   const code = `${prefix}-${doc.$id.slice(-4)}`
+  const documentKey = doc.documentKey || code.toLowerCase()
+
   return {
     id: doc.$id,
     code,
+    documentKey,
     title: doc.title,
-    description: doc.descriptionSnippet || '',
-    category: doc.documentType as 'policy' | 'procedure' | 'sop',
-    version: `v${doc.major ?? 0}.${doc.minor ?? 0}`,
-    status: (doc.versionStatus || 'draft') as 'approved' | 'in-review' | 'draft',
-    owner: 'Sarah Connor',
+    description: documentKey.replace(/\./g, ' · '),
+    category: normalizeDocumentType(doc.documentType),
+    version: formatDocumentVersion(doc),
+    currentPublishedVersion: doc.currentVersion?.trim() || null,
+    status: normalizeVersionStatus(doc.versionStatus || 'draft'),
+    lifecycleStatus: doc.status || 'active',
+    owner: '',
     updatedAt: doc.$updatedAt ? formatTimeAgo(doc.$updatedAt) : 'Just now',
-    controlsCount: doc.mappedControlsCount || 0,
-    fileSize: '1.5 MB',
-    classification: (doc.classification
-      ? doc.classification.charAt(0).toUpperCase() + doc.classification.slice(1)
-      : 'Internal') as 'Public' | 'Internal' | 'Confidential' | 'Restricted',
-    approvers: ['Sarah Connor'],
-    content: `<h1>${doc.title}</h1><p>Start writing the content for ${doc.title} here...</p>`,
+    classification: normalizeClassification(doc.classification || 'internal'),
+    approvers: [],
+    content: doc.content,
     versions: [],
     activity: [],
-    comments: [],
-    mappedControls: [],
   }
+}
+
+export function mapTenantDocumentDetailToItem(doc: TenantDocumentDetail): DocumentItem {
+  const base = mapTenantDocumentToItem(doc)
+  return {
+    ...base,
+    content: doc.content,
+  }
+}
+
+export function useDocumentQuery(documentId: Ref<string> | string) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const documentIdVal = computed(() =>
+    typeof documentId === 'string' ? documentId : documentId.value,
+  )
+
+  return useQuery({
+    queryKey: computed(() => documentKeys.detail(tenantId.value || '', documentIdVal.value || '')),
+    queryFn: async () => {
+      const doc = await getDocument(tenantId.value!, documentIdVal.value!)
+      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc))
+      return doc
+    },
+    enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
+    staleTime: 300_000,
+  })
 }
 
 export function useDocumentsQuery(
@@ -284,31 +337,8 @@ export function useDocumentsQuery(
     }),
     queryFn: async () => {
       const res = await getDocuments(tenantId.value!, optionsVal.value)
-      if (res && res.documents) {
-        res.documents.forEach((doc) => {
-          const item = mapTenantDocumentToItem(doc)
-          const index = documentsList.value.findIndex((d) => d.id === item.id)
-          if (index !== -1) {
-            documentsList.value[index] = {
-              ...item,
-              content: documentsList.value[index]!.content || item.content,
-              versions: documentsList.value[index]!.versions.length
-                ? documentsList.value[index]!.versions
-                : item.versions,
-              activity: documentsList.value[index]!.activity.length
-                ? documentsList.value[index]!.activity
-                : item.activity,
-              comments: documentsList.value[index]!.comments.length
-                ? documentsList.value[index]!.comments
-                : item.comments,
-              mappedControls: documentsList.value[index]!.mappedControls.length
-                ? documentsList.value[index]!.mappedControls
-                : item.mappedControls,
-            }
-          } else {
-            documentsList.value.push(item)
-          }
-        })
+      if (res?.documents) {
+        res.documents.forEach((doc) => mergeDocumentIntoStore(mapTenantDocumentToItem(doc)))
       }
       return res
     },
