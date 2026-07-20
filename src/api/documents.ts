@@ -20,7 +20,18 @@ export type TenantDocument = {
   content: string
 }
 
-export type TenantDocumentDetail = TenantDocument
+export type DocumentApprover = {
+  $id: string
+  $createdAt?: string
+  name: string
+  email?: string
+  emailVerified?: boolean
+  status?: string
+}
+
+export type TenantDocumentDetail = TenantDocument & {
+  approvers?: DocumentApprover[]
+}
 
 export type TenantDocumentsResponse = {
   total: number
@@ -30,6 +41,10 @@ export type TenantDocumentsResponse = {
 export type UpdateDocumentInput = {
   documentType?: string
   classification?: string
+}
+
+export type UpdateDocumentApproversInput = {
+  approverIds: string[]
 }
 
 export function getDocuments(
@@ -59,6 +74,20 @@ export function updateDocument(
 ) {
   return apiRequest<TenantDocumentDetail>(`/v1/documents/${documentId}`, {
     method: 'PATCH',
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    body: input,
+  })
+}
+
+export function updateDocumentApprovers(
+  tenantId: string,
+  documentId: string,
+  input: UpdateDocumentApproversInput,
+) {
+  return apiRequest<void>(`/v1/documents/${documentId}/approvers`, {
+    method: 'PUT',
     headers: {
       'x-tenant-id': tenantId,
     },

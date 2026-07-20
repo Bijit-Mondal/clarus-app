@@ -4,9 +4,11 @@ import {
   getDocuments,
   getDocument,
   updateDocument as patchDocument,
+  updateDocumentApprovers,
   type UpdateDocumentInput,
   type TenantDocument,
   type TenantDocumentDetail,
+  type DocumentApprover,
 } from '@/api/documents'
 import { useOrganizationStore } from '@/stores/organization'
 
@@ -53,6 +55,7 @@ export interface DocumentItem {
   updatedAt: string
   classification: DocumentClassification
   approvers: string[]
+  approverIds: string[]
   content: string
   versions: DocumentVersion[]
   activity: DocumentActivity[]
@@ -254,7 +257,7 @@ function normalizeDocumentType(value: string): DocumentItem['category'] {
   return 'policy'
 }
 
-function mergeDocumentIntoStore(item: DocumentItem) {
+function mergeDocumentIntoStore(item: DocumentItem, fromDetail = false) {
   const index = documentsList.value.findIndex((d) => d.id === item.id)
   if (index !== -1) {
     const existing = documentsList.value[index]!
@@ -262,10 +265,27 @@ function mergeDocumentIntoStore(item: DocumentItem) {
       ...item,
       versions: existing.versions.length ? existing.versions : item.versions,
       activity: existing.activity.length ? existing.activity : item.activity,
-      approvers: existing.approvers.length ? existing.approvers : item.approvers,
+      approvers: fromDetail
+        ? item.approvers
+        : existing.approvers.length
+          ? existing.approvers
+          : item.approvers,
+      approverIds: fromDetail
+        ? item.approverIds
+        : existing.approverIds.length
+          ? existing.approverIds
+          : item.approverIds,
     }
   } else {
     documentsList.value.push(item)
+  }
+}
+
+function mapApproversFromApi(approvers?: DocumentApprover[]) {
+  const list = approvers ?? []
+  return {
+    approverIds: list.map((approver) => approver.$id),
+    approvers: list.map((approver) => approver.name),
   }
 }
 
@@ -289,6 +309,7 @@ export function mapTenantDocumentToItem(doc: TenantDocument): DocumentItem {
     updatedAt: doc.$updatedAt ? formatTimeAgo(doc.$updatedAt) : 'Just now',
     classification: normalizeClassification(doc.classification || 'internal'),
     approvers: [],
+    approverIds: [],
     content: doc.content,
     versions: [],
     activity: [],
@@ -297,9 +318,12 @@ export function mapTenantDocumentToItem(doc: TenantDocument): DocumentItem {
 
 export function mapTenantDocumentDetailToItem(doc: TenantDocumentDetail): DocumentItem {
   const base = mapTenantDocumentToItem(doc)
+  const { approverIds, approvers } = mapApproversFromApi(doc.approvers)
   return {
     ...base,
     content: doc.content,
+    approverIds,
+    approvers,
   }
 }
 
@@ -314,7 +338,7 @@ export function useDocumentQuery(documentId: Ref<string> | string) {
     queryKey: computed(() => documentKeys.detail(tenantId.value || '', documentIdVal.value || '')),
     queryFn: async () => {
       const doc = await getDocument(tenantId.value!, documentIdVal.value!)
-      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc))
+      mergeDocumentIntoStore(mapTenantDocumentDetailToItem(doc), true)
       return doc
     },
     enabled: computed(() => !!tenantId.value && !!documentIdVal.value),
@@ -365,6 +389,29 @@ export function useUpdateDocumentMutation() {
     onSuccess: (doc) => {
       mergeDocumentIntoStore(mapTenantDocumentToItem(doc))
       void queryClient.invalidateQueries({ queryKey: documentKeys.all })
+    },
+  })
+}
+
+export function useUpdateDocumentApproversMutation() {
+  const queryClient = useQueryClient()
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const { updateDocument } = useDocuments()
+
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      approverIds,
+    }: {
+      documentId: string
+      approverIds: string[]
+    }) => updateDocumentApprovers(tenantId.value!, documentId, { approverIds }),
+    onSuccess: (_, { documentId, approverIds }) => {
+      updateDocument(documentId, { approverIds })
+      void queryClient.invalidateQueries({
+        queryKey: documentKeys.detail(tenantId.value || '', documentId),
+      })
     },
   })
 }

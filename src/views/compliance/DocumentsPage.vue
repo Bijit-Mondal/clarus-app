@@ -270,6 +270,7 @@ function handleCreateDocument() {
     description: newDocDescription.value || newDocTitle.value,
     content: '',
     approvers: [],
+    approverIds: [],
   })
 
   isAddDialogOpen.value = false

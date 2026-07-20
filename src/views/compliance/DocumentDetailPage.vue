@@ -25,6 +25,7 @@ import {
   useDocuments,
   useDocumentQuery,
   useUpdateDocumentMutation,
+  useUpdateDocumentApproversMutation,
   getClassificationLabel,
   type DocumentClassification,
   type DocumentItem,
@@ -82,8 +83,25 @@ const orgSlug = computed(() => route.params.organizationSlug as string)
 const { isPending: isDocumentLoading, isError: isDocumentError } = useDocumentQuery(documentId)
 const { mutateAsync: updateDocumentMutation, isPending: isUpdatingDocument } =
   useUpdateDocumentMutation()
+const { mutateAsync: updateDocumentApproversMutation, isPending: isUpdatingApprovers } =
+  useUpdateDocumentApproversMutation()
 const { data: tenantUsersData } = useTenantUsersQuery()
 const tenantUsers = computed(() => tenantUsersData.value?.users ?? [])
+
+function resolveApproverName(approverId: string) {
+  const fromTenant = tenantUsers.value.find((user) => user.$id === approverId)?.name
+  if (fromTenant) return fromTenant
+
+  const doc = documentItem.value
+  const index = doc?.approverIds.indexOf(approverId) ?? -1
+  if (index >= 0 && doc?.approvers[index]) return doc.approvers[index]
+
+  return approverId
+}
+
+function resolveApproverNames(approverIds: string[]) {
+  return approverIds.map(resolveApproverName)
+}
 
 const {
   getDocumentById,
@@ -199,7 +217,7 @@ const approverDropdownOpen = ref(false)
 const highlightedApproverIndex = ref(-1)
 
 const availableApproverPool = computed(() =>
-  tenantUsers.value.filter((user) => !editApprovers.value.includes(user.name)),
+  tenantUsers.value.filter((user) => !editApprovers.value.includes(user.$id)),
 )
 
 const filteredApproverPool = computed(() =>
@@ -212,18 +230,40 @@ function openEditDialog() {
   if (!documentItem.value) return
   editCategory.value = documentItem.value.category
   editClassification.value = documentItem.value.classification
-  editApprovers.value = [...documentItem.value.approvers]
+  editApprovers.value = [...documentItem.value.approverIds]
   approverSearch.value = ''
   approverDropdownOpen.value = false
   highlightedApproverIndex.value = -1
   isEditDialogOpen.value = true
 }
 
-function selectApprover(name: string) {
-  if (!documentItem.value || editApprovers.value.includes(name)) return
-  editApprovers.value.push(name)
-  updateDocument(documentItem.value.id, { approvers: [...editApprovers.value] })
-  addActivity(documentItem.value.id, `Added ${name} as approver`)
+async function syncApprovers(approverIds: string[], activityMessage?: string) {
+  if (!documentItem.value) return
+
+  const previousApproverIds = [...editApprovers.value]
+  editApprovers.value = approverIds
+
+  try {
+    await updateDocumentApproversMutation({
+      documentId: documentItem.value.id,
+      approverIds,
+    })
+    updateDocument(documentItem.value.id, {
+      approverIds,
+      approvers: resolveApproverNames(approverIds),
+    })
+    if (activityMessage) {
+      addActivity(documentItem.value.id, activityMessage)
+    }
+  } catch {
+    editApprovers.value = previousApproverIds
+  }
+}
+
+function selectApprover(userId: string) {
+  if (!documentItem.value || editApprovers.value.includes(userId)) return
+  const nextApproverIds = [...editApprovers.value, userId]
+  void syncApprovers(nextApproverIds, `Added ${resolveApproverName(userId)} as approver`)
   approverSearch.value = ''
   highlightedApproverIndex.value = -1
 }
@@ -242,15 +282,18 @@ function handleApproverKeydown(e: KeyboardEvent) {
     const selectedApprover =
       highlightedApproverIndex.value >= 0 ? list[highlightedApproverIndex.value] : list[0]
     if (selectedApprover && (highlightedApproverIndex.value >= 0 || list.length === 1)) {
-      selectApprover(selectedApprover.name)
+      selectApprover(selectedApprover.$id)
     }
   } else if (e.key === 'Escape') {
     approverDropdownOpen.value = false
   } else if (e.key === 'Backspace' && !approverSearch.value && editApprovers.value.length) {
-    const removed = editApprovers.value.pop()
-    if (documentItem.value && removed) {
-      updateDocument(documentItem.value.id, { approvers: [...editApprovers.value] })
-      addActivity(documentItem.value.id, `Removed ${removed} from approvers`)
+    const removedId = editApprovers.value.at(-1)
+    if (documentItem.value && removedId) {
+      const nextApproverIds = editApprovers.value.slice(0, -1)
+      void syncApprovers(
+        nextApproverIds,
+        `Removed ${resolveApproverName(removedId)} from approvers`,
+      )
     }
   }
 }
@@ -266,11 +309,13 @@ function onApproverSearchBlur() {
   }, 150)
 }
 
-function removeEditApprover(name: string) {
+function removeEditApprover(userId: string) {
   if (!documentItem.value) return
-  editApprovers.value = editApprovers.value.filter((n) => n !== name)
-  updateDocument(documentItem.value.id, { approvers: [...editApprovers.value] })
-  addActivity(documentItem.value.id, `Removed ${name} from approvers`)
+  const nextApproverIds = editApprovers.value.filter((id) => id !== userId)
+  void syncApprovers(
+    nextApproverIds,
+    `Removed ${resolveApproverName(userId)} from approvers`,
+  )
 }
 
 const hasMetadataChanges = computed(() => {
@@ -1410,17 +1455,18 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
                     class="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm ring-offset-background transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
                   >
                     <Badge
-                      v-for="name in editApprovers"
-                      :key="name"
+                      v-for="approverId in editApprovers"
+                      :key="approverId"
                       variant="secondary"
                       class="gap-1 rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground"
                     >
-                      {{ name }}
+                      {{ resolveApproverName(approverId) }}
                       <button
                         type="button"
                         class="text-muted-foreground hover:text-foreground"
-                        :aria-label="`Remove ${name}`"
-                        @click="removeEditApprover(name)"
+                        :aria-label="`Remove ${resolveApproverName(approverId)}`"
+                        :disabled="isUpdatingApprovers"
+                        @click="removeEditApprover(approverId)"
                       >
                         <PhX :size="10" />
                       </button>
@@ -1430,6 +1476,7 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
                       class="min-w-[120px] flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                       placeholder="Search approvers..."
                       autocomplete="off"
+                      :disabled="isUpdatingApprovers"
                       @focus="onApproverSearchFocus"
                       @blur="onApproverSearchBlur"
                       @keydown="handleApproverKeydown"
@@ -1444,7 +1491,7 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
                       :key="user.$id"
                       class="cursor-pointer px-3 py-1.5 text-xs text-foreground transition-colors"
                       :class="idx === highlightedApproverIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'"
-                      @mousedown.prevent="selectApprover(user.name)"
+                      @mousedown.prevent="selectApprover(user.$id)"
                     >
                       {{ user.name }}
                     </li>
@@ -1458,6 +1505,7 @@ function signatureStatusConfig(status: SignatureRecord['status']) {
                 </div>
                 <p class="text-[11px] text-muted-foreground">
                   Approver changes are saved immediately.
+                  <span v-if="isUpdatingApprovers"> Saving…</span>
                 </p>
               </div>
           </div>
