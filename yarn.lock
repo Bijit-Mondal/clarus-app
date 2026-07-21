@@ -1715,6 +1715,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tiptap/extension-table@npm:^3.28.0":
+  version: 3.28.0
+  resolution: "@tiptap/extension-table@npm:3.28.0"
+  peerDependencies:
+    "@tiptap/core": 3.28.0
+    "@tiptap/pm": 3.28.0
+  checksum: 10c0/5f2d09116da2352361862da8b21e597d831b6125ce227d7e85b6d06d4e5603be6d3e91e2a918b53fcacd7b89948c340906885198b2958bae989f41bb63b32f34
+  languageName: node
+  linkType: hard
+
 "@tiptap/extension-text@npm:^3.28.0":
   version: 3.28.0
   resolution: "@tiptap/extension-text@npm:3.28.0"
@@ -2848,7 +2858,9 @@ __metadata:
     "@phosphor-icons/vue": "npm:^2.2.1"
     "@tailwindcss/vite": "npm:^4.3.2"
     "@tanstack/vue-query": "npm:^5.101.2"
+    "@tiptap/core": "npm:^3.28.0"
     "@tiptap/extension-link": "npm:^3.28.0"
+    "@tiptap/extension-table": "npm:^3.28.0"
     "@tiptap/extension-underline": "npm:^3.28.0"
     "@tiptap/pm": "npm:^3.28.0"
     "@tiptap/starter-kit": "npm:^3.28.0"

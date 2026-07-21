@@ -107,3 +107,40 @@ export function getTenantUsers(tenantId: string) {
     },
   })
 }
+
+export type ComplianceMetric = {
+  total: number
+  applicable: number
+  passing: number
+  attention: number
+  failing: number
+  excluded: number
+  progress: number
+}
+
+export type ComplianceFramework = {
+  tenantFrameworkId: string
+  frameworkId: string
+  frameworkReleaseId: string
+  key: string
+  name: string
+  version: string
+  targetDate: string
+  requirements: ComplianceMetric
+}
+
+export type ComplianceOverview = {
+  generatedAt: string
+  requirements: ComplianceMetric
+  controls: ComplianceMetric
+  frameworks: ComplianceFramework[]
+}
+
+export function getComplianceOverview(tenantId: string) {
+  return apiRequest<ComplianceOverview>('/v1/tenants/dashboard/compliance', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+  })
+}
+

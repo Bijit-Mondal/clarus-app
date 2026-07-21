@@ -2,23 +2,34 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import Link from '@tiptap/extension-link'
+import { TableKit } from '@tiptap/extension-table'
 import {
   PhArrowClockwise,
   PhArrowCounterClockwise,
+  PhColumns,
+  PhColumnsPlusLeft,
+  PhColumnsPlusRight,
   PhCode,
   PhDownloadSimple,
   PhFileText,
   PhLink,
   PhListBullets,
   PhListNumbers,
+  PhRowsPlusBottom,
+  PhRowsPlusTop,
+  PhRows,
+  PhTable,
+  PhTextAlignCenter,
+  PhTextAlignLeft,
+  PhTextAlignRight,
   PhTextBolder,
   PhTextH,
   PhTextItalic,
   PhTextStrikethrough,
   PhTextUnderline,
+  PhTrash,
 } from '@phosphor-icons/vue'
+import { tiptapTextAlignExtension } from '@/lib/tiptapTextAlign'
 import { downloadElementAsPdf } from '@/lib/downloadPdf'
 import { pdfLightThemeStyle } from '@/lib/pdfTheme'
 import { buildPdfWatermarkPattern, buildDownloadStamp } from '@/lib/pdfWatermark'
@@ -77,12 +88,13 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
+      link: {
+        openOnClick: false,
+        HTMLAttributes: { class: 'tiptap-link' },
+      },
     }),
-    Underline,
-    Link.configure({
-      openOnClick: false,
-      HTMLAttributes: { class: 'tiptap-link' },
-    }),
+    TableKit,
+    tiptapTextAlignExtension,
   ],
   editable: props.editable && !props.previewOnly,
   editorProps: {
@@ -125,6 +137,52 @@ function handleHeadingChange(event: Event) {
   const level = Number(target.value)
   if (level !== 0 && level !== 1 && level !== 2 && level !== 3) return
   setHeading(level)
+}
+
+function insertTable() {
+  editor.value?.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run()
+}
+
+function setTextAlignment(alignment: 'left' | 'center' | 'right') {
+  const currentEditor = editor.value
+  if (!currentEditor) return
+
+  currentEditor
+    .chain()
+    .focus()
+    .command(({ state, tr, dispatch }) => {
+      const blockPositions = new Set<number>()
+      const isAlignableBlock = (node: typeof state.doc) =>
+        node.type.name === 'paragraph' || node.type.name === 'heading'
+
+      function addParentBlock($pos: typeof state.selection.$from) {
+        for (let depth = $pos.depth; depth > 0; depth -= 1) {
+          const node = $pos.node(depth)
+          if (isAlignableBlock(node)) {
+            blockPositions.add($pos.before(depth))
+            return
+          }
+        }
+      }
+
+      addParentBlock(state.selection.$from)
+      if (!state.selection.empty) addParentBlock(state.selection.$to)
+      state.doc.nodesBetween(state.selection.from, state.selection.to, (node, pos) => {
+        if (isAlignableBlock(node)) blockPositions.add(pos)
+      })
+
+      if (!blockPositions.size) return false
+
+      blockPositions.forEach((pos) => {
+        const node = tr.doc.nodeAt(pos)
+        if (!node) return
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, textAlign: alignment })
+      })
+
+      if (dispatch) dispatch(tr)
+      return true
+    })
+    .run()
 }
 
 function setLink() {
@@ -379,6 +437,121 @@ onBeforeUnmount(() => editor.value?.destroy())
           title="Code block"
           @click="editor.chain().focus().toggleCodeBlock().run()"
           ><PhCode :size="18"
+        /></Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          class="document-editor__tool"
+          :class="{ 'is-active': editor.isActive('table') }"
+          aria-label="Insert table"
+          title="Insert table"
+          @mousedown.prevent
+          @click="insertTable"
+          ><PhTable :size="18"
+        /></Button>
+        <template v-if="editor.isActive('table')">
+          <span class="document-editor__separator" aria-hidden="true" />
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool"
+            aria-label="Add row above"
+            title="Add row above"
+            @mousedown.prevent
+            @click="editor.chain().focus().addRowBefore().run()"
+            ><PhRowsPlusTop :size="18"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool"
+            aria-label="Add row below"
+            title="Add row below"
+            @mousedown.prevent
+            @click="editor.chain().focus().addRowAfter().run()"
+            ><PhRowsPlusBottom :size="18"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool"
+            aria-label="Add column before"
+            title="Add column before"
+            @mousedown.prevent
+            @click="editor.chain().focus().addColumnBefore().run()"
+            ><PhColumnsPlusLeft :size="18"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool"
+            aria-label="Add column after"
+            title="Add column after"
+            @mousedown.prevent
+            @click="editor.chain().focus().addColumnAfter().run()"
+            ><PhColumnsPlusRight :size="18"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool text-destructive hover:text-destructive"
+            aria-label="Delete current row"
+            title="Delete current row"
+            @mousedown.prevent
+            @click="editor.chain().focus().deleteRow().run()"
+            ><PhRows :size="17"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool text-destructive hover:text-destructive"
+            aria-label="Delete current column"
+            title="Delete current column"
+            @mousedown.prevent
+            @click="editor.chain().focus().deleteColumn().run()"
+            ><PhColumns :size="17"
+          /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="document-editor__tool text-destructive hover:text-destructive"
+            aria-label="Delete table"
+            title="Delete table"
+            @mousedown.prevent
+            @click="editor.chain().focus().deleteTable().run()"
+            ><PhTrash :size="18"
+          /></Button>
+        </template>
+        <span class="document-editor__separator" aria-hidden="true" />
+        <Button
+          variant="ghost"
+          size="icon"
+          class="document-editor__tool"
+          :class="{ 'is-active': editor.getAttributes('paragraph').textAlign === 'left' }"
+          aria-label="Align left"
+          title="Align left"
+          @click="setTextAlignment('left')"
+          ><PhTextAlignLeft :size="18"
+        /></Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          class="document-editor__tool"
+          :class="{ 'is-active': editor.getAttributes('paragraph').textAlign === 'center' }"
+          aria-label="Align center"
+          title="Align center"
+          @click="setTextAlignment('center')"
+          ><PhTextAlignCenter :size="18"
+        /></Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          class="document-editor__tool"
+          :class="{ 'is-active': editor.getAttributes('paragraph').textAlign === 'right' }"
+          aria-label="Align right"
+          title="Align right"
+          @click="setTextAlignment('right')"
+          ><PhTextAlignRight :size="18"
         /></Button>
         <Button
           variant="ghost"
@@ -718,6 +891,47 @@ onBeforeUnmount(() => editor.value?.destroy())
   text-underline-offset: 3px;
 }
 
+.tiptap-content .tiptap table {
+  width: 100%;
+  margin: 24px 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tiptap-content .tiptap th,
+.tiptap-content .tiptap td {
+  min-width: 1em;
+  padding: 9px 10px;
+  border: 1px solid var(--editor-border);
+  vertical-align: top;
+  text-align: left;
+}
+
+.tiptap-content .tiptap th {
+  background: var(--muted);
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.tiptap-content .tiptap th p,
+.tiptap-content .tiptap td p {
+  margin: 0;
+}
+
+.tiptap-content .tiptap .selectedCell {
+  background: color-mix(in oklch, var(--primary) 12%, var(--card));
+}
+
+.document-editor__pdf-light .tiptap-content .tiptap table {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.document-editor__pdf-light .tiptap-content .tiptap th,
+.document-editor__pdf-light .tiptap-content .tiptap td {
+  padding: 7px 8px;
+}
+
 .document-editor__pdf-frame {
   overflow: auto;
   padding: 24px 16px 32px;
@@ -873,6 +1087,9 @@ onBeforeUnmount(() => editor.value?.destroy())
   }
   .document-editor__canvas {
     padding: 24px 18px 36px;
+  }
+  .document-editor__workspace .tiptap-content .tiptap table {
+    min-width: 560px;
   }
   .document-editor__pdf-content {
     padding: 24px 20px 28px;

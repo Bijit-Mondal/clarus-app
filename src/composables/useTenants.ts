@@ -5,6 +5,7 @@ import {
   getCurrentTenant,
   getTenants,
   getTenantUsers,
+  getComplianceOverview,
   type CreateTenantInput,
 } from '@/api/tenants'
 import { queryClient } from '@/lib/query-client'
@@ -14,6 +15,7 @@ import { useOrganizationStore } from '@/stores/organization'
 export const tenantKeys = {
   all: ['tenants'] as const,
   current: (tenantId: string) => [...tenantKeys.all, 'current', tenantId] as const,
+  complianceOverview: (tenantId: string) => [...tenantKeys.all, 'compliance-overview', tenantId] as const,
 }
 
 /** Fetch the current tenant outside of component setup (e.g. auth router guards). */
@@ -81,3 +83,15 @@ export function useTenantUsersQuery() {
     enabled: computed(() => !!tenantId.value),
   })
 }
+
+export function useComplianceOverviewQuery() {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+
+  return useQuery({
+    queryKey: computed(() => tenantKeys.complianceOverview(tenantId.value || '')),
+    queryFn: () => getComplianceOverview(tenantId.value!),
+    enabled: computed(() => !!tenantId.value),
+  })
+}
+
