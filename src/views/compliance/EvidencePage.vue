@@ -383,7 +383,9 @@ function statusMeta(status: string) {
       <div class="col-span-2 rounded-lg border border-border bg-card p-4 lg:col-span-2">
         <div class="flex items-start justify-between gap-3">
           <p class="text-xs font-medium text-muted-foreground">Verification progress</p>
-          <p class="text-2xl font-semibold tracking-tight text-foreground tabular-nums leading-none">
+          <p
+            class="text-2xl font-semibold tracking-tight text-foreground tabular-nums leading-none"
+          >
             {{ isLoading ? '—' : `${verifiedCoverage}%` }}
           </p>
         </div>
@@ -536,7 +538,10 @@ function statusMeta(status: string) {
     </div>
 
     <!-- Loading ─────────────────────────────────────────────────────────────── -->
-    <section v-if="isLoading && evidences.length === 0" class="rounded-lg border border-border bg-card">
+    <section
+      v-if="isLoading && evidences.length === 0"
+      class="rounded-lg border border-border bg-card"
+    >
       <ClarusLoadingState variant="table-rows" :rows="8" label="Loading evidence" />
     </section>
 
@@ -595,9 +600,7 @@ function statusMeta(status: string) {
         v-for="group in pagedGroups"
         :key="group.key"
         class="group relative flex flex-col rounded-lg border border-border bg-card transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-        :class="
-          group.key === '__unassigned__' ? '' : 'cursor-pointer hover:shadow-sm'
-        "
+        :class="group.key === '__unassigned__' ? '' : 'cursor-pointer hover:shadow-sm'"
         :tabindex="group.key === '__unassigned__' ? undefined : 0"
         :role="group.key === '__unassigned__' ? undefined : 'button'"
         :aria-label="
@@ -818,7 +821,9 @@ function statusMeta(status: string) {
                   {{ statusMeta(e.status).label }}
                 </span>
               </td>
-              <td class="px-5 py-4 align-top whitespace-nowrap text-muted-foreground tabular-nums text-xs">
+              <td
+                class="px-5 py-4 align-top whitespace-nowrap text-muted-foreground tabular-nums text-xs"
+              >
                 {{ formatDate(e.collectedAt || e.$createdAt) }}
               </td>
               <td class="px-5 py-4 text-right align-top">

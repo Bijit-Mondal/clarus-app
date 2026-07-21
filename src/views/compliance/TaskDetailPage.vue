@@ -228,7 +228,10 @@ function getVersionStatusConfig(status: string) {
   if (normalized === 'in-review')
     return { label: 'In Review', classes: 'bg-warning/10 text-warning-emphasis border-warning/20' }
   if (normalized === 'rejected')
-    return { label: 'Rejected', classes: 'bg-destructive/10 text-destructive border-destructive/20' }
+    return {
+      label: 'Rejected',
+      classes: 'bg-destructive/10 text-destructive border-destructive/20',
+    }
   return { label: 'Draft', classes: 'bg-muted text-muted-foreground border-border' }
 }
 

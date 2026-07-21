@@ -17,6 +17,7 @@ const pageComponents: Record<string, () => Promise<RouteComponent>> = {
   'settings-profile': () => import('@/views/settings/ProfileSettings.vue'),
   'settings-account': () => import('@/views/settings/AccountSettings.vue'),
   'workspace-team': () => import('@/views/workspace/TeamPage.vue'),
+  'workspace-context': () => import('@/views/workspace/ContextPage.vue'),
 }
 
 const dashboardChildren = appModules.flatMap((module) =>

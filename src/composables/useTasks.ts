@@ -181,9 +181,7 @@ export function useTaskDocumentsQuery(taskId: Ref<string> | string) {
   const taskIdVal = computed(() => (typeof taskId === 'string' ? taskId : taskId.value))
 
   return useQuery({
-    queryKey: computed(() =>
-      taskKeys.documents(tenantId.value || '', taskIdVal.value || ''),
-    ),
+    queryKey: computed(() => taskKeys.documents(tenantId.value || '', taskIdVal.value || '')),
     queryFn: () => getTaskDocuments(tenantId.value!, taskIdVal.value!),
     enabled: computed(() => !!tenantId.value && !!taskIdVal.value),
     staleTime: 300_000,

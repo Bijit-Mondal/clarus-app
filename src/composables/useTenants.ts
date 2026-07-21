@@ -15,7 +15,8 @@ import { useOrganizationStore } from '@/stores/organization'
 export const tenantKeys = {
   all: ['tenants'] as const,
   current: (tenantId: string) => [...tenantKeys.all, 'current', tenantId] as const,
-  complianceOverview: (tenantId: string) => [...tenantKeys.all, 'compliance-overview', tenantId] as const,
+  complianceOverview: (tenantId: string) =>
+    [...tenantKeys.all, 'compliance-overview', tenantId] as const,
 }
 
 /** Fetch the current tenant outside of component setup (e.g. auth router guards). */
@@ -94,4 +95,3 @@ export function useComplianceOverviewQuery() {
     enabled: computed(() => !!tenantId.value),
   })
 }
-

@@ -84,6 +84,11 @@ export const appModules: AppModule[] = [
         label: 'Team',
         description: 'Members, roles, and invitations for this workspace.',
       },
+      {
+        id: 'context',
+        label: 'Context',
+        description: 'Structured company information for AI assistants and compliance workflows.',
+      },
     ],
   },
   {
