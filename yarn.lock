@@ -1859,6 +1859,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/diff@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "@types/diff@npm:8.0.0"
+  dependencies:
+    diff: "npm:*"
+  checksum: 10c0/c6e3376abeac8bc77b33252afc239a3cfc2729ecf59abcf00fa0f0eca8c505fd3a375a99a64afecdbb97fbec77b9a6aa8a8918f4d53fd5b45638d609343717cc
+  languageName: node
+  linkType: hard
+
 "@types/esrecurse@npm:^4.3.1":
   version: 4.3.1
   resolution: "@types/esrecurse@npm:4.3.1"
@@ -2866,6 +2875,7 @@ __metadata:
     "@tiptap/starter-kit": "npm:^3.28.0"
     "@tiptap/vue-3": "npm:^3.28.0"
     "@tsconfig/node24": "npm:^24.0.4"
+    "@types/diff": "npm:^8.0.0"
     "@types/jsdom": "npm:^28.0.3"
     "@types/node": "npm:^24.13.2"
     "@vitejs/plugin-vue": "npm:^6.0.7"
@@ -2876,6 +2886,7 @@ __metadata:
     "@vueuse/core": "npm:^14.3.0"
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
+    diff: "npm:^9.0.0"
     eslint: "npm:^10.5.0"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-oxlint: "npm:~1.69.0"
@@ -3116,6 +3127,13 @@ __metadata:
   version: 2.1.2
   resolution: "detect-libc@npm:2.1.2"
   checksum: 10c0/acc675c29a5649fa1fb6e255f993b8ee829e510b6b56b0910666949c80c364738833417d0edb5f90e4e46be17228b0f2b66a010513984e18b15deeeac49369c4
+  languageName: node
+  linkType: hard
+
+"diff@npm:*, diff@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "diff@npm:9.0.0"
+  checksum: 10c0/a971cc88f66071a33bd3942db2f51b57d484e9856265ae45cf44fb28ab2fde91f132d9c26d8be0fb6082d2be94d29e1295c1adb251b7461935d6a2dd304cd161
   languageName: node
   linkType: hard
 

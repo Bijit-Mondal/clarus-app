@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { Editor as TiptapCoreEditor } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { TableKit } from '@tiptap/extension-table'
@@ -15,9 +16,11 @@ import {
   PhLink,
   PhListBullets,
   PhListNumbers,
+  PhMagicWand,
   PhRowsPlusBottom,
   PhRowsPlusTop,
   PhRows,
+  PhSparkle,
   PhTable,
   PhTextAlignCenter,
   PhTextAlignLeft,
@@ -46,8 +49,18 @@ import {
 import {
   parseTiptapContent,
   serializeTiptapContent,
+  isEmptyTiptapContent,
   type TiptapDocument,
 } from '@/lib/tiptapContent'
+import { SuggestionsExtension } from '@/lib/documentAi/suggestionsExtension'
+import { useDocumentSuggestions } from '@/composables/useDocumentSuggestions'
+import {
+  useDocumentAiSectionMutation,
+  useDocumentAiSession,
+} from '@/composables/useDocumentAi'
+import { useClarusAi } from '@/composables/useClarusAi'
+import { getApiErrorMessage } from '@/lib/api'
+import type { SuggestionRange } from '@/lib/documentAi/suggestionTypes'
 
 const props = withDefaults(
   defineProps<{
@@ -58,8 +71,11 @@ const props = withDefaults(
     version?: string
     downloadUserEmail?: string
     downloadFilename?: string
+    /** Enable Helix policy writer (suggestions + selection edit). */
+    enableAi?: boolean
+    documentId?: string
   }>(),
-  { editable: true, previewOnly: false },
+  { editable: true, previewOnly: false, enableAi: false },
 )
 
 const emit = defineEmits<{
@@ -73,6 +89,22 @@ const linkUrl = ref('')
 const pdfPageRef = ref<HTMLElement | null>(null)
 const isDownloadingPdf = ref(false)
 const pdfDownloadStamp = ref<string | null>(null)
+const canvasRef = ref<HTMLElement | null>(null)
+
+const selectionMenu = ref<{ top: number; left: number } | null>(null)
+const isSectionPromptOpen = ref(false)
+const sectionInstruction = ref('')
+const sectionEditError = ref<string | null>(null)
+const sectionSelection = ref<{ from: number; to: number; text: string } | null>(null)
+
+const aiSession = useDocumentAiSession()
+const { openPanel } = useClarusAi()
+const sectionMutation = useDocumentAiSectionMutation()
+
+const suggestionHandlers = {
+  onAccept: (_id: string) => {},
+  onReject: (_id: string) => {},
+}
 
 const pdfWatermarkBackground = computed(() =>
   props.downloadUserEmail
@@ -82,6 +114,8 @@ const pdfWatermarkBackground = computed(() =>
       }
     : undefined,
 )
+
+const isEmptyDoc = computed(() => isEmptyTiptapContent(props.modelValue))
 
 const editor = useEditor({
   content: parseTiptapContent(props.modelValue),
@@ -95,6 +129,14 @@ const editor = useEditor({
     }),
     TableKit,
     tiptapTextAlignExtension,
+    ...(props.enableAi
+      ? [
+          SuggestionsExtension.configure({
+            onAccept: (id) => suggestionHandlers.onAccept(id),
+            onReject: (id) => suggestionHandlers.onReject(id),
+          }),
+        ]
+      : []),
   ],
   editable: props.editable && !props.previewOnly,
   editorProps: {
@@ -109,7 +151,150 @@ const editor = useEditor({
   onBlur: () => {
     emit('blur')
   },
+  onSelectionUpdate: ({ editor: currentEditor }) => {
+    if (!props.enableAi || viewMode.value !== 'editor') {
+      selectionMenu.value = null
+      return
+    }
+    updateSelectionMenu(currentEditor)
+  },
 })
+
+const suggestions = useDocumentSuggestions(editor)
+suggestionHandlers.onAccept = suggestions.accept
+suggestionHandlers.onReject = suggestions.reject
+
+const {
+  isActive: aiSuggestionsActive,
+  pendingRanges: aiPendingRanges,
+  acceptAll: acceptAllSuggestions,
+  rejectAll: rejectAllSuggestions,
+  getSelectionForEdit,
+  setSectionLoading,
+  applySectionSuggestion,
+  clearSuggestions,
+  getMarkdown,
+  applyProposal,
+} = suggestions
+
+const isSectionPending = computed(() => sectionMutation.isPending.value)
+
+function updateSelectionMenu(currentEditor: TiptapCoreEditor) {
+  if (aiSuggestionsActive.value || sectionMutation.isPending.value) {
+    selectionMenu.value = null
+    return
+  }
+  const { from, to, empty } = currentEditor.state.selection
+  if (empty || !currentEditor.isEditable) {
+    selectionMenu.value = null
+    return
+  }
+  const text = currentEditor.state.doc.textBetween(from, to, '\n\n').trim()
+  if (!text) {
+    selectionMenu.value = null
+    return
+  }
+  try {
+    const start = currentEditor.view.coordsAtPos(from)
+    const end = currentEditor.view.coordsAtPos(to)
+    const canvasRect = canvasRef.value?.getBoundingClientRect()
+    if (!canvasRect) {
+      selectionMenu.value = null
+      return
+    }
+    selectionMenu.value = {
+      top: Math.min(start.top, end.top) - canvasRect.top - 44,
+      left: (start.left + end.left) / 2 - canvasRect.left,
+    }
+  } catch {
+    selectionMenu.value = null
+  }
+}
+
+function openSectionPrompt() {
+  const sel = getSelectionForEdit()
+  if (!sel) return
+  sectionSelection.value = sel
+  sectionInstruction.value = ''
+  sectionEditError.value = null
+  isSectionPromptOpen.value = true
+  selectionMenu.value = null
+}
+
+async function submitSectionEdit() {
+  const instruction = sectionInstruction.value.trim()
+  const sel = sectionSelection.value
+  if (!instruction || !sel || !props.documentId) return
+
+  sectionEditError.value = null
+  isSectionPromptOpen.value = false
+  setSectionLoading(sel.from, sel.to, sel.text)
+
+  try {
+    const result = await sectionMutation.mutateAsync({
+      documentId: props.documentId,
+      sectionText: sel.text,
+      instruction,
+    })
+    const range: SuggestionRange = {
+      id: `section-${sel.from}-${sel.to}`,
+      type: 'modify',
+      from: sel.from,
+      to: sel.to,
+      segments: [],
+      proposedText: result.content.trim(),
+      originalText: sel.text,
+      decision: 'pending',
+    }
+    applySectionSuggestion(range)
+  } catch (error) {
+    clearSuggestions()
+    sectionEditError.value = getApiErrorMessage(error, 'Couldn’t rewrite this section. Try again.')
+  } finally {
+    sectionSelection.value = null
+  }
+}
+
+function registerAiSession() {
+  if (!props.enableAi || !props.documentId) {
+    aiSession.unregister(props.documentId)
+    return
+  }
+  aiSession.register({
+    documentId: props.documentId,
+    documentTitle: props.title ?? '',
+    bridge: {
+      getMarkdown,
+      applyProposal: (markdown) => {
+        aiSession.setPendingProposal({
+          content: markdown,
+          summary: '',
+          title: '',
+          detail: '',
+          reviewHint: 'Review the proposal in the editor.',
+          contentLength: markdown.length,
+          complete: true,
+        })
+        applyProposal(markdown)
+      },
+      applySectionSuggestion,
+      setSectionLoading,
+      clearSuggestions,
+      getSelectionForEdit,
+    },
+  })
+}
+
+onMounted(() => {
+  registerAiSession()
+})
+
+watch(
+  () => [props.enableAi, props.documentId, props.title] as const,
+  () => registerAiSession(),
+)
+
+watch(editor, () => registerAiSession())
 
 const headingLevel = computed(() => {
   if (editor.value?.isActive('heading', { level: 1 })) return 'Heading 1'
@@ -244,7 +429,7 @@ async function downloadPdf() {
 
 function applyModelValueToEditor(newValue: string) {
   const currentEditor = editor.value
-  if (!currentEditor || currentEditor.isFocused) return
+  if (!currentEditor || currentEditor.isFocused || aiSuggestionsActive.value) return
 
   const parsedContent = parseTiptapContent(newValue)
   const currentContent = serializeTiptapContent(currentEditor.getJSON() as TiptapDocument)
@@ -270,15 +455,25 @@ watch([() => props.modelValue, editor], ([newValue]) => {
 
 watch(
   () => props.editable,
-  (newValue) => editor.value?.setEditable(newValue),
+  (newValue) => {
+    if (aiSuggestionsActive.value) return
+    editor.value?.setEditable(newValue && viewMode.value === 'editor')
+  },
 )
 
 watch(viewMode, (mode) => {
-  if (!editor.value) return
+  if (!editor.value || aiSuggestionsActive.value) return
   editor.value.setEditable(mode === 'editor' && props.editable)
 })
 
-onBeforeUnmount(() => editor.value?.destroy())
+function openHelixForDraft() {
+  openPanel()
+}
+
+onBeforeUnmount(() => {
+  if (props.documentId) aiSession.unregister(props.documentId)
+  editor.value?.destroy()
+})
 </script>
 
 <template>
@@ -586,7 +781,77 @@ onBeforeUnmount(() => editor.value?.destroy())
         /></Button>
       </div>
 
-      <div class="document-editor__canvas" @click="focusEditor">
+      <div class="document-editor__canvas" ref="canvasRef" @click="focusEditor">
+        <div
+          v-if="enableAi && aiSuggestionsActive"
+          class="document-editor__ai-bar"
+          role="status"
+        >
+          <span class="document-editor__ai-bar-label">
+            <PhSparkle :size="14" weight="fill" class="text-primary" aria-hidden="true" />
+            {{ aiPendingRanges.length }}
+            AI {{ aiPendingRanges.length === 1 ? 'change' : 'changes' }} to review
+          </span>
+          <div class="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              class="h-7 text-xs"
+              @click="rejectAllSuggestions()"
+            >
+              Reject all
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              class="h-7 text-xs"
+              @click="acceptAllSuggestions()"
+            >
+              Accept all
+            </Button>
+          </div>
+        </div>
+
+        <div
+          v-if="enableAi && isEmptyDoc && !aiSuggestionsActive && viewMode === 'editor'"
+          class="document-editor__draft-cta"
+        >
+          <Button type="button" size="sm" class="gap-2" @click="openHelixForDraft">
+            <PhMagicWand :size="16" aria-hidden="true" />
+            Draft with AI
+          </Button>
+          <span class="text-xs text-muted-foreground">or start writing below</span>
+        </div>
+
+        <p
+          v-if="sectionEditError"
+          class="document-editor__ai-error"
+          role="alert"
+        >
+          {{ sectionEditError }}
+          <button type="button" class="ml-2 underline" @click="sectionEditError = null">
+            Dismiss
+          </button>
+        </p>
+
+        <div
+          v-if="selectionMenu && enableAi"
+          class="document-editor__selection-menu"
+          :style="{ top: `${selectionMenu.top}px`, left: `${selectionMenu.left}px` }"
+        >
+          <Button
+            type="button"
+            size="sm"
+            class="h-8 gap-1.5 rounded-lg shadow-sm"
+            @mousedown.prevent
+            @click="openSectionPrompt"
+          >
+            <PhMagicWand :size="14" aria-hidden="true" />
+            Edit with AI
+          </Button>
+        </div>
+
         <EditorContent :editor="editor" class="tiptap-content" />
       </div>
     </div>
@@ -628,6 +893,44 @@ onBeforeUnmount(() => editor.value?.destroy())
         </div>
       </div>
     </div>
+
+    <Dialog v-model:open="isSectionPromptOpen">
+      <DialogContent class="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Edit with AI</DialogTitle>
+          <DialogDescription>
+            Describe how Helix should rewrite the selected section. You’ll review the result before
+            it replaces anything.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-2 py-2">
+          <label for="section-ai-instruction" class="text-sm font-medium text-foreground">
+            Instruction
+          </label>
+          <textarea
+            id="section-ai-instruction"
+            v-model="sectionInstruction"
+            rows="3"
+            placeholder="e.g. Require MFA for all remote access and name the approved VPN."
+            class="clarus-scroll min-h-[88px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @keydown.meta.enter.prevent="submitSectionEdit"
+            @keydown.ctrl.enter.prevent="submitSectionEdit"
+          />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="isSectionPromptOpen = false">
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            :disabled="!sectionInstruction.trim() || isSectionPending"
+            @click="submitSectionEdit"
+          >
+            {{ isSectionPending ? 'Rewriting…' : 'Rewrite section' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="isLinkDialogOpen">
       <DialogContent class="sm:max-w-[440px]">
@@ -766,12 +1069,66 @@ onBeforeUnmount(() => editor.value?.destroy())
   flex: 1;
 }
 .document-editor__canvas {
+  position: relative;
   min-height: 530px;
   max-height: 720px;
   overflow: auto;
   padding: 34px clamp(20px, 5vw, 72px) 48px;
   cursor: text;
   background: var(--card);
+}
+
+.document-editor__ai-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -10px 0 16px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, #1a7f37 28%, var(--border));
+  border-radius: 8px;
+  background: #dafbe1;
+  color: #116329;
+}
+
+.dark .document-editor__ai-bar {
+  background: rgba(46, 160, 67, 0.15);
+  border-color: color-mix(in srgb, #3fb950 40%, var(--border));
+  color: #3fb950;
+}
+
+.document-editor__ai-bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 550;
+}
+
+.document-editor__draft-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.document-editor__ai-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ffebe9;
+  color: #82071e;
+  font-size: 0.8125rem;
+}
+
+.document-editor__selection-menu {
+  position: absolute;
+  z-index: 6;
+  transform: translateX(-50%);
+  pointer-events: auto;
 }
 
 .tiptap-content .tiptap {

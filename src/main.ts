@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import { VueQueryPlugin } from '@tanstack/vue-query'
 
 import './style.css'
+import './assets/document-suggestions.css'
 
 import App from './App.vue'
 import router from './router'
