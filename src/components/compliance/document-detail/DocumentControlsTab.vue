@@ -29,10 +29,7 @@ const emit = defineEmits<{
       </Button>
     </div>
 
-    <div
-      v-if="isError"
-      class="flex flex-col items-center justify-center px-5 py-14 text-center"
-    >
+    <div v-if="isError" class="flex flex-col items-center justify-center px-5 py-14 text-center">
       <PhShieldCheck :size="22" class="mb-3 text-muted-foreground" />
       <p class="text-sm font-medium text-foreground">Couldn’t load controls</p>
       <p class="mt-1 max-w-[300px] text-xs text-muted-foreground">

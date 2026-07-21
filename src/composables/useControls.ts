@@ -5,6 +5,7 @@ import {
   getTenantControl,
   searchTenantControls,
   getControlRequirements,
+  getControlDocuments,
   updateTenantControl,
   type UpdateTenantControlInput,
   linkControlRequirement,
@@ -23,6 +24,8 @@ export const controlKeys = {
     [...controlKeys.all, 'requirements', tenantId, controlKey] as const,
   search: (tenantId: string, query: string, limit: number) =>
     [...controlKeys.all, 'search', tenantId, { query, limit }] as const,
+  documents: (tenantId: string, controlId: string) =>
+    [...controlKeys.all, 'documents', tenantId, controlId] as const,
 }
 
 export function useTenantControlsQuery(limit: Ref<number>, offset: Ref<number>) {
@@ -81,6 +84,21 @@ export function useControlRequirementsQuery(controlKey: Ref<string>) {
     }),
     queryFn: () => getControlRequirements(tenantId.value!, controlKey.value),
     enabled: computed(() => !!tenantId.value && !!controlKey.value),
+    staleTime: 300_000,
+  })
+}
+
+export function useControlDocumentsQuery(controlId: Ref<string> | string) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const controlIdVal = computed(() => (typeof controlId === 'string' ? controlId : controlId.value))
+
+  return useQuery({
+    queryKey: computed(() =>
+      controlKeys.documents(tenantId.value || '', controlIdVal.value || ''),
+    ),
+    queryFn: () => getControlDocuments(tenantId.value!, controlIdVal.value!),
+    enabled: computed(() => !!tenantId.value && !!controlIdVal.value),
     staleTime: 300_000,
   })
 }

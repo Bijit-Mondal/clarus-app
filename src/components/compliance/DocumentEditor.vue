@@ -273,10 +273,7 @@ onBeforeUnmount(() => editor.value?.destroy())
       </Button>
     </div>
 
-    <div
-      v-else-if="downloadUserEmail"
-      class="mb-3 flex justify-end px-1"
-    >
+    <div v-else-if="downloadUserEmail" class="mb-3 flex justify-end px-1">
       <Button
         variant="outline"
         size="sm"

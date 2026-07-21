@@ -412,7 +412,12 @@ watch(isDecisionDialogOpen, (open) => {
           <Button variant="outline" size="sm" class="mt-3" @click="goBack">Back to document</Button>
         </div>
 
-        <ul v-else-if="versions.length" class="space-y-1.5" role="listbox" aria-label="Document versions">
+        <ul
+          v-else-if="versions.length"
+          class="space-y-1.5"
+          role="listbox"
+          aria-label="Document versions"
+        >
           <li v-for="version in versions" :key="version.$id">
             <button
               type="button"
@@ -483,10 +488,7 @@ watch(isDecisionDialogOpen, (open) => {
           </li>
         </ul>
 
-        <div
-          v-else
-          class="rounded-lg border border-dashed border-border px-3 py-8 text-center"
-        >
+        <div v-else class="rounded-lg border border-dashed border-border px-3 py-8 text-center">
           <PhClock :size="20" class="mx-auto text-muted-foreground/50" />
           <p class="mt-2 text-sm font-medium text-foreground">No versions to review</p>
           <p class="mt-1 text-xs text-muted-foreground">
@@ -662,9 +664,7 @@ watch(isDecisionDialogOpen, (open) => {
             </label>
             <span
               class="text-[11px] tabular-nums"
-              :class="
-                commentTooLong ? 'font-medium text-destructive' : 'text-muted-foreground'
-              "
+              :class="commentTooLong ? 'font-medium text-destructive' : 'text-muted-foreground'"
             >
               {{ decisionComment.length }}/{{ COMMENT_MAX_LENGTH }}
             </span>
@@ -690,11 +690,7 @@ watch(isDecisionDialogOpen, (open) => {
                 : 'Optional note for the document owners…'
             "
           />
-          <p
-            v-if="commentTooLong"
-            id="decision-comment-hint"
-            class="text-xs text-destructive"
-          >
+          <p v-if="commentTooLong" id="decision-comment-hint" class="text-xs text-destructive">
             Comments can be up to {{ COMMENT_MAX_LENGTH }} characters.
           </p>
         </div>
@@ -714,11 +710,7 @@ watch(isDecisionDialogOpen, (open) => {
         <Separator />
 
         <DialogFooter class="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            :disabled="isSubmittingDecision"
-            @click="closeDecisionDialog"
-          >
+          <Button variant="outline" :disabled="isSubmittingDecision" @click="closeDecisionDialog">
             Keep reviewing
           </Button>
           <Button

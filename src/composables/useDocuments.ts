@@ -332,9 +332,7 @@ export function mapTenantDocumentToItem(doc: TenantDocument): DocumentItem {
     category: normalizeDocumentType(doc.documentType),
     version: formatDocumentVersion(doc),
     // API `currentVersion` is a version record id — never show it; format major.minor for UI.
-    currentPublishedVersion: doc.currentVersion?.trim()
-      ? formatDocumentVersion(doc)
-      : null,
+    currentPublishedVersion: doc.currentVersion?.trim() ? formatDocumentVersion(doc) : null,
     status: normalizeVersionStatus(doc.versionStatus || 'draft'),
     lifecycleStatus: doc.status || 'active',
     owner: '',
@@ -433,11 +431,8 @@ export function useDocumentVersionQuery(
         versionIdVal.value || '',
       ),
     ),
-    queryFn: () =>
-      getDocumentVersion(tenantId.value!, documentIdVal.value!, versionIdVal.value!),
-    enabled: computed(
-      () => !!tenantId.value && !!documentIdVal.value && !!versionIdVal.value,
-    ),
+    queryFn: () => getDocumentVersion(tenantId.value!, documentIdVal.value!, versionIdVal.value!),
+    enabled: computed(() => !!tenantId.value && !!documentIdVal.value && !!versionIdVal.value),
     staleTime: 300_000,
   })
 }
@@ -608,8 +603,7 @@ export function useDecideDocumentApprovalMutation() {
       documentId: string
       approvalRequestId: string
       input: DecideDocumentApprovalInput
-    }) =>
-      patchDecideDocumentApproval(tenantId.value!, documentId, approvalRequestId, input),
+    }) => patchDecideDocumentApproval(tenantId.value!, documentId, approvalRequestId, input),
     onSuccess: (request, { documentId, input }) => {
       const versionLabel = `v${request.major}.${request.minor}`
       addActivity(

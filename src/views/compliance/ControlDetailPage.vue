@@ -12,19 +12,16 @@ import {
   PhGavel,
   PhPencilSimple,
   PhDotsThreeOutline,
-  PhMagnifyingGlass,
 } from '@phosphor-icons/vue'
 import {
   useControlsStore,
   type Evidence,
   type Task,
   type ControlRequirement,
-  type Risk,
-  type Document,
-  type ThirdParty,
 } from '@/stores/controls'
 import {
   useControlRequirementsQuery,
+  useControlDocumentsQuery,
   useTenantControlQuery,
   useUpdateTenantControlMutation,
   useLinkControlRequirementMutation,
@@ -40,6 +37,7 @@ import AddEvidenceDialog from '@/components/compliance/AddEvidenceDialog.vue'
 import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
 
 import { useTenantRequirementSearchQuery } from '@/composables/useFrameworks'
+import { normalizeVersionStatus, formatDocumentVersion } from '@/composables/useDocuments'
 import type { LinkItem } from '@/components/compliance/types'
 import type { UpdateTenantControlInput, ControlRequirementMap } from '@/api/controls'
 import { getApiErrorMessage } from '@/lib/api'
@@ -49,7 +47,6 @@ import TasksManager from '@/components/compliance/TasksManager.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -120,9 +117,6 @@ const control = computed(() => {
       evidences: [] as Evidence[],
       tasks: [] as Task[],
       requirements: [] as ControlRequirement[],
-      risks: [] as Risk[],
-      documents: [] as Document[],
-      thirdParties: [] as ThirdParty[],
     }
   }
   return {
@@ -137,15 +131,12 @@ const control = computed(() => {
     evidences: [] as Evidence[],
     tasks: [] as Task[],
     requirements: [] as ControlRequirement[],
-    risks: [] as Risk[],
-    documents: [] as Document[],
-    thirdParties: [] as ThirdParty[],
   }
 })
 
 // Active Tab
 const activeTab = ref<
-  'evidences' | 'tasks' | 'requirements' | 'risks' | 'documents' | 'thirdParties'
+  'evidences' | 'tasks' | 'requirements' | 'documents'
 >('requirements')
 
 const { data: reqData, isPending: reqIsPending } = useControlRequirementsQuery(controlId)
@@ -267,6 +258,10 @@ function deleteControl() {
 const { data: evidencesData, isPending: isEvidencesLoading } = useControlEvidencesQuery(controlDbId)
 const controlEvidences = computed(() => evidencesData.value?.evidences || [])
 
+const { data: controlDocsData, isPending: isControlDocsLoading } =
+  useControlDocumentsQuery(controlDbId)
+const controlDocuments = computed(() => controlDocsData.value?.documents || [])
+
 const deleteEvidenceMutation = useDeleteEvidenceMutation()
 const downloadEvidenceMutation = useDownloadEvidenceMutation()
 
@@ -365,45 +360,6 @@ function unlinkRequirement(tenantRequirementAssessmentId: string) {
   })
 }
 
-// Risk Linking Dialog
-const isRiskDialogOpen = ref(false)
-const searchRisk = ref('')
-
-const availableRisks = computed((): Risk[] => [])
-
-function linkRisk(risk: Risk) {
-  if (control.value) {
-    controlsStore.linkRisk(control.value.code, risk)
-    isRiskDialogOpen.value = false
-  }
-}
-
-// Document Linking Dialog
-const isDocDialogOpen = ref(false)
-const searchDoc = ref('')
-
-const availableDocs = computed((): Document[] => [])
-
-function linkDoc(doc: Document) {
-  if (control.value) {
-    controlsStore.linkDocument(control.value.code, doc)
-    isDocDialogOpen.value = false
-  }
-}
-
-// Vendor Linking Dialog
-const isVendorDialogOpen = ref(false)
-const searchVendor = ref('')
-
-const availableVendors = computed((): ThirdParty[] => [])
-
-function linkVendor(v: ThirdParty) {
-  if (control.value) {
-    controlsStore.linkThirdParty(control.value.code, v)
-    isVendorDialogOpen.value = false
-  }
-}
-
 // Helpers
 const statusConfig = computed(() => {
   const s = control.value?.status
@@ -425,17 +381,32 @@ const statusConfig = computed(() => {
   return { base: 'var(--muted-foreground)', bg: 'transparent' }
 })
 
-const getRiskLevelClass = (level: string) => {
-  if (level === 'Critical' || level === 'High')
-    return 'bg-destructive/10 text-destructive border-destructive/20'
-  if (level === 'Medium') return 'bg-warning/10 text-warning-emphasis border-warning/20'
-  return 'bg-muted/80 text-muted-foreground border-border'
+function goToDocument(documentId: string) {
+  void router.push({
+    name: 'compliance-document-detail',
+    params: {
+      organizationSlug: orgSlug.value,
+      documentId,
+    },
+  })
 }
 
-const getDocStatusClass = (status: string) => {
-  if (status === 'Approved') return 'bg-success/10 text-success border-success/20'
-  if (status === 'Under Review') return 'bg-warning/10 text-warning-emphasis border-warning/20'
-  return 'bg-muted text-muted-foreground border-border'
+function getVersionStatusConfig(status: string) {
+  const normalized = normalizeVersionStatus(status)
+  if (normalized === 'approved')
+    return { label: 'Approved', classes: 'bg-success/10 text-success border-success/20' }
+  if (normalized === 'in-review')
+    return { label: 'In Review', classes: 'bg-warning/10 text-warning-emphasis border-warning/20' }
+  if (normalized === 'rejected')
+    return { label: 'Rejected', classes: 'bg-destructive/10 text-destructive border-destructive/20' }
+  return { label: 'Draft', classes: 'bg-muted text-muted-foreground border-border' }
+}
+
+function getDocTypeLabel(docType: string) {
+  if (docType === 'policy') return 'Policy'
+  if (docType === 'procedure') return 'Procedure'
+  if (docType === 'sop') return 'SOP'
+  return docType.charAt(0).toUpperCase() + docType.slice(1)
 }
 
 const isDescriptionExpanded = ref(false)
@@ -602,9 +573,7 @@ function goToRequirement(map: ControlRequirementMap) {
             { id: 'evidences', label: 'Evidences', count: controlEvidences.length },
             { id: 'tasks', label: 'Tasks', count: controlTasksCount },
             { id: 'requirements', label: 'Requirements', count: requirements.length },
-            { id: 'risks', label: 'Risks', count: control.risks.length },
-            { id: 'documents', label: 'Documents', count: control.documents.length },
-            { id: 'thirdParties', label: 'Third parties', count: control.thirdParties.length },
+            { id: 'documents', label: 'Documents', count: controlDocuments.length },
           ]"
           :key="t.id"
           type="button"
@@ -760,120 +729,69 @@ function goToRequirement(map: ControlRequirementMap) {
           </div>
         </div>
 
-        <!-- Risks Tab -->
-        <div v-if="activeTab === 'risks'">
-          <table v-if="control.risks.length" class="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5 w-[20%]">Risk ID</th>
-                <th class="px-5 py-2.5 w-[55%]">Description</th>
-                <th class="px-5 py-2.5 w-[15%]">Level</th>
-                <th class="px-5 py-2.5 w-[10%] text-right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="r in control.risks"
-                :key="r.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td class="px-5 py-3.5 font-mono font-semibold text-xs text-muted-foreground">
-                  {{ r.id }}
-                </td>
-                <td class="px-5 py-3.5 font-medium text-foreground">{{ r.description }}</td>
-                <td class="px-5 py-3.5">
-                  <span
-                    class="inline-flex items-center border rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                    :class="getRiskLevelClass(r.level)"
-                  >
-                    {{ r.level }}
-                  </span>
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="controlsStore.unlinkRisk(control.code, r.id)"
-                  >
-                    <PhTrash :size="14" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhWarning :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No linked risks</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link organizational risks that are mitigated or managed by this control.
-            </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="isRiskDialogOpen = true"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Link risk
-            </Button>
-          </div>
-        </div>
-
         <!-- Documents Tab -->
         <div v-if="activeTab === 'documents'">
-          <table v-if="control.documents.length" class="w-full text-left border-collapse text-sm">
+          <table v-if="controlDocuments.length" class="w-full text-left border-collapse text-sm">
             <thead>
               <tr
                 class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
               >
-                <th class="px-5 py-2.5">Name</th>
-                <th class="px-5 py-2.5">Version</th>
-                <th class="px-5 py-2.5">Status</th>
-                <th class="px-5 py-2.5 w-10"></th>
+                <th class="px-5 py-2.5 w-[45%]">Title</th>
+                <th class="px-5 py-2.5 w-[15%]">Type</th>
+                <th class="px-5 py-2.5 w-[15%]">Version</th>
+                <th class="px-5 py-2.5 w-[15%]">Status</th>
+                <th class="px-5 py-2.5 w-[10%]">Classification</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="d in control.documents"
-                :key="d.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
+                v-for="doc in controlDocuments"
+                :key="doc.$id"
+                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors cursor-pointer"
+                @click="goToDocument(doc.$id)"
               >
-                <td
-                  class="px-5 py-3.5 font-medium text-foreground hover:text-primary hover:underline cursor-pointer"
-                >
-                  {{ d.name }}
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-2.5">
+                    <span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
+                      <PhFileText :size="16" />
+                    </span>
+                    <span class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline">
+                      {{ doc.title }}
+                    </span>
+                  </div>
                 </td>
-                <td class="px-5 py-3.5 text-muted-foreground text-xs font-mono">{{ d.version }}</td>
+                <td class="px-5 py-3.5">
+                  <span class="text-xs text-muted-foreground">
+                    {{ getDocTypeLabel(doc.documentType) }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="text-xs font-mono text-muted-foreground">
+                    {{ formatDocumentVersion(doc) }}
+                  </span>
+                </td>
                 <td class="px-5 py-3.5">
                   <span
                     class="inline-flex items-center border rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                    :class="getDocStatusClass(d.status)"
+                    :class="getVersionStatusConfig(doc.versionStatus).classes"
                   >
-                    {{ d.status }}
+                    {{ getVersionStatusConfig(doc.versionStatus).label }}
                   </span>
                 </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="controlsStore.unlinkDocument(control.code, d.id)"
-                  >
-                    <PhTrash :size="14" />
-                  </Button>
+                <td class="px-5 py-3.5">
+                  <span class="text-xs text-muted-foreground capitalize">
+                    {{ doc.classification }}
+                  </span>
                 </td>
               </tr>
             </tbody>
           </table>
+          <ClarusLoadingState
+            v-else-if="isControlDocsLoading"
+            variant="table-rows"
+            :rows="3"
+            label="Loading documents"
+          />
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
             <span
               class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
@@ -882,95 +800,8 @@ function goToRequirement(map: ControlRequirementMap) {
             </span>
             <p class="text-sm font-medium text-foreground">No documents linked</p>
             <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link standard policy files or organizational guidelines supporting this control.
+              Policy documents and procedures mapped to this control will appear here.
             </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="isDocDialogOpen = true"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Link document
-            </Button>
-          </div>
-        </div>
-
-        <!-- Third Parties Tab -->
-        <div v-if="activeTab === 'thirdParties'">
-          <table
-            v-if="control.thirdParties.length"
-            class="w-full text-left border-collapse text-sm"
-          >
-            <thead>
-              <tr
-                class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
-              >
-                <th class="px-5 py-2.5">Vendor</th>
-                <th class="px-5 py-2.5">Service</th>
-                <th class="px-5 py-2.5">Compliance Status</th>
-                <th class="px-5 py-2.5 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="v in control.thirdParties"
-                :key="v.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
-              >
-                <td class="px-5 py-3.5 font-medium text-foreground">{{ v.name }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground text-xs">{{ v.service }}</td>
-                <td class="px-5 py-3.5">
-                  <span
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border leading-none"
-                    :class="
-                      v.status === 'Approved'
-                        ? 'bg-success/10 border-success/20 text-success'
-                        : v.status === 'Critical Risk'
-                          ? 'bg-destructive/10 border-destructive/20 text-destructive'
-                          : 'bg-warning/10 border-warning/20 text-warning-emphasis'
-                    "
-                  >
-                    {{ v.status }}
-                  </span>
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="controlsStore.unlinkThirdParty(control.code, v.id)"
-                  >
-                    <PhTrash :size="14" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div v-else class="py-14 flex flex-col items-center justify-center text-center">
-            <span
-              class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
-            >
-              <PhFolderOpen :size="22" />
-            </span>
-            <p class="text-sm font-medium text-foreground">No third parties linked</p>
-            <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link third-party vendors or external systems that are monitored or scoped in this
-              control.
-            </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5"
-              @click="isVendorDialogOpen = true"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Link third party
-            </Button>
           </div>
         </div>
       </div>
@@ -1090,156 +921,6 @@ function goToRequirement(map: ControlRequirementMap) {
       @search-query="handleRequirementSearchQuery"
     />
 
-    <!-- Link Risk Dialog -->
-    <Dialog :open="isRiskDialogOpen" @update:open="isRiskDialogOpen = $event">
-      <DialogContent class="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Link Risk</DialogTitle>
-          <DialogDescription
-            >Link catalog risks mitigated by control {{ control.code }}.</DialogDescription
-          >
-        </DialogHeader>
-        <div class="space-y-4 py-3">
-          <div class="relative">
-            <PhMagnifyingGlass
-              :size="16"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input v-model="searchRisk" class="pl-9" placeholder="Search risks..." />
-          </div>
-          <div
-            class="max-h-[280px] overflow-y-auto border border-border rounded-md divide-y divide-border"
-          >
-            <div
-              v-for="risk in availableRisks"
-              :key="risk.id"
-              class="p-3 hover:bg-muted/30 transition-colors flex items-start justify-between gap-3 cursor-pointer"
-              @click="linkRisk(risk)"
-            >
-              <div class="min-w-0">
-                <span
-                  class="font-mono text-[10px] font-bold text-muted-foreground bg-muted border px-1.5 py-0.5 rounded"
-                >
-                  {{ risk.id }}
-                </span>
-                <p class="text-xs font-medium text-foreground mt-2">{{ risk.description }}</p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                class="shrink-0 text-[10px] font-semibold border-border"
-                >Link</Button
-              >
-            </div>
-            <div
-              v-if="!availableRisks.length"
-              class="p-8 text-center text-xs text-muted-foreground"
-            >
-              No risks available to link yet.
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    <!-- Link Document Dialog -->
-    <Dialog :open="isDocDialogOpen" @update:open="isDocDialogOpen = $event">
-      <DialogContent class="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Link Document</DialogTitle>
-          <DialogDescription
-            >Link policy manuals or procedural guidelines to control
-            {{ control.code }}.</DialogDescription
-          >
-        </DialogHeader>
-        <div class="space-y-4 py-3">
-          <div class="relative">
-            <PhMagnifyingGlass
-              :size="16"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input v-model="searchDoc" class="pl-9" placeholder="Search documents..." />
-          </div>
-          <div
-            class="max-h-[280px] overflow-y-auto border border-border rounded-md divide-y divide-border"
-          >
-            <div
-              v-for="doc in availableDocs"
-              :key="doc.id"
-              class="p-3 hover:bg-muted/30 transition-colors flex items-start justify-between gap-3 cursor-pointer"
-              @click="linkDoc(doc)"
-            >
-              <div class="min-w-0">
-                <h4 class="text-xs font-semibold text-foreground">{{ doc.name }}</h4>
-                <p class="text-[10px] text-muted-foreground mt-1 font-mono">
-                  {{ doc.version }} • {{ doc.status }}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                class="shrink-0 text-[10px] font-semibold border-border"
-                >Link</Button
-              >
-            </div>
-            <div v-if="!availableDocs.length" class="p-8 text-center text-xs text-muted-foreground">
-              No documents available to link yet.
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    <!-- Link Vendor Dialog -->
-    <Dialog :open="isVendorDialogOpen" @update:open="isVendorDialogOpen = $event">
-      <DialogContent class="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>Link Third Party</DialogTitle>
-          <DialogDescription
-            >Map scoped vendors or external service providers to control
-            {{ control.code }}.</DialogDescription
-          >
-        </DialogHeader>
-        <div class="space-y-4 py-3">
-          <div class="relative">
-            <PhMagnifyingGlass
-              :size="16"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input v-model="searchVendor" class="pl-9" placeholder="Search vendors..." />
-          </div>
-          <div
-            class="max-h-[280px] overflow-y-auto border border-border rounded-md divide-y divide-border"
-          >
-            <div
-              v-for="v in availableVendors"
-              :key="v.id"
-              class="p-3 hover:bg-muted/30 transition-colors flex items-start justify-between gap-3 cursor-pointer"
-              @click="linkVendor(v)"
-            >
-              <div class="min-w-0">
-                <h4 class="text-xs font-semibold text-foreground">{{ v.name }}</h4>
-                <p class="text-[10px] text-muted-foreground mt-0.5">
-                  {{ v.service }} • {{ v.status }}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                class="shrink-0 text-[10px] font-semibold border-border"
-                >Link</Button
-              >
-            </div>
-            <div
-              v-if="!availableVendors.length"
-              class="p-8 text-center text-xs text-muted-foreground"
-            >
-              No vendors available to link yet.
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   </div>
   <div v-else class="py-16 flex items-center justify-center">
     <div

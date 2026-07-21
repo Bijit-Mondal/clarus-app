@@ -1,30 +1,18 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  PhArrowLeft,
-  PhArrowRight,
-  PhEye,
-  PhStamp,
-  PhWarningCircle,
-} from '@phosphor-icons/vue'
+import { PhArrowLeft, PhArrowRight, PhEye, PhStamp, PhWarningCircle } from '@phosphor-icons/vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/composables/useAuth'
-import {
-  useDocumentApprovalsQuery,
-  formatTimeAgo,
-} from '@/composables/useDocuments'
+import { useDocumentApprovalsQuery, formatTimeAgo } from '@/composables/useDocuments'
 import {
   getApprovalStatusConfig,
   getUserInitials,
   normalizeApprovalStatus,
 } from '@/lib/documentDisplay'
-import type {
-  DocumentApprovalDecision,
-  DocumentVersionApprovalRequest,
-} from '@/api/documents'
+import type { DocumentApprovalDecision, DocumentVersionApprovalRequest } from '@/api/documents'
 
 const props = defineProps<{
   documentId: string
@@ -111,8 +99,7 @@ function formatFullDateTime(dateString: string) {
 function decisionTimeDisplay(decision: DocumentApprovalDecision) {
   const state = normalizeApprovalStatus(decision.state)
   if (decision.decidedAt && state !== 'pending') {
-    const prefix =
-      state === 'approved' ? 'Approved' : state === 'rejected' ? 'Rejected' : 'Voided'
+    const prefix = state === 'approved' ? 'Approved' : state === 'rejected' ? 'Rejected' : 'Voided'
     return {
       prefix,
       time: decision.decidedAt,
@@ -313,10 +300,7 @@ function handleReview(request: DocumentVersionApprovalRequest) {
                     {{ getApprovalStatusConfig(decision.state).label }}
                   </Badge>
                 </div>
-                <p
-                  v-if="decision.approver?.email"
-                  class="truncate text-xs text-muted-foreground"
-                >
+                <p v-if="decision.approver?.email" class="truncate text-xs text-muted-foreground">
                   {{ decision.approver.email }}
                 </p>
                 <p

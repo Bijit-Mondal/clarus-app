@@ -161,14 +161,11 @@ export function getDocumentVersions(
 }
 
 export function getDocumentVersion(tenantId: string, documentId: string, versionId: string) {
-  return apiRequest<DocumentVersionDetail>(
-    `/v1/documents/${documentId}/versions/${versionId}`,
-    {
-      headers: {
-        'x-tenant-id': tenantId,
-      },
+  return apiRequest<DocumentVersionDetail>(`/v1/documents/${documentId}/versions/${versionId}`, {
+    headers: {
+      'x-tenant-id': tenantId,
     },
-  )
+  })
 }
 
 export function getDocumentControls(

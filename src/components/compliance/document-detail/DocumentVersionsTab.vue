@@ -539,12 +539,7 @@ function goToPage(page: number) {
             :aria-busy="isRestoring"
             @click="handleRestoreFromPreview"
           >
-            <PhCircleNotch
-              v-if="isRestoring"
-              :size="14"
-              class="animate-spin"
-              aria-hidden="true"
-            />
+            <PhCircleNotch v-if="isRestoring" :size="14" class="animate-spin" aria-hidden="true" />
             <PhArrowCounterClockwise v-else :size="14" aria-hidden="true" />
             {{ isRestoring ? 'Restoring…' : 'Restore into editor' }}
           </Button>

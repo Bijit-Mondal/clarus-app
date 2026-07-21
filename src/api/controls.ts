@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api'
+import type { TenantDocumentsResponse } from '@/api/documents'
 
 export type TenantControl = {
   $id: string
@@ -175,6 +176,22 @@ export function unlinkControlRequirement(
       headers: {
         'x-tenant-id': tenantId,
       },
+    },
+  )
+}
+
+export function getControlDocuments(
+  tenantId: string,
+  controlId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<TenantDocumentsResponse>(
+    `/v1/tenants/frameworks/controls/${controlId}/documents`,
+    {
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+      query: options,
     },
   )
 }
