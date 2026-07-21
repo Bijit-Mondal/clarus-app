@@ -215,3 +215,35 @@ export function getRequirementDocuments(
     },
   )
 }
+
+export type AssessmentStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'satisfied'
+  | 'partially_satisfied'
+  | 'not_applicable'
+  | 'not_satisfied'
+
+export type UpdateTenantRequirementAssessmentInput = {
+  status: AssessmentStatus
+  /** Required (non-empty after trim) when status is not_applicable; max 8192 chars. */
+  rationale?: string
+}
+
+export function updateTenantRequirementAssessment(
+  tenantId: string,
+  tenantFrameworkId: string,
+  tenantRequirementAssessmentId: string,
+  input: UpdateTenantRequirementAssessmentInput,
+) {
+  return apiRequest<TenantRequirementAssessment>(
+    `/v1/tenants/frameworks/${tenantFrameworkId}/requirements/${tenantRequirementAssessmentId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+      body: input,
+    },
+  )
+}

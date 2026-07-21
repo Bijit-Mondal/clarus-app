@@ -34,10 +34,29 @@ export function getApiErrorStatus(error: unknown) {
   return error.response?.status ?? error.statusCode
 }
 
+function getApiErrorPayload(error: FetchErrorLike) {
+  return error.response?._data ?? error.data
+}
+
+export function getApiErrorCode(error: unknown) {
+  if (!isFetchErrorLike(error)) return undefined
+
+  const payload = getApiErrorPayload(error)
+  if (typeof payload !== 'object' || payload === null) return undefined
+
+  const record = payload as Record<string, unknown>
+  for (const key of ['type', 'code']) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+
+  return undefined
+}
+
 export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong. Try again.') {
   if (!isFetchErrorLike(error)) return fallback
 
-  const payload = error.response?._data ?? error.data
+  const payload = getApiErrorPayload(error)
   if (typeof payload === 'string' && payload.trim()) return payload
 
   if (typeof payload === 'object' && payload !== null) {

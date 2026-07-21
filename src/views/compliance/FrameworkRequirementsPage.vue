@@ -8,6 +8,7 @@ import {
   useRequirementControlsQuery,
   useRequirementDocumentsQuery,
   useTenantFrameworkRequirementsQuery,
+  useUpdateTenantRequirementAssessmentMutation,
 } from '@/composables/useFrameworks'
 import {
   useTenantControlSearchQuery,
@@ -15,14 +16,20 @@ import {
   useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
 import { normalizeVersionStatus } from '@/composables/useDocuments'
-import { getApiErrorMessage } from '@/lib/api'
+import { getApiErrorCode, getApiErrorMessage, getApiErrorStatus } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import FrameworkHeader from '@/components/compliance/FrameworkHeader.vue'
 import RequirementSidebar from '@/components/compliance/RequirementSidebar.vue'
 import RequirementInfo from '@/components/compliance/RequirementInfo.vue'
 import RequirementLinkedItems from '@/components/compliance/RequirementLinkedItems.vue'
 import LinkItemDialog from '@/components/compliance/LinkItemDialog.vue'
-import type { Requirement, LinkItem, LinkSectionId } from '@/components/compliance/types'
+import {
+  normalizeAssessmentStatus,
+  type AssessmentStatus,
+  type Requirement,
+  type LinkItem,
+  type LinkSectionId,
+} from '@/components/compliance/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,13 +46,16 @@ function goBack() {
 }
 
 const requirementsQuery = useTenantFrameworkRequirementsQuery(frameworkId, selectedAssessmentId)
+const updateAssessmentMutation = useUpdateTenantRequirementAssessmentMutation()
+const statusUpdateError = ref('')
 
 const mapAssessmentToRequirement = (assessment: TenantRequirementAssessment): Requirement => ({
   id: assessment.$id,
   code: assessment.frameworkNode?.externalId || '',
   title: assessment.frameworkNode?.title || '',
   description: assessment.frameworkNode?.description || '',
-  maturityLevel: assessment.status ? assessment.status.replace(/_/g, ' ') : '',
+  assessmentStatus: normalizeAssessmentStatus(assessment.status),
+  rationale: assessment.rationale || undefined,
 })
 
 const requirements = computed(() =>
@@ -70,6 +80,62 @@ const selectedId = ref<string>('')
 const selectedRequirement = computed(
   () => requirements.value.find((r) => r.id === selectedId.value) ?? requirements.value[0],
 )
+
+const isUpdatingAssessment = computed(
+  () =>
+    updateAssessmentMutation.isPending.value &&
+    updateAssessmentMutation.variables.value?.tenantRequirementAssessmentId === selectedId.value,
+)
+
+function getAssessmentUpdateErrorMessage(error: unknown) {
+  const code = getApiErrorCode(error)
+  const status = getApiErrorStatus(error)
+
+  if (code === 'general_forbidden' || status === 403) {
+    return 'You do not have permission to update this assessment. Not applicable is owner-only.'
+  }
+  if (
+    code === 'tenant_framework_not_found' ||
+    code === 'tenant_requirement_assessment_not_found' ||
+    status === 404
+  ) {
+    return 'This requirement or framework could not be found. Refresh and try again.'
+  }
+  if (code === 'general_argument_invalid' || status === 400) {
+    return getApiErrorMessage(
+      error,
+      'Invalid assessment update. Check the status and rationale, then try again.',
+    )
+  }
+  return getApiErrorMessage(error, 'Could not update assessment status. Try again.')
+}
+
+function handleAssessmentStatusUpdate(payload: { status: AssessmentStatus; rationale?: string }) {
+  const id = selectedId.value
+  if (!id || !frameworkId.value) return
+
+  statusUpdateError.value = ''
+  const input =
+    payload.status === 'not_applicable'
+      ? { status: payload.status, rationale: payload.rationale?.trim() || '' }
+      : { status: payload.status }
+
+  updateAssessmentMutation.mutate(
+    {
+      tenantFrameworkId: frameworkId.value,
+      tenantRequirementAssessmentId: id,
+      input,
+    },
+    {
+      onError: (error) => {
+        statusUpdateError.value = getAssessmentUpdateErrorMessage(error)
+      },
+      onSuccess: () => {
+        statusUpdateError.value = ''
+      },
+    },
+  )
+}
 
 async function loadNextPage() {
   if (!requirementsQuery.hasNextPage.value || requirementsQuery.isFetchingNextPage.value) return
@@ -98,8 +164,13 @@ watch(
   () => [frameworkId.value],
   () => {
     selectedId.value = ''
+    statusUpdateError.value = ''
   },
 )
+
+watch(selectedId, () => {
+  statusUpdateError.value = ''
+})
 
 watch(
   () => selectedAssessmentId.value,
@@ -408,7 +479,12 @@ function goToDocument(item: LinkItem) {
           label="Loading requirement details"
         />
         <div v-else-if="selectedRequirement">
-          <RequirementInfo :requirement="selectedRequirement" />
+          <RequirementInfo
+            :requirement="selectedRequirement"
+            :isUpdating="isUpdatingAssessment"
+            :updateError="statusUpdateError"
+            @update:status="handleAssessmentStatusUpdate"
+          />
           <RequirementLinkedItems
             :requirementId="selectedId"
             :linkedItems="currentLinkedItems"

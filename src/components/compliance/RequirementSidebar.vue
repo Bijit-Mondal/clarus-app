@@ -2,7 +2,16 @@
 import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
-import type { Requirement } from './types'
+import { ASSESSMENT_STATUS_LABELS, type Requirement } from './types'
+
+const statusDotClass: Record<Requirement['assessmentStatus'], string> = {
+  not_started: 'bg-muted-foreground/50',
+  in_progress: 'bg-info',
+  satisfied: 'bg-success',
+  partially_satisfied: 'bg-warning',
+  not_applicable: 'bg-muted-foreground/40',
+  not_satisfied: 'bg-destructive',
+}
 
 const props = defineProps<{
   requirements: Requirement[]
@@ -79,9 +88,9 @@ watch(
           }"
           @click="emit('update:selectedId', req.id)"
         >
-          <div class="flex items-start gap-2 mb-1">
+          <div class="mb-1 flex items-start gap-2">
             <span
-              class="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold"
+              class="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
               :class="{
                 'bg-primary/12 text-primary': selectedId === req.id,
                 'bg-muted text-muted-foreground': selectedId !== req.id,
@@ -99,16 +108,22 @@ watch(
               {{ req.title || req.description }}
             </p>
           </div>
-          <p
-            v-if="req.title"
-            class="line-clamp-2 text-[11px] leading-relaxed"
-            :class="{
-              'text-muted-foreground/80': selectedId === req.id,
-              'text-muted-foreground/60': selectedId !== req.id,
-            }"
-          >
-            {{ req.description }}
-          </p>
+          <div class="flex items-center gap-1.5">
+            <span
+              class="size-1.5 shrink-0 rounded-full"
+              :class="statusDotClass[req.assessmentStatus]"
+              aria-hidden="true"
+            />
+            <span
+              class="truncate text-[11px] leading-none"
+              :class="{
+                'text-muted-foreground': selectedId === req.id,
+                'text-muted-foreground/70': selectedId !== req.id,
+              }"
+            >
+              {{ ASSESSMENT_STATUS_LABELS[req.assessmentStatus] }}
+            </span>
+          </div>
         </button>
       </div>
 

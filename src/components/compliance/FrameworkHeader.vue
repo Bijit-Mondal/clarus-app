@@ -49,7 +49,7 @@ const logoComponent = computed(() => {
         <h1 class="truncate text-xl font-semibold tracking-tight text-foreground">
           {{ name }}
         </h1>
-        <p class="text-xs text-muted-foreground">Requirement categories</p>
+        <p class="text-xs text-muted-foreground">Framework requirements</p>
       </div>
     </div>
   </header>

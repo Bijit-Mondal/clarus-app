@@ -1,5 +1,11 @@
 import { computed, type MaybeRefOrGetter, type Ref, toValue } from 'vue'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/vue-query'
 import {
   adoptFramework,
   getFrameworkReleases,
@@ -9,7 +15,10 @@ import {
   getTenantFrameworkRequirements,
   getTenantFrameworks,
   searchTenantRequirements,
+  updateTenantRequirementAssessment,
   type AdoptFrameworkInput,
+  type TenantFrameworkRequirementsResponse,
+  type UpdateTenantRequirementAssessmentInput,
 } from '@/api/frameworks'
 import { useOrganizationStore } from '@/stores/organization'
 
@@ -191,5 +200,60 @@ export function useRequirementDocumentsQuery(
       () => !!tenantId.value && !!toValue(tenantFrameworkId) && !!toValue(requirementId),
     ),
     staleTime: 300_000,
+  })
+}
+
+export function useUpdateTenantRequirementAssessmentMutation() {
+  const queryClient = useQueryClient()
+  const tenantId = useFrameworkTenantId()
+
+  return useMutation({
+    mutationFn: ({
+      tenantFrameworkId,
+      tenantRequirementAssessmentId,
+      input,
+    }: {
+      tenantFrameworkId: string
+      tenantRequirementAssessmentId: string
+      input: UpdateTenantRequirementAssessmentInput
+    }) => {
+      if (!tenantId.value) throw new Error('No active tenant')
+      return updateTenantRequirementAssessment(
+        tenantId.value,
+        tenantFrameworkId,
+        tenantRequirementAssessmentId,
+        input,
+      )
+    },
+    onSuccess: (updated, variables) => {
+      if (!tenantId.value) return
+
+      queryClient.setQueriesData<InfiniteData<TenantFrameworkRequirementsResponse>>(
+        {
+          queryKey: [
+            ...frameworkKeys.all,
+            'requirements',
+            tenantId.value,
+            variables.tenantFrameworkId,
+          ],
+        },
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              tenantRequirementAssessments: page.tenantRequirementAssessments.map((assessment) =>
+                assessment.$id === updated.$id ? updated : assessment,
+              ),
+            })),
+          }
+        },
+      )
+
+      void queryClient.invalidateQueries({
+        queryKey: [...frameworkKeys.all, 'search-requirements', tenantId.value],
+      })
+    },
   })
 }
