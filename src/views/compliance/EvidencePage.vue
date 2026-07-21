@@ -2,8 +2,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  PhArrowUpRight,
-  PhCaretDown,
   PhCaretLeft,
   PhCaretRight,
   PhCheckCircle,
@@ -13,13 +11,12 @@ import {
   PhFile,
   PhFileText,
   PhFolder,
-  PhFolderOpen,
   PhLink,
   PhListBullets,
   PhMagnifyingGlass,
   PhPlus,
-  PhSquaresFour,
   PhSpinner,
+  PhSquaresFour,
   PhTrash,
   PhUser,
   PhWarningCircle,
@@ -83,9 +80,8 @@ const statusFilter = ref<StatusFilter>('all')
 const sourceFilter = ref<SourceFilter>('all')
 const viewMode = ref<ViewMode>('controls')
 const page = ref(1)
-const PAGE_SIZE = 10
-const expandedGroups = ref<Set<string>>(new Set())
-const hasInitializedExpand = ref(false)
+const PAGE_SIZE_GRID = 12
+const PAGE_SIZE_LIST = 10
 
 const statusFilters = [
   { id: 'all' as const, label: 'All statuses' },
@@ -157,9 +153,6 @@ const controlGroups = computed<ControlGroup[]>(() => {
     else buckets.set(key, [e])
   }
 
-  // Also surface controls with zero matching evidence when not searching/filtering
-  // so owners can see gaps — only when no filters active and we want full inventory.
-  // Keep focused: only groups that have evidence (or unassigned).
   const groups: ControlGroup[] = []
 
   for (const [key, items] of buckets) {
@@ -193,20 +186,21 @@ const controlGroups = computed<ControlGroup[]>(() => {
   return groups
 })
 
-// Paginate control groups in controls view; flat list in list view
+const pageSize = computed(() => (viewMode.value === 'controls' ? PAGE_SIZE_GRID : PAGE_SIZE_LIST))
+
 const totalForPagination = computed(() =>
   viewMode.value === 'controls' ? controlGroups.value.length : filteredEvidences.value.length,
 )
 
-const pageCount = computed(() => Math.max(1, Math.ceil(totalForPagination.value / PAGE_SIZE)))
+const pageCount = computed(() => Math.max(1, Math.ceil(totalForPagination.value / pageSize.value)))
 
 const pagedGroups = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE
-  return controlGroups.value.slice(start, start + PAGE_SIZE)
+  const start = (page.value - 1) * pageSize.value
+  return controlGroups.value.slice(start, start + pageSize.value)
 })
 
 const pagedList = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE
+  const start = (page.value - 1) * pageSize.value
   return filteredEvidences.value
     .slice()
     .sort(
@@ -214,54 +208,17 @@ const pagedList = computed(() => {
         new Date(b.collectedAt || b.$createdAt).getTime() -
         new Date(a.collectedAt || a.$createdAt).getTime(),
     )
-    .slice(start, start + PAGE_SIZE)
+    .slice(start, start + pageSize.value)
 })
 
 const rangeStart = computed(() =>
-  totalForPagination.value === 0 ? 0 : (page.value - 1) * PAGE_SIZE + 1,
+  totalForPagination.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1,
 )
-const rangeEnd = computed(() => Math.min(page.value * PAGE_SIZE, totalForPagination.value))
+const rangeEnd = computed(() => Math.min(page.value * pageSize.value, totalForPagination.value))
 
 watch([searchQuery, statusFilter, sourceFilter, viewMode], () => {
   page.value = 1
 })
-
-// Expand groups that need attention once on first data load
-watch(
-  pagedGroups,
-  (groups) => {
-    if (hasInitializedExpand.value || groups.length === 0) return
-    const next = new Set<string>()
-    for (const g of groups.slice(0, 3)) {
-      if (g.pendingCount > 0 || g.coverage < 100) next.add(g.key)
-    }
-    if (next.size === 0 && groups[0]) next.add(groups[0].key)
-    expandedGroups.value = next
-    hasInitializedExpand.value = true
-  },
-  { immediate: true },
-)
-
-function toggleGroup(key: string) {
-  const next = new Set(expandedGroups.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  expandedGroups.value = next
-}
-
-function isExpanded(key: string) {
-  return expandedGroups.value.has(key)
-}
-
-function expandAllVisible() {
-  const next = new Set(expandedGroups.value)
-  for (const g of pagedGroups.value) next.add(g.key)
-  expandedGroups.value = next
-}
-
-function collapseAll() {
-  expandedGroups.value = new Set()
-}
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 const totalCount = computed(() => evidencesData.value?.total ?? evidences.value.length)
@@ -271,19 +228,17 @@ const verifiedCount = computed(
 const pendingCount = computed(
   () => evidences.value.filter((e) => normalizeStatus(e.status) === 'pending').length,
 )
+const failedCount = computed(
+  () => evidences.value.filter((e) => normalizeStatus(e.status) === 'failed').length,
+)
 const autoCount = computed(
   () => evidences.value.filter((e) => normalizeSource(e.sourceType) === 'auto').length,
 )
-const controlsWithEvidence = computed(() => {
-  const ids = new Set(
-    evidences.value.map((e) => e.tenantControlId).filter((id): id is string => Boolean(id)),
-  )
-  return ids.size
-})
 const verifiedCoverage = computed(() => {
   if (totalCount.value === 0) return 0
   return Math.round((verifiedCount.value / totalCount.value) * 100)
 })
+const remainingCount = computed(() => Math.max(0, totalCount.value - verifiedCount.value))
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 const isEvidenceDialogOpen = ref(false)
@@ -302,9 +257,9 @@ function exportAll() {
   alert('Export will download a full evidence index for the active organization.')
 }
 
-function goToControl(control: ControlGroup) {
-  if (!control.controlId || control.key === '__unassigned__') return
-  const resolved = controlById.value.get(control.controlId)
+function goToControl(group: ControlGroup) {
+  if (!group.controlId || group.key === '__unassigned__') return
+  const resolved = controlById.value.get(group.controlId)
   const controlKey = resolved?.controlKey
   if (!controlKey) return
   void router.push({
@@ -370,27 +325,37 @@ function formatDate(iso: string) {
   return dateFormatter.format(date)
 }
 
-function statusMeta(status: string) {
-  const n = normalizeStatus(status)
-  if (n === 'verified') {
-    return {
-      label: 'Verified',
-      icon: PhCheckCircle,
-      class: 'bg-success/10 text-success-emphasis border-success/20',
-    }
-  }
-  if (n === 'failed') {
-    return {
-      label: status || 'Failed',
-      icon: PhWarningCircle,
-      class: 'bg-destructive/10 text-destructive-emphasis border-destructive/20',
-    }
-  }
-  return {
-    label: status === 'pending' ? 'Pending' : status || 'Pending',
+// Semantic base colors follow the DocumentsPage color-mix pattern.
+const evidenceStatusConfig = {
+  verified: {
+    label: 'Verified',
+    icon: PhCheckCircle,
+    base: 'var(--success-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+  pending: {
+    label: 'Pending',
     icon: PhClock,
-    class: 'bg-warning/10 text-warning-emphasis border-warning/20',
+    base: 'var(--warning-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+  failed: {
+    label: 'Failed',
+    icon: PhWarningCircle,
+    base: 'var(--destructive-emphasis)',
+    iconWeight: 'fill' as const,
+  },
+} as const
+
+function statusBadgeStyle(base: string) {
+  return {
+    backgroundColor: `color-mix(in oklab, ${base} 15%, transparent)`,
+    color: base,
   }
+}
+
+function statusMeta(status: string) {
+  return evidenceStatusConfig[normalizeStatus(status)]
 }
 </script>
 
@@ -398,549 +363,331 @@ function statusMeta(status: string) {
   <div>
     <PageHeader>
       <template #actions>
-        <Button variant="outline" @click="exportAll">
-          <PhDownload aria-hidden="true" />
+        <Button variant="outline" size="sm" @click="exportAll">
+          <PhDownload :size="15" aria-hidden="true" />
           Export all
         </Button>
-        <Button @click="openCreateDialog()">
-          <PhPlus weight="bold" aria-hidden="true" />
+        <Button size="sm" @click="openCreateDialog()">
+          <PhPlus :size="15" weight="bold" aria-hidden="true" />
           Add evidence
         </Button>
       </template>
     </PageHeader>
 
-    <!-- Coverage + stats -->
+    <!-- Stats: Progress + Verified · Pending · Failed · Automated ───────────── -->
     <section
-      class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,1fr))]"
+      class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+      aria-label="Evidence overview"
     >
-      <!-- Progress frame -->
-      <div class="rounded-lg border border-border bg-card p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
+      <!-- Progress (wider) -->
+      <div class="col-span-2 rounded-lg border border-border bg-card p-4 lg:col-span-2">
         <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs font-medium text-muted-foreground">Verification coverage</p>
-            <p class="mt-1 text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-              {{ isLoading ? '—' : `${verifiedCoverage}%` }}
-            </p>
-          </div>
-          <span
-            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground"
-          >
-            <PhCheckCircle
-              :size="12"
-              class="text-success-emphasis"
-              weight="fill"
-              aria-hidden="true"
-            />
-            {{ verifiedCount }} of {{ totalCount }} verified
-          </span>
+          <p class="text-xs font-medium text-muted-foreground">Verification progress</p>
+          <p class="text-2xl font-semibold tracking-tight text-foreground tabular-nums leading-none">
+            {{ isLoading ? '—' : `${verifiedCoverage}%` }}
+          </p>
         </div>
         <div
-          class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+          class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted"
           role="progressbar"
           :aria-valuenow="verifiedCoverage"
           aria-valuemin="0"
           aria-valuemax="100"
-          :aria-label="`Verification coverage ${verifiedCoverage} percent`"
+          :aria-label="`Verified coverage ${verifiedCoverage} percent`"
         >
           <div
-            class="h-full rounded-full bg-primary transition-[width] duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+            class="h-full rounded-full bg-success transition-[width] duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
             :style="{ width: `${verifiedCoverage}%` }"
           />
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">
-          {{ controlsWithEvidence }}
-          {{ controlsWithEvidence === 1 ? 'control' : 'controls' }} with linked evidence
-        </p>
+        <div class="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span class="tabular-nums">
+            {{ isLoading ? '—' : `${verifiedCount} of ${totalCount} verified` }}
+          </span>
+          <span v-if="!isLoading" class="tabular-nums">{{ remainingCount }} remaining</span>
+        </div>
       </div>
 
-      <div
-        v-for="stat in [
-          {
-            label: 'Total',
-            value: totalCount,
-            description: 'Collected items',
-            icon: PhFileText,
-            tone: 'text-foreground',
-          },
-          {
-            label: 'Verified',
-            value: verifiedCount,
-            description: 'Ready for audit',
-            icon: PhCheckCircle,
-            tone: 'text-success-emphasis',
-          },
-          {
-            label: 'Pending',
-            value: pendingCount,
-            description: 'Needs review',
-            icon: PhClock,
-            tone: 'text-warning-emphasis',
-          },
-          {
-            label: 'Automated',
-            value: autoCount,
-            description: 'System-collected',
-            icon: PhCpu,
-            tone: 'text-info',
-          },
-        ]"
-        :key="stat.label"
-        class="rounded-lg border border-border bg-card p-4 sm:p-6"
-      >
-        <div class="flex items-center justify-between gap-2">
-          <p class="text-xs font-medium text-muted-foreground">{{ stat.label }}</p>
-          <component
-            :is="stat.icon"
-            :size="14"
-            class="opacity-70"
-            :class="stat.tone"
-            aria-hidden="true"
-          />
-        </div>
-        <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums" :class="stat.tone">
-          {{ isLoading ? '—' : stat.value }}
+      <!-- Verified -->
+      <div class="rounded-lg border border-border bg-card p-4">
+        <p class="text-xs font-medium text-muted-foreground">Verified</p>
+        <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+          {{ isLoading ? '—' : verifiedCount }}
         </p>
-        <p class="mt-0.5 text-xs text-muted-foreground">{{ stat.description }}</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">Ready for audit</p>
+      </div>
+
+      <!-- Pending -->
+      <div class="rounded-lg border border-border bg-card p-4">
+        <p class="text-xs font-medium text-muted-foreground">Pending</p>
+        <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+          {{ isLoading ? '—' : pendingCount }}
+        </p>
+        <p class="mt-0.5 text-xs text-muted-foreground">Needs review</p>
+      </div>
+
+      <!-- Failed -->
+      <div class="rounded-lg border border-border bg-card p-4">
+        <p class="text-xs font-medium text-muted-foreground">Failed</p>
+        <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+          {{ isLoading ? '—' : failedCount }}
+        </p>
+        <p class="mt-0.5 text-xs text-muted-foreground">Action required</p>
+      </div>
+
+      <!-- Automated -->
+      <div class="rounded-lg border border-border bg-card p-4">
+        <p class="text-xs font-medium text-muted-foreground">Automated</p>
+        <p class="mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+          {{ isLoading ? '—' : autoCount }}
+        </p>
+        <p class="mt-0.5 text-xs text-muted-foreground">System-collected</p>
       </div>
     </section>
 
-    <!-- Main surface -->
-    <div class="rounded-lg border border-border bg-card">
-      <!-- Toolbar -->
-      <div
-        class="flex flex-col gap-3 border-b border-border p-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
-      >
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1 min-w-0">
-          <div class="relative w-full sm:max-w-xs">
-            <PhMagnifyingGlass
-              :size="16"
-              class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              v-model="searchQuery"
-              class="pl-9 bg-background"
-              placeholder="Search evidence or control…"
-              aria-label="Search evidence"
-            />
-            <button
-              v-if="searchQuery"
-              type="button"
-              class="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-              @click="searchQuery = ''"
-            >
-              <PhX :size="14" />
-            </button>
-          </div>
-
-          <Select v-model="statusFilter">
-            <SelectTrigger
-              size="sm"
-              class="w-full sm:w-[140px] bg-background border-border shrink-0"
-              aria-label="Filter by status"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="s in statusFilters" :key="s.id" :value="s.id">
-                {{ s.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select v-model="sourceFilter">
-            <SelectTrigger
-              size="sm"
-              class="w-full sm:w-[140px] bg-background border-border shrink-0"
-              aria-label="Filter by source"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="s in sourceFilters" :key="s.id" :value="s.id">
-                {{ s.label }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+    <!-- Toolbar: search, filters, view toggle ───────────────────────────────── -->
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-1 flex-wrap items-center gap-2 min-w-0">
+        <div class="relative w-full sm:max-w-xs">
+          <PhMagnifyingGlass
+            :size="16"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            v-model="searchQuery"
+            type="search"
+            class="pl-9 bg-card"
+            placeholder="Search evidence or control…"
+            aria-label="Search evidence"
+          />
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Clear search"
+            @click="searchQuery = ''"
+          >
+            <PhX :size="12" />
+          </button>
         </div>
 
-        <div class="flex items-center gap-2 shrink-0">
-          <div
-            v-if="viewMode === 'controls' && pagedGroups.length > 0"
-            class="hidden sm:flex items-center gap-1 mr-1"
+        <Select v-model="statusFilter">
+          <SelectTrigger
+            size="sm"
+            class="w-full sm:w-[140px] bg-card border-border shrink-0"
+            aria-label="Filter by status"
           >
-            <Button
-              variant="ghost"
-              size="sm"
-              class="h-8 text-xs text-muted-foreground"
-              @click="expandAllVisible"
-            >
-              Expand
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="h-8 text-xs text-muted-foreground"
-              @click="collapseAll"
-            >
-              Collapse
-            </Button>
-          </div>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="s in statusFilters" :key="s.id" :value="s.id">
+              {{ s.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-          <div
-            class="inline-flex rounded-md border border-border bg-muted/40 p-0.5"
-            role="group"
-            aria-label="View mode"
+        <Select v-model="sourceFilter">
+          <SelectTrigger
+            size="sm"
+            class="w-full sm:w-[140px] bg-card border-border shrink-0"
+            aria-label="Filter by source"
           >
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              :class="
-                viewMode === 'controls'
-                  ? 'bg-background text-foreground shadow-2xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-              :aria-pressed="viewMode === 'controls'"
-              @click="viewMode = 'controls'"
-            >
-              <PhSquaresFour :size="14" aria-hidden="true" />
-              By control
-            </button>
-            <button
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              :class="
-                viewMode === 'list'
-                  ? 'bg-background text-foreground shadow-2xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              "
-              :aria-pressed="viewMode === 'list'"
-              @click="viewMode = 'list'"
-            >
-              <PhListBullets :size="14" aria-hidden="true" />
-              List
-            </button>
-          </div>
-        </div>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="s in sourceFilters" :key="s.id" :value="s.id">
+              {{ s.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <!-- Loading -->
-      <div v-if="isLoading && evidences.length === 0" class="p-0">
-        <ClarusLoadingState variant="table-rows" :rows="8" label="Loading evidence" />
-      </div>
-
-      <!-- Empty (no data at all) -->
-      <div
-        v-else-if="!isLoading && totalCount === 0"
-        class="flex flex-col items-center justify-center gap-3 px-5 py-20 text-center"
-      >
-        <span
-          class="flex size-12 items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground"
+      <nav class="flex items-center gap-1.5 shrink-0" aria-label="View mode">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          :class="
+            viewMode === 'controls'
+              ? 'bg-secondary text-secondary-foreground shadow-2xs'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          "
+          :aria-pressed="viewMode === 'controls'"
+          @click="viewMode = 'controls'"
         >
-          <PhFolder :size="24" aria-hidden="true" />
-        </span>
-        <div class="max-w-sm">
-          <p class="text-sm font-semibold text-foreground">No evidence collected yet</p>
-          <p class="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            Attach files or links to controls as proof of implementation. Grouping by control keeps
-            audit review clear and fast.
-          </p>
-        </div>
-        <Button size="sm" class="mt-2 gap-1.5 font-semibold text-xs" @click="openCreateDialog()">
-          <PhPlus :size="14" weight="bold" aria-hidden="true" />
+          <PhSquaresFour :size="14" aria-hidden="true" />
+          By control
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          :class="
+            viewMode === 'list'
+              ? 'bg-secondary text-secondary-foreground shadow-2xs'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          "
+          :aria-pressed="viewMode === 'list'"
+          @click="viewMode = 'list'"
+        >
+          <PhListBullets :size="14" aria-hidden="true" />
+          List
+        </button>
+      </nav>
+    </div>
+
+    <!-- Loading ─────────────────────────────────────────────────────────────── -->
+    <section v-if="isLoading && evidences.length === 0" class="rounded-lg border border-border bg-card">
+      <ClarusLoadingState variant="table-rows" :rows="8" label="Loading evidence" />
+    </section>
+
+    <!-- Empty (no data at all) ──────────────────────────────────────────────── -->
+    <section
+      v-else-if="!isLoading && totalCount === 0"
+      class="rounded-lg border border-border bg-card p-8 md:p-12 text-center"
+    >
+      <div
+        class="mx-auto flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4"
+      >
+        <PhFolder :size="24" aria-hidden="true" />
+      </div>
+      <h2 class="text-lg font-semibold text-foreground">No evidence collected yet</h2>
+      <p class="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+        Attach files or links to controls as proof of implementation. Grouping evidence by control
+        keeps audit review clear and fast.
+      </p>
+      <div class="mt-6 flex justify-center gap-3">
+        <Button size="sm" @click="openCreateDialog()">
+          <PhPlus :size="15" weight="bold" aria-hidden="true" />
           Add first evidence
         </Button>
       </div>
+    </section>
 
-      <!-- Empty filters -->
-      <div
-        v-else-if="!isLoading && totalForPagination === 0"
-        class="flex flex-col items-center justify-center gap-3 px-5 py-16 text-center"
-      >
+    <!-- Empty filters ───────────────────────────────────────────────────────── -->
+    <section
+      v-else-if="!isLoading && totalForPagination === 0"
+      class="rounded-lg border border-border bg-card"
+    >
+      <div class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
         <span
-          class="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+          class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
+          aria-hidden="true"
         >
-          <PhFileText :size="20" aria-hidden="true" />
+          <PhMagnifyingGlass :size="20" />
         </span>
-        <div class="max-w-xs">
-          <p class="text-sm font-medium text-foreground">No matching evidence</p>
-          <p class="mt-1 text-xs text-muted-foreground">
-            Try a different search or clear filters to see the full library.
+        <div class="space-y-1">
+          <p class="font-medium text-foreground">No evidence matches your filters</p>
+          <p class="text-sm text-muted-foreground">
+            Try a different search term, or clear the filters to see everything.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          class="mt-1 text-xs font-semibold"
-          @click="resetFilters"
-        >
-          Clear filters
-        </Button>
+        <Button variant="outline" size="sm" @click="resetFilters">Clear filters</Button>
       </div>
+    </section>
 
-      <!-- ── By control (grouped) ─────────────────────────────────────────── -->
-      <div v-else-if="viewMode === 'controls'" class="divide-y divide-border">
-        <section
-          v-for="group in pagedGroups"
-          :key="group.key"
-          class="bg-card"
-          :aria-labelledby="`group-${group.key}`"
+    <!-- ── By control (card grid) ──────────────────────────────────────────── -->
+    <section
+      v-else-if="viewMode === 'controls'"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Evidence grouped by control"
+    >
+      <article
+        v-for="group in pagedGroups"
+        :key="group.key"
+        class="group relative flex flex-col rounded-lg border border-border bg-card transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        :class="
+          group.key === '__unassigned__' ? '' : 'cursor-pointer hover:shadow-sm'
+        "
+        :tabindex="group.key === '__unassigned__' ? undefined : 0"
+        :role="group.key === '__unassigned__' ? undefined : 'button'"
+        :aria-label="
+          group.key === '__unassigned__'
+            ? `Unassigned evidence, ${group.evidences.length} items`
+            : `Open ${group.controlKey} · ${group.name}`
+        "
+        @click="goToControl(group)"
+        @keydown.enter="goToControl(group)"
+        @keydown.space.prevent="goToControl(group)"
+      >
+        <!-- Top: icon chip + coverage -->
+        <div class="flex items-start justify-between p-4 pb-3">
+          <div
+            class="flex size-9 items-center justify-center rounded-md bg-muted/60 text-foreground"
+            aria-hidden="true"
+          >
+            <PhFolder :size="18" />
+          </div>
+          <span
+            class="text-sm font-semibold tabular-nums leading-none"
+            :class="
+              group.evidences.length === 0
+                ? 'text-muted-foreground'
+                : group.coverage >= 100
+                  ? 'text-success-emphasis'
+                  : 'text-foreground'
+            "
+          >
+            {{ group.coverage }}%
+          </span>
+        </div>
+
+        <!-- Middle: name + control key -->
+        <div class="min-w-0 px-4 pb-4">
+          <h3
+            class="truncate text-sm font-semibold leading-snug text-foreground"
+            :title="group.name"
+          >
+            {{ group.name }}
+          </h3>
+          <p
+            v-if="group.controlKey && group.controlKey !== '—'"
+            class="mt-0.5 truncate font-mono text-xs text-muted-foreground"
+          >
+            {{ group.controlKey }}
+          </p>
+        </div>
+
+        <!-- Bottom strip: metadata -->
+        <div
+          class="mt-auto flex items-center gap-2 border-t border-border px-4 py-2.5 text-xs text-muted-foreground"
         >
-          <!-- Group header -->
-          <div
-            class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-colors"
-          >
-            <button
-              type="button"
-              class="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-md p-1.5 -m-1.5 hover:bg-muted/60 transition-colors"
-              :aria-expanded="isExpanded(group.key)"
-              :aria-controls="`group-panel-${group.key}`"
-              @click="toggleGroup(group.key)"
-            >
-              <span
-                class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground"
-                aria-hidden="true"
-              >
-                <component :is="isExpanded(group.key) ? PhFolderOpen : PhFolder" :size="16" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="flex flex-wrap items-center gap-2">
-                  <span
-                    v-if="group.controlKey !== '—'"
-                    class="font-mono text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm border border-border/40"
-                  >
-                    {{ group.controlKey }}
-                  </span>
-                  <span
-                    :id="`group-${group.key}`"
-                    class="text-sm font-semibold text-foreground text-balance"
-                  >
-                    {{ group.name }}
-                  </span>
-                </span>
-                <span class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span>
-                    {{ group.evidences.length }}
-                    {{ group.evidences.length === 1 ? 'item' : 'items' }}
-                  </span>
-                  <span class="text-border" aria-hidden="true">·</span>
-                  <span class="inline-flex items-center gap-1">
-                    <PhCheckCircle
-                      :size="12"
-                      class="text-success-emphasis"
-                      weight="fill"
-                      aria-hidden="true"
-                    />
-                    {{ group.verifiedCount }} verified
-                  </span>
-                  <template v-if="group.pendingCount > 0">
-                    <span class="text-border" aria-hidden="true">·</span>
-                    <span class="inline-flex items-center gap-1 text-warning-emphasis">
-                      <PhClock :size="12" weight="fill" aria-hidden="true" />
-                      {{ group.pendingCount }} pending
-                    </span>
-                  </template>
-                </span>
-              </span>
-              <PhCaretDown
-                :size="14"
-                class="mt-2 shrink-0 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none"
-                :class="{ 'rotate-180': isExpanded(group.key) }"
-                aria-hidden="true"
-              />
-            </button>
+          <span class="tabular-nums">
+            {{ group.evidences.length }}
+            {{ group.evidences.length === 1 ? 'item' : 'items' }}
+          </span>
+          <template v-if="group.verifiedCount > 0">
+            <span aria-hidden="true" class="text-border">·</span>
+            <span class="inline-flex items-center gap-1 text-success-emphasis">
+              <PhCheckCircle :size="11" weight="fill" aria-hidden="true" />
+              {{ group.verifiedCount }} verified
+            </span>
+          </template>
+          <template v-if="group.pendingCount > 0">
+            <span aria-hidden="true" class="text-border">·</span>
+            <span class="inline-flex items-center gap-1 text-warning-emphasis">
+              <PhClock :size="11" weight="fill" aria-hidden="true" />
+              {{ group.pendingCount }} pending
+            </span>
+          </template>
+        </div>
+      </article>
+    </section>
 
-            <div class="flex items-center gap-2 sm:pl-2 shrink-0">
-              <!-- Mini coverage -->
-              <div class="hidden sm:flex items-center gap-2 mr-1">
-                <div class="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                  <div
-                    class="h-full rounded-full bg-primary transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
-                    :style="{ width: `${group.coverage}%` }"
-                  />
-                </div>
-                <span class="text-xs font-medium tabular-nums text-muted-foreground w-8 text-right">
-                  {{ group.coverage }}%
-                </span>
-              </div>
-
-              <Button
-                v-if="group.controlId && group.key !== '__unassigned__'"
-                variant="ghost"
-                size="sm"
-                class="h-8 gap-1 text-xs text-muted-foreground"
-                @click="goToControl(group)"
-              >
-                Open control
-                <PhArrowUpRight :size="12" aria-hidden="true" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                class="h-8 gap-1.5 text-xs font-semibold"
-                @click="openCreateDialog(group.controlId)"
-              >
-                <PhPlus :size="13" weight="bold" aria-hidden="true" />
-                Add
-              </Button>
-            </div>
-          </div>
-
-          <!-- Group body with smooth height transition -->
-          <div
-            :id="`group-panel-${group.key}`"
-            class="grid transition-[grid-template-rows] duration-200 ease-out"
-            :class="isExpanded(group.key) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
-            :aria-hidden="!isExpanded(group.key)"
-          >
-            <div class="overflow-hidden border-t border-border/60 bg-muted/5">
-              <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr
-                      class="border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground"
-                    >
-                      <th class="px-4 sm:px-6 py-2.5 font-medium">Evidence</th>
-                      <th class="px-4 sm:px-6 py-2.5 font-medium">Source</th>
-                      <th class="px-4 sm:px-6 py-2.5 font-medium">Reference</th>
-                      <th class="px-4 sm:px-6 py-2.5 font-medium">Status</th>
-                      <th class="px-4 sm:px-6 py-2.5 font-medium">Collected</th>
-                      <th class="relative px-4 sm:px-6 py-2.5 w-12">
-                        <span class="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="e in group.evidences"
-                      :key="e.$id"
-                      class="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
-                    >
-                      <td class="px-4 sm:px-6 py-3 align-top max-w-[280px]">
-                        <div
-                          class="font-medium text-foreground text-sm leading-normal truncate"
-                          :title="e.title"
-                        >
-                          {{ e.title }}
-                        </div>
-                        <div
-                          v-if="e.description"
-                          class="text-xs text-muted-foreground mt-0.5 leading-normal truncate"
-                          :title="e.description"
-                        >
-                          {{ e.description }}
-                        </div>
-                      </td>
-                      <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
-                        <span
-                          v-if="normalizeSource(e.sourceType) === 'manual'"
-                          class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80"
-                        >
-                          <PhUser :size="12" aria-hidden="true" />
-                          Manual
-                        </span>
-                        <span
-                          v-else-if="normalizeSource(e.sourceType) === 'auto'"
-                          class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-info/10 text-info border border-info/20"
-                        >
-                          <PhCpu :size="12" aria-hidden="true" />
-                          Automated
-                        </span>
-                        <span
-                          v-else
-                          class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80 capitalize"
-                        >
-                          {{ e.sourceType || 'Unknown' }}
-                        </span>
-                      </td>
-                      <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
-                        <Button
-                          v-if="e.attachmentId"
-                          variant="outline"
-                          size="sm"
-                          class="h-7 px-2 text-xs gap-1"
-                          :disabled="downloadingId === e.$id"
-                          @click="downloadFile(e.$id)"
-                        >
-                          <component
-                            :is="downloadingId === e.$id ? PhSpinner : PhFile"
-                            :size="12"
-                            :class="{ 'animate-spin': downloadingId === e.$id }"
-                            aria-hidden="true"
-                          />
-                          View file
-                        </Button>
-                        <a
-                          v-else-if="e.externalReference"
-                          :href="e.externalReference"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-                        >
-                          <PhLink :size="12" class="text-muted-foreground" aria-hidden="true" />
-                          Open link
-                        </a>
-                        <span v-else class="text-xs text-muted-foreground italic">None</span>
-                      </td>
-                      <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
-                        <span
-                          class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border capitalize"
-                          :class="statusMeta(e.status).class"
-                        >
-                          <component
-                            :is="statusMeta(e.status).icon"
-                            :size="12"
-                            class="shrink-0"
-                            aria-hidden="true"
-                          />
-                          {{ statusMeta(e.status).label }}
-                        </span>
-                      </td>
-                      <td
-                        class="px-4 sm:px-6 py-3 align-top text-muted-foreground tabular-nums text-xs whitespace-nowrap"
-                      >
-                        {{ formatDate(e.collectedAt || e.$createdAt) }}
-                      </td>
-                      <td class="px-4 sm:px-6 py-3 text-right align-top">
-                        <Tooltip>
-                          <TooltipTrigger as-child>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              :aria-label="`Delete ${e.title}`"
-                              @click="removeEvidence(e.$id)"
-                            >
-                              <PhTrash :size="13" aria-hidden="true" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Delete evidence</TooltipContent>
-                        </Tooltip>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- ── Flat list ────────────────────────────────────────────────────── -->
-      <div v-else class="overflow-x-auto">
+    <!-- ── Flat list ───────────────────────────────────────────────────────── -->
+    <section v-else class="rounded-lg border border-border bg-card" aria-label="Evidence list">
+      <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
             <tr
-              class="border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground"
+              class="border-b border-border bg-muted/20 text-xs text-muted-foreground font-medium"
             >
-              <th class="px-4 sm:px-6 py-2.5">Evidence</th>
-              <th class="px-4 sm:px-6 py-2.5">Control</th>
-              <th class="px-4 sm:px-6 py-2.5">Source</th>
-              <th class="px-4 sm:px-6 py-2.5">Reference</th>
-              <th class="px-4 sm:px-6 py-2.5">Status</th>
-              <th class="px-4 sm:px-6 py-2.5">Collected</th>
-              <th class="relative px-4 sm:px-6 py-2.5 w-12">
+              <th class="px-5 py-3">Evidence</th>
+              <th class="px-5 py-3">Control</th>
+              <th class="px-5 py-3">Source</th>
+              <th class="px-5 py-3">Reference</th>
+              <th class="px-5 py-3">Status</th>
+              <th class="px-5 py-3">Collected</th>
+              <th class="relative px-5 py-3 w-12">
                 <span class="sr-only">Actions</span>
               </th>
             </tr>
@@ -949,9 +696,9 @@ function statusMeta(status: string) {
             <tr
               v-for="e in pagedList"
               :key="e.$id"
-              class="group hover:bg-muted/20 transition-colors"
+              class="group border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30"
             >
-              <td class="px-4 sm:px-6 py-3 align-top max-w-[280px]">
+              <td class="px-5 py-4 align-top max-w-[280px]">
                 <div class="flex items-start gap-3">
                   <div
                     class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"
@@ -975,11 +722,11 @@ function statusMeta(status: string) {
                   </div>
                 </div>
               </td>
-              <td class="px-4 sm:px-6 py-3 align-top">
+              <td class="px-5 py-4 align-top">
                 <div class="flex flex-col items-start gap-1 max-w-[200px]">
                   <span
                     v-if="e.tenantControlId && controlById.get(e.tenantControlId)"
-                    class="font-mono text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm border border-border/40"
+                    class="font-mono text-[11px] font-semibold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border tracking-wide"
                   >
                     {{ controlById.get(e.tenantControlId)!.controlKey }}
                   </span>
@@ -993,29 +740,42 @@ function statusMeta(status: string) {
                   </p>
                 </div>
               </td>
-              <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
+              <td class="px-5 py-4 align-top whitespace-nowrap">
                 <span
                   v-if="normalizeSource(e.sourceType) === 'manual'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none text-muted-foreground"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, var(--muted-foreground) 12%, transparent)`,
+                    borderColor: `color-mix(in oklab, var(--muted-foreground) 20%, transparent)`,
+                  }"
                 >
                   <PhUser :size="12" aria-hidden="true" />
                   Manual
                 </span>
                 <span
                   v-else-if="normalizeSource(e.sourceType) === 'auto'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-info/10 text-info border border-info/20"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, var(--info) 12%, transparent)`,
+                    color: 'var(--info)',
+                    borderColor: `color-mix(in oklab, var(--info) 20%, transparent)`,
+                  }"
                 >
                   <PhCpu :size="12" aria-hidden="true" />
                   Automated
                 </span>
                 <span
                   v-else
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80 capitalize"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none text-muted-foreground capitalize"
+                  :style="{
+                    backgroundColor: `color-mix(in oklab, var(--muted-foreground) 12%, transparent)`,
+                    borderColor: `color-mix(in oklab, var(--muted-foreground) 20%, transparent)`,
+                  }"
                 >
                   {{ e.sourceType || 'Unknown' }}
                 </span>
               </td>
-              <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
+              <td class="px-5 py-4 align-top whitespace-nowrap">
                 <Button
                   v-if="e.attachmentId"
                   variant="outline"
@@ -1044,83 +804,115 @@ function statusMeta(status: string) {
                 </a>
                 <span v-else class="text-xs text-muted-foreground italic">None</span>
               </td>
-              <td class="px-4 sm:px-6 py-3 align-top whitespace-nowrap">
+              <td class="px-5 py-4 align-top whitespace-nowrap">
                 <span
-                  class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border capitalize"
-                  :class="statusMeta(e.status).class"
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  :style="statusBadgeStyle(statusMeta(e.status).base)"
                 >
                   <component
                     :is="statusMeta(e.status).icon"
-                    :size="12"
-                    class="shrink-0"
+                    :size="13"
+                    :weight="statusMeta(e.status).iconWeight"
                     aria-hidden="true"
                   />
                   {{ statusMeta(e.status).label }}
                 </span>
               </td>
-              <td
-                class="px-4 sm:px-6 py-3 align-top text-muted-foreground tabular-nums text-xs whitespace-nowrap"
-              >
+              <td class="px-5 py-4 align-top whitespace-nowrap text-muted-foreground tabular-nums text-xs">
                 {{ formatDate(e.collectedAt || e.$createdAt) }}
               </td>
-              <td class="px-4 sm:px-6 py-3 text-right align-top">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      :aria-label="`Delete ${e.title}`"
-                      @click="removeEvidence(e.$id)"
-                    >
-                      <PhTrash :size="13" aria-hidden="true" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete evidence</TooltipContent>
-                </Tooltip>
+              <td class="px-5 py-4 text-right align-top">
+                <div
+                  class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                >
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        :aria-label="`Delete ${e.title}`"
+                        @click="removeEvidence(e.$id)"
+                      >
+                        <PhTrash :size="15" aria-hidden="true" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete evidence</TooltipContent>
+                  </Tooltip>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
-      </div>
 
-      <!-- Pagination -->
-      <div
-        v-if="totalForPagination > 0"
-        class="flex items-center justify-between border-t border-border px-4 sm:px-6 py-3 bg-muted/10"
-      >
-        <p class="text-xs text-muted-foreground">
-          Showing
-          <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span>
-          of
-          <span class="font-medium text-foreground">{{ totalForPagination }}</span>
-          {{ viewMode === 'controls' ? 'controls' : 'items' }}
-        </p>
-        <div class="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            class="size-8"
-            :disabled="page === 1"
-            aria-label="Previous page"
-            @click="page = Math.max(1, page - 1)"
-          >
-            <PhCaretLeft :size="14" aria-hidden="true" />
-          </Button>
-          <span class="px-2 text-xs tabular-nums text-muted-foreground">
-            Page {{ page }} of {{ pageCount }}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            class="size-8"
-            :disabled="page === pageCount"
-            aria-label="Next page"
-            @click="page = Math.min(pageCount, page + 1)"
-          >
-            <PhCaretRight :size="14" aria-hidden="true" />
-          </Button>
+        <div
+          v-if="totalForPagination > 0"
+          class="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between bg-muted/10"
+        >
+          <p class="text-xs text-muted-foreground" aria-live="polite">
+            Showing
+            <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
+            <span class="font-medium text-foreground">{{ totalForPagination }}</span> items
+          </p>
+          <div class="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              :disabled="page === 1"
+              aria-label="Previous page"
+              @click="page = Math.max(1, page - 1)"
+            >
+              <PhCaretLeft :size="14" aria-hidden="true" />
+            </Button>
+            <span class="px-2 text-xs tabular-nums text-muted-foreground">
+              Page {{ page }} of {{ pageCount }}
+            </span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              :disabled="page === pageCount"
+              aria-label="Next page"
+              @click="page = Math.min(pageCount, page + 1)"
+            >
+              <PhCaretRight :size="14" aria-hidden="true" />
+            </Button>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Pagination for card-grid view (outside the grid) ────────────────────── -->
+    <div
+      v-if="viewMode === 'controls' && totalForPagination > 0 && !isLoading"
+      class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p class="text-xs text-muted-foreground" aria-live="polite">
+        Showing
+        <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
+        <span class="font-medium text-foreground">{{ totalForPagination }}</span> controls
+      </p>
+      <div class="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          :disabled="page === 1"
+          aria-label="Previous page"
+          @click="page = Math.max(1, page - 1)"
+        >
+          <PhCaretLeft :size="14" aria-hidden="true" />
+        </Button>
+        <span class="px-2 text-xs tabular-nums text-muted-foreground">
+          Page {{ page }} of {{ pageCount }}
+        </span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          :disabled="page === pageCount"
+          aria-label="Next page"
+          @click="page = Math.min(pageCount, page + 1)"
+        >
+          <PhCaretRight :size="14" aria-hidden="true" />
+        </Button>
       </div>
     </div>
 
