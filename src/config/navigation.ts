@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
-import { PhChartLineUp, PhFolderOpen, PhGearSix, PhHouse, PhShieldCheck } from '@phosphor-icons/vue'
+import { PhGearSix, PhHouse, PhShieldCheck } from '@phosphor-icons/vue'
 
-export type AppModuleId = 'compliance' | 'workspace' | 'analytics' | 'projects' | 'settings'
+export type AppModuleId = 'compliance' | 'workspace' | 'settings'
 
 export type AppPage = {
   id: string
@@ -83,50 +83,6 @@ export const appModules: AppModule[] = [
         id: 'team',
         label: 'Team',
         description: 'Members, roles, and invitations for this workspace.',
-      },
-    ],
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: PhChartLineUp,
-    pages: [
-      {
-        id: 'dashboard',
-        label: 'Dashboard',
-        description: 'Key metrics and trends for the current reporting period.',
-      },
-      {
-        id: 'reports',
-        label: 'Reports',
-        description: 'Saved and scheduled reports you can share with stakeholders.',
-      },
-      {
-        id: 'metrics',
-        label: 'Metrics',
-        description: 'Define and track custom metrics across your data sources.',
-      },
-    ],
-  },
-  {
-    id: 'projects',
-    label: 'Projects',
-    icon: PhFolderOpen,
-    pages: [
-      {
-        id: 'all',
-        label: 'All projects',
-        description: 'Every project in this workspace, filterable by status and owner.',
-      },
-      {
-        id: 'active',
-        label: 'Active',
-        description: 'Projects currently in progress with upcoming milestones.',
-      },
-      {
-        id: 'archived',
-        label: 'Archived',
-        description: 'Completed or paused projects kept for reference.',
       },
     ],
   },
