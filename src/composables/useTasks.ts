@@ -6,6 +6,7 @@ import {
   getControlTasks,
   getTenantTask,
   getTaskControls,
+  getTaskDocuments,
   type UpdateTenantTaskInput,
   type TenantTasksResponse,
 } from '@/api/tasks'
@@ -26,6 +27,8 @@ export const taskKeys = {
     [...taskKeys.all, tenantId, 'control', controlId, { limit, offset, status, search }] as const,
   controls: (tenantId: string, taskId: string) =>
     [...taskKeys.all, tenantId, 'controls', taskId] as const,
+  documents: (tenantId: string, taskId: string) =>
+    [...taskKeys.all, tenantId, 'documents', taskId] as const,
 }
 
 export function useControlTasksQuery(
@@ -169,6 +172,21 @@ export function useTaskControlsQuery(taskId: Ref<string> | string) {
     }),
     queryFn: () => getTaskControls(tenantId.value!, taskIdVal.value),
     enabled: computed(() => !!tenantId.value && !!taskIdVal.value),
+  })
+}
+
+export function useTaskDocumentsQuery(taskId: Ref<string> | string) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const taskIdVal = computed(() => (typeof taskId === 'string' ? taskId : taskId.value))
+
+  return useQuery({
+    queryKey: computed(() =>
+      taskKeys.documents(tenantId.value || '', taskIdVal.value || ''),
+    ),
+    queryFn: () => getTaskDocuments(tenantId.value!, taskIdVal.value!),
+    enabled: computed(() => !!tenantId.value && !!taskIdVal.value),
+    staleTime: 300_000,
   })
 }
 

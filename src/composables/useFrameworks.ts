@@ -5,6 +5,7 @@ import {
   getFrameworkReleases,
   getFrameworks,
   getRequirementControls,
+  getRequirementDocuments,
   getTenantFrameworkRequirements,
   getTenantFrameworks,
   searchTenantRequirements,
@@ -29,6 +30,14 @@ export const frameworkKeys = {
     [
       ...frameworkKeys.all,
       'requirement-controls',
+      tenantId,
+      tenantFrameworkId,
+      requirementId,
+    ] as const,
+  requirementDocuments: (tenantId: string, tenantFrameworkId: string, requirementId: string) =>
+    [
+      ...frameworkKeys.all,
+      'requirement-documents',
       tenantId,
       tenantFrameworkId,
       requirementId,
@@ -155,5 +164,32 @@ export function useRequirementControlsQuery(
     enabled: computed(
       () => !!tenantId.value && !!toValue(tenantFrameworkId) && !!toValue(requirementId),
     ),
+  })
+}
+
+export function useRequirementDocumentsQuery(
+  tenantFrameworkId: MaybeRefOrGetter<string | undefined>,
+  requirementId: MaybeRefOrGetter<string | undefined>,
+) {
+  const tenantId = useFrameworkTenantId()
+
+  return useQuery({
+    queryKey: computed(() =>
+      frameworkKeys.requirementDocuments(
+        tenantId.value || '',
+        toValue(tenantFrameworkId) || '',
+        toValue(requirementId) || '',
+      ),
+    ),
+    queryFn: () =>
+      getRequirementDocuments(
+        tenantId.value!,
+        toValue(tenantFrameworkId)!,
+        toValue(requirementId)!,
+      ),
+    enabled: computed(
+      () => !!tenantId.value && !!toValue(tenantFrameworkId) && !!toValue(requirementId),
+    ),
+    staleTime: 300_000,
   })
 }

@@ -21,13 +21,17 @@ const props = defineProps<{
   linkedItems: Record<LinkSectionId, LinkItem[]>
   isLoadingControls?: boolean
   controlsError?: string
+  isLoadingDocuments?: boolean
+  documentsError?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'open-link-dialog', sectionId: LinkSectionId): void
   (e: 'retry-controls'): void
+  (e: 'retry-documents'): void
   (e: 'unlink-item', sectionId: LinkSectionId, item: LinkItem): void
   (e: 'click-control', item: LinkItem): void
+  (e: 'click-document', item: LinkItem): void
 }>()
 
 const activeTab = ref<LinkSectionId>('controls')
@@ -372,64 +376,68 @@ const LINK_SECTIONS: Omit<LinkSectionConfig, 'searchPlaceholder' | 'columns'>[] 
       <!-- Documents -->
       <template v-else-if="section.id === 'documents'">
         <div class="overflow-hidden rounded-lg border border-border bg-card">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-border bg-muted/40 text-left">
-                <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">Name</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">State</th>
-                <th class="w-10 px-4 py-2.5"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in linkedItems.documents"
-                :key="item.id"
-                class="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/15"
-              >
-                <td class="px-4 py-3 text-sm font-medium text-foreground">
-                  <span class="hover:text-primary hover:underline cursor-pointer">{{
-                    item.name
-                  }}</span>
-                </td>
-                <td class="px-4 py-3 text-sm text-muted-foreground">{{ item.type }}</td>
-                <td class="px-4 py-3 text-sm">
-                  <span
-                    class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border leading-none"
-                    :style="getGeneralStatusStyle(item.state)"
-                  >
-                    {{ formatStateLabel(item.state) }}
-                  </span>
-                </td>
-                <td class="px-4 py-2 text-right">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        @click="emit('unlink-item', 'documents', item)"
-                        aria-label="Unlink document"
-                      >
-                        <PhTrash :size="14" aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p class="text-xs">Unlink document</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </td>
-              </tr>
-              <tr v-if="!linkedItems.documents?.length">
-                <td colspan="4" class="py-12 text-center">
-                  <div class="flex flex-col items-center gap-2.5">
-                    <PhFileText :size="28" class="text-muted-foreground/30" aria-hidden="true" />
-                    <p class="text-sm text-muted-foreground">{{ section.emptyLabel }}</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <template v-if="isLoadingDocuments">
+            <ClarusLoadingState
+              variant="control-links"
+              :rows="3"
+              label="Loading linked documents"
+            />
+          </template>
+          <template v-else-if="documentsError">
+            <div class="py-8 text-center">
+              <div class="flex flex-col items-center gap-2 text-destructive">
+                <p class="text-xs font-medium">{{ documentsError }}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-7 text-xs"
+                  @click="emit('retry-documents')"
+                >
+                  Try again
+                </Button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40 text-left">
+                  <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">Name</th>
+                  <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">Type</th>
+                  <th class="px-4 py-2.5 text-xs font-medium text-muted-foreground">State</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in linkedItems.documents"
+                  :key="item.id"
+                  class="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/15 cursor-pointer"
+                  @click="emit('click-document', item)"
+                >
+                  <td class="px-4 py-3 text-sm font-medium text-foreground">
+                    <span class="hover:text-primary hover:underline">{{ item.name }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-muted-foreground">{{ item.type }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border leading-none"
+                      :style="getGeneralStatusStyle(item.state)"
+                    >
+                      {{ formatStateLabel(item.state) }}
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="!linkedItems.documents?.length">
+                  <td colspan="3" class="py-12 text-center">
+                    <div class="flex flex-col items-center gap-2.5">
+                      <PhFileText :size="28" class="text-muted-foreground/30" aria-hidden="true" />
+                      <p class="text-sm text-muted-foreground">{{ section.emptyLabel }}</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
         </div>
       </template>
 

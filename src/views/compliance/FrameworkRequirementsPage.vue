@@ -6,6 +6,7 @@ import { PhClipboardText, PhFileText, PhGavel, PhShieldCheck } from '@phosphor-i
 import type { TenantRequirementAssessment } from '@/api/frameworks'
 import {
   useRequirementControlsQuery,
+  useRequirementDocumentsQuery,
   useTenantFrameworkRequirementsQuery,
 } from '@/composables/useFrameworks'
 import {
@@ -13,6 +14,7 @@ import {
   useLinkControlRequirementMutation,
   useUnlinkControlRequirementMutation,
 } from '@/composables/useControls'
+import { normalizeVersionStatus } from '@/composables/useDocuments'
 import { getApiErrorMessage } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import FrameworkHeader from '@/components/compliance/FrameworkHeader.vue'
@@ -146,6 +148,45 @@ function fetchControls() {
   void requirementControlsQuery.refetch()
 }
 
+const requirementDocumentsQuery = useRequirementDocumentsQuery(frameworkId, selectedId)
+
+function getDocTypeLabel(docType: string) {
+  if (docType === 'policy') return 'Policy'
+  if (docType === 'procedure') return 'Procedure'
+  if (docType === 'sop') return 'SOP'
+  return docType.charAt(0).toUpperCase() + docType.slice(1)
+}
+
+const mappedDocuments = computed<LinkItem[]>(() =>
+  (requirementDocumentsQuery.data.value?.documents ?? []).map((doc) => {
+    const status = normalizeVersionStatus(doc.versionStatus || 'draft')
+    return {
+      id: doc.$id,
+      name: doc.title,
+      type: getDocTypeLabel(doc.documentType),
+      state:
+        status === 'approved'
+          ? 'Approved'
+          : status === 'in-review'
+            ? 'In Review'
+            : status === 'rejected'
+              ? 'Rejected'
+              : 'Draft',
+    }
+  }),
+)
+
+const isDocumentsLoading = computed(() => requirementDocumentsQuery.isPending.value)
+const documentsError = computed(() =>
+  requirementDocumentsQuery.error.value
+    ? getApiErrorMessage(requirementDocumentsQuery.error.value, 'Failed to load documents.')
+    : '',
+)
+
+function fetchDocuments() {
+  void requirementDocumentsQuery.refetch()
+}
+
 const currentLinkedItems = computed(() => {
   const reqId = selectedId.value
   if (!reqId) {
@@ -154,7 +195,7 @@ const currentLinkedItems = computed(() => {
   const item = linkedItems.value[reqId]
   return {
     controls: mappedControls.value,
-    documents: item?.documents ?? [],
+    documents: mappedDocuments.value,
     audits: item?.audits ?? [],
     obligations: item?.obligations ?? [],
   }
@@ -276,6 +317,9 @@ function handleLinkItem(item: LinkItem) {
     return
   }
 
+  // Documents are API-backed; linking is not supported until an endpoint exists
+  if (section === 'documents') return
+
   if (!linkedItems.value[reqId]) {
     linkedItems.value[reqId] = { controls: [], documents: [], audits: [], obligations: [] }
   }
@@ -300,6 +344,9 @@ function handleUnlinkItem(sectionId: LinkSectionId, item: LinkItem) {
     return
   }
 
+  // Documents are API-backed and read-only until an unlink endpoint exists
+  if (sectionId === 'documents') return
+
   if (!linkedItems.value[reqId]) return
   const existing = linkedItems.value[reqId][sectionId]
   const index = existing.findIndex((i) => i.id === item.id)
@@ -323,6 +370,16 @@ function goToControlDetail(item: LinkItem) {
         implementationStatus: item.implementationStatus || 'not_started',
         statement: item.statement || '',
       },
+    },
+  })
+}
+
+function goToDocument(item: LinkItem) {
+  void router.push({
+    name: 'compliance-document-detail',
+    params: {
+      organizationSlug: route.params.organizationSlug as string,
+      documentId: item.id,
     },
   })
 }
@@ -357,10 +414,14 @@ function goToControlDetail(item: LinkItem) {
             :linkedItems="currentLinkedItems"
             :isLoadingControls="isControlsLoading"
             :controlsError="controlsError"
+            :isLoadingDocuments="isDocumentsLoading"
+            :documentsError="documentsError"
             @open-link-dialog="(sectionId) => (activeLinkSectionId = sectionId)"
             @retry-controls="fetchControls"
+            @retry-documents="fetchDocuments"
             @unlink-item="handleUnlinkItem"
             @click-control="goToControlDetail"
+            @click-document="goToDocument"
           />
         </div>
         <div

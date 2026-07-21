@@ -1,5 +1,6 @@
 import { apiRequest } from '@/lib/api'
 import type { TenantControlsResponse } from '@/api/controls'
+import type { TenantDocumentsResponse } from '@/api/documents'
 
 export type TenantTask = {
   $id: string
@@ -94,4 +95,20 @@ export function getTaskControls(tenantId: string, taskId: string) {
       'x-tenant-id': tenantId,
     },
   })
+}
+
+export function getTaskDocuments(
+  tenantId: string,
+  taskId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<TenantDocumentsResponse>(
+    `/v1/tenants/frameworks/tasks/${taskId}/documents`,
+    {
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+      query: options,
+    },
+  )
 }

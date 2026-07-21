@@ -3,14 +3,12 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhCaretRight,
-  PhPlus,
-  PhTrash,
   PhShieldCheck,
   PhWarning,
   PhClock,
   PhCheckCircle,
   PhSliders,
-  PhFolderOpen,
+  PhFileText,
   PhUser,
   PhBuildings,
   PhPencilSimple,
@@ -21,12 +19,14 @@ import {
   useTenantTaskQuery,
   useUpdateTenantTaskMutation,
   useTaskControlsQuery,
+  useTaskDocumentsQuery,
 } from '@/composables/useTasks'
 import {
   useTaskEvidencesQuery,
   useDeleteEvidenceMutation,
   useDownloadEvidenceMutation,
 } from '@/composables/useEvidence'
+import { normalizeVersionStatus, formatDocumentVersion } from '@/composables/useDocuments'
 import { getApiErrorMessage } from '@/lib/api'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import TaskDialog from '@/components/compliance/TaskDialog.vue'
@@ -36,8 +36,6 @@ import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
 import ControlsTable from '@/components/compliance/ControlsTable.vue'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -45,14 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 const route = useRoute()
@@ -185,30 +175,11 @@ const activeTab = ref<'evidences' | 'controls' | 'documents'>('evidences')
 const { data: evidencesData, isPending: isEvidencesLoading } = useTaskEvidencesQuery(taskId)
 const evidences = computed(() => evidencesData.value?.evidences || [])
 
+const { data: taskDocsData, isPending: isTaskDocsLoading } = useTaskDocumentsQuery(taskId)
+const taskDocuments = computed(() => taskDocsData.value?.documents || [])
+
 const deleteEvidenceMutation = useDeleteEvidenceMutation()
 const downloadEvidenceMutation = useDownloadEvidenceMutation()
-
-const mockDocuments = ref<
-  Array<{
-    id: string
-    name: string
-    version: string
-    status: 'Approved' | 'Under Review' | 'Draft'
-  }>
->([
-  {
-    id: 'doc-1',
-    name: 'Secrets Management Policy & Procedures',
-    version: 'v2.1',
-    status: 'Approved',
-  },
-  {
-    id: 'doc-2',
-    name: 'Access Control Guideline Standard',
-    version: 'v1.4',
-    status: 'Under Review',
-  },
-])
 
 // Add Evidence Dialog
 const isEvidenceDialogOpen = ref(false)
@@ -240,38 +211,32 @@ async function downloadFile(evidenceId: string) {
   }
 }
 
-// Link Document Dialog
-const isDocumentDialogOpen = ref(false)
-const newDocName = ref('')
-const newDocVersion = ref('v1.0')
-const newDocStatus = ref<'Draft' | 'Under Review' | 'Approved'>('Draft')
-
-function openDocumentDialog() {
-  newDocName.value = ''
-  newDocVersion.value = 'v1.0'
-  newDocStatus.value = 'Draft'
-  isDocumentDialogOpen.value = true
-}
-
-function handleLinkDocument() {
-  if (!newDocName.value.trim()) return
-  mockDocuments.value.push({
-    id: `doc-${Date.now()}`,
-    name: newDocName.value.trim(),
-    version: newDocVersion.value,
-    status: newDocStatus.value,
+function goToDocument(documentId: string) {
+  void router.push({
+    name: 'compliance-document-detail',
+    params: {
+      organizationSlug: orgSlug.value,
+      documentId,
+    },
   })
-  isDocumentDialogOpen.value = false
 }
 
-function unlinkDocument(id: string) {
-  mockDocuments.value = mockDocuments.value.filter((d) => d.id !== id)
+function getVersionStatusConfig(status: string) {
+  const normalized = normalizeVersionStatus(status)
+  if (normalized === 'approved')
+    return { label: 'Approved', classes: 'bg-success/10 text-success border-success/20' }
+  if (normalized === 'in-review')
+    return { label: 'In Review', classes: 'bg-warning/10 text-warning-emphasis border-warning/20' }
+  if (normalized === 'rejected')
+    return { label: 'Rejected', classes: 'bg-destructive/10 text-destructive border-destructive/20' }
+  return { label: 'Draft', classes: 'bg-muted text-muted-foreground border-border' }
 }
 
-function getDocStatusClass(status: string) {
-  if (status === 'Approved') return 'bg-success/10 text-success border-success/20'
-  if (status === 'Under Review') return 'bg-warning/10 text-warning-emphasis border-warning/20'
-  return 'bg-muted text-muted-foreground border-border'
+function getDocTypeLabel(docType: string) {
+  if (docType === 'policy') return 'Policy'
+  if (docType === 'procedure') return 'Procedure'
+  if (docType === 'sop') return 'SOP'
+  return docType.charAt(0).toUpperCase() + docType.slice(1)
 }
 </script>
 
@@ -428,7 +393,7 @@ function getDocStatusClass(status: string) {
           v-for="t in [
             { id: 'evidences', label: 'Evidence', count: evidences.length },
             { id: 'controls', label: 'Controls', count: taskControls.length },
-            { id: 'documents', label: 'Documents', count: mockDocuments.length },
+            { id: 'documents', label: 'Documents', count: taskDocuments.length },
           ]"
           :key="t.id"
           type="button"
@@ -498,67 +463,81 @@ function getDocStatusClass(status: string) {
 
         <!-- Documents Tab -->
         <div v-if="activeTab === 'documents'">
-          <table v-if="mockDocuments.length" class="w-full text-left border-collapse text-sm">
+          <table v-if="taskDocuments.length" class="w-full text-left border-collapse text-sm">
             <thead>
               <tr
                 class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
               >
-                <th class="px-5 py-2.5">Name</th>
-                <th class="px-5 py-2.5">Version</th>
-                <th class="px-5 py-2.5">Status</th>
-                <th class="px-5 py-2.5 w-10"></th>
+                <th class="px-5 py-2.5 w-[45%]">Title</th>
+                <th class="px-5 py-2.5 w-[15%]">Type</th>
+                <th class="px-5 py-2.5 w-[15%]">Version</th>
+                <th class="px-5 py-2.5 w-[15%]">Status</th>
+                <th class="px-5 py-2.5 w-[10%]">Classification</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="d in mockDocuments"
-                :key="d.id"
-                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors"
+                v-for="doc in taskDocuments"
+                :key="doc.$id"
+                class="border-b border-border/50 last:border-0 hover:bg-muted/15 transition-colors cursor-pointer"
+                @click="goToDocument(doc.$id)"
               >
-                <td class="px-5 py-3.5 font-medium text-foreground">{{ d.name }}</td>
-                <td class="px-5 py-3.5 text-muted-foreground text-xs font-mono">{{ d.version }}</td>
                 <td class="px-5 py-3.5">
-                  <span
-                    class="inline-flex items-center border rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-                    :class="getDocStatusClass(d.status)"
-                  >
-                    {{ d.status }}
+                  <div class="flex items-center gap-2.5">
+                    <span
+                      class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground"
+                    >
+                      <PhFileText :size="16" />
+                    </span>
+                    <span
+                      class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
+                    >
+                      {{ doc.title }}
+                    </span>
+                  </div>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="text-xs text-muted-foreground">
+                    {{ getDocTypeLabel(doc.documentType) }}
                   </span>
                 </td>
-                <td class="px-5 py-3.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    class="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                    @click="unlinkDocument(d.id)"
+                <td class="px-5 py-3.5">
+                  <span class="text-xs font-mono text-muted-foreground">
+                    {{ formatDocumentVersion(doc) }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span
+                    class="inline-flex items-center border rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                    :class="getVersionStatusConfig(doc.versionStatus).classes"
                   >
-                    <PhTrash :size="14" />
-                  </Button>
+                    {{ getVersionStatusConfig(doc.versionStatus).label }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="text-xs text-muted-foreground capitalize">
+                    {{ doc.classification }}
+                  </span>
                 </td>
               </tr>
             </tbody>
           </table>
+          <ClarusLoadingState
+            v-else-if="isTaskDocsLoading"
+            variant="table-rows"
+            :rows="3"
+            label="Loading documents"
+          />
           <div v-else class="py-14 flex flex-col items-center justify-center text-center">
             <span
               class="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground/50 mb-3"
             >
-              <PhFolderOpen :size="22" />
+              <PhFileText :size="22" />
             </span>
             <p class="text-sm font-medium text-foreground">No documents linked</p>
             <p class="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              Link related policy documents or organizational rules governing these controls.
+              Policy documents and procedures mapped to this task will appear here.
             </p>
-          </div>
-          <div class="border-t border-border p-3 flex justify-center bg-muted/5">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="w-full max-w-xs gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 font-semibold"
-              @click="openDocumentDialog"
-            >
-              <PhPlus :size="14" weight="bold" />
-              Link document
-            </Button>
           </div>
         </div>
       </div>
@@ -566,56 +545,6 @@ function getDocStatusClass(status: string) {
 
     <!-- Add Evidence Dialog -->
     <AddEvidenceDialog v-model:open="isEvidenceDialogOpen" :tenant-task-id="task.$id" />
-
-    <!-- Link Document Dialog -->
-    <Dialog :open="isDocumentDialogOpen" @update:open="isDocumentDialogOpen = $event">
-      <DialogContent class="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Link Document</DialogTitle>
-          <DialogDescription>
-            Reference a security policy or procedure document for this task.
-          </DialogDescription>
-        </DialogHeader>
-        <form @submit.prevent="handleLinkDocument" class="space-y-4 py-3">
-          <div class="space-y-1.5">
-            <Label for="doc-name" class="text-xs font-semibold text-foreground"
-              >Document Name</Label
-            >
-            <Input
-              id="doc-name"
-              v-model="newDocName"
-              placeholder="e.g., Cryptographic Key Management Standard"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <Label for="doc-version" class="text-xs font-semibold text-foreground">Version</Label>
-              <Input id="doc-version" v-model="newDocVersion" placeholder="e.g., v1.0" />
-            </div>
-            <div class="space-y-1.5">
-              <Label for="doc-status" class="text-xs font-semibold text-foreground">Status</Label>
-              <Select v-model="newDocStatus">
-                <SelectTrigger id="doc-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Draft">Draft</SelectItem>
-                  <SelectItem value="Under Review">Under Review</SelectItem>
-                  <SelectItem value="Approved">Approved</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter class="pt-3">
-            <Button type="button" variant="outline" size="sm" @click="isDocumentDialogOpen = false">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm"> Link Document </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
 
     <!-- Reusable Edit Task Dialog -->
     <TaskDialog

@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api'
+import type { TenantDocumentsResponse } from '@/api/documents'
 
 export type Framework = {
   $id: string
@@ -194,6 +195,23 @@ export function getRequirementControls(
       headers: {
         'x-tenant-id': tenantId,
       },
+    },
+  )
+}
+
+export function getRequirementDocuments(
+  tenantId: string,
+  tenantFrameworkId: string,
+  tenantRequirementAssessmentId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<TenantDocumentsResponse>(
+    `/v1/tenants/frameworks/${tenantFrameworkId}/requirements/${tenantRequirementAssessmentId}/documents`,
+    {
+      headers: {
+        'x-tenant-id': tenantId,
+      },
+      query: options,
     },
   )
 }
