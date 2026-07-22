@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue'
+import { ref, watch } from 'vue'
 import {
   PhPlus,
   PhTrash,
@@ -60,20 +60,22 @@ function toggleExpand(id: string) {
   expandedEvidences.value[id] = !expandedEvidences.value[id]
 }
 
-// Automatically expand evidence if they have a description and a failed/rejected status
-watchEffect(() => {
-  if (props.evidences) {
-    props.evidences.forEach((e) => {
-      // Initialize if not already set by the user manually
-      if (expandedEvidences.value[e.$id] === undefined) {
+// Reset expanded state and initialize when evidences change (e.g. on new load)
+watch(
+  () => props.evidences,
+  (newEvidences) => {
+    expandedEvidences.value = {}
+    if (newEvidences) {
+      newEvidences.forEach((e) => {
         const isFailure = ['failed', 'rejected', 'ai_rejected', 'ai_review_failed'].includes(
-          e.status.toLowerCase(),
+          e.status?.toLowerCase() || '',
         )
         expandedEvidences.value[e.$id] = isFailure && !!e.description
-      }
-    })
-  }
-})
+      })
+    }
+  },
+  { immediate: true },
+)
 
 // Status styling and icon configurations
 interface StatusConfig {
