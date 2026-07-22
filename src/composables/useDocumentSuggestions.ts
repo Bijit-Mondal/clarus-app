@@ -1,6 +1,9 @@
 import { computed, ref, shallowRef, watch, type Ref } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { buildReplacementNodes, extendDeleteRangesToSections } from '@/lib/documentAi/applySuggestion'
+import {
+  buildReplacementNodes,
+  extendDeleteRangesToSections,
+} from '@/lib/documentAi/applySuggestion'
 import { computeSuggestionRanges } from '@/lib/documentAi/computeSuggestionRanges'
 import { buildPositionMap } from '@/lib/documentAi/positionMap'
 import { markdownToTipTapJSON } from '@/lib/documentAi/policyMarkdown'
@@ -194,9 +197,7 @@ export function useDocumentSuggestions(editor: Ref<Editor | null | undefined>) {
   function acceptAll() {
     const pending = [...rangesRef.value].filter((r) => r.decision === 'pending')
     // Accept from end to start so positions stay valid
-    pending
-      .sort((a, b) => b.from - a.from)
-      .forEach((range) => applyRangeToDoc(range))
+    pending.sort((a, b) => b.from - a.from).forEach((range) => applyRangeToDoc(range))
     clearSuggestions()
   }
 

@@ -146,10 +146,7 @@ function findBlockNodesInRange(
             const parentDepth = d - 1
             if (parentDepth >= 1) {
               const parentNode = resolved.node(parentDepth)
-              if (
-                parentNode.type.name === 'bulletList' ||
-                parentNode.type.name === 'orderedList'
-              ) {
+              if (parentNode.type.name === 'bulletList' || parentNode.type.name === 'orderedList') {
                 const parentPos = resolved.before(parentDepth)
                 const parentEnd = parentPos + parentNode.nodeSize
                 let allItemsCovered = true
@@ -362,9 +359,7 @@ export const SuggestionsExtension = Extension.create<SuggestionsExtensionOptions
         },
         props: {
           decorations(state) {
-            return (
-              suggestionsPluginKey.getState(state)?.decorations ?? DecorationSet.empty
-            )
+            return suggestionsPluginKey.getState(state)?.decorations ?? DecorationSet.empty
           },
         },
       }),

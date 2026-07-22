@@ -34,15 +34,9 @@ export function computeSuggestionRanges(
     ? proposedMarkdown
     : `${proposedMarkdown}\n`
 
-  const patch = structuredPatch(
-    'policy',
-    'policy',
-    normalizedCurrent,
-    normalizedProposed,
-    '',
-    '',
-    { context: 0 },
-  )
+  const patch = structuredPatch('policy', 'policy', normalizedCurrent, normalizedProposed, '', '', {
+    context: 0,
+  })
 
   const ranges: SuggestionRange[] = []
 
@@ -102,8 +96,7 @@ function mergeOverlappingRanges(ranges: SuggestionRange[]): SuggestionRange[] {
     }
 
     const gap = range.from - prev.to
-    const shouldMerge =
-      gap <= 0 || (gap <= 20 && prev.type === 'delete' && range.type === 'delete')
+    const shouldMerge = gap <= 0 || (gap <= 20 && prev.type === 'delete' && range.type === 'delete')
 
     if (shouldMerge) {
       prev.to = Math.max(prev.to, range.to)

@@ -101,11 +101,7 @@ export function useDocumentAiSectionMutation() {
   const tenantId = computed(() => organizationStore.activeOrganization?.id)
 
   return useMutation({
-    mutationFn: (input: {
-      documentId: string
-      sectionText: string
-      instruction: string
-    }) => {
+    mutationFn: (input: { documentId: string; sectionText: string; instruction: string }) => {
       if (!tenantId.value) throw new Error('No active organization')
       return editDocumentAiSection(tenantId.value, input.documentId, {
         sectionText: input.sectionText,

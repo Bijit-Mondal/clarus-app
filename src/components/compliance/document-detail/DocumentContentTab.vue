@@ -39,7 +39,9 @@ const emit = defineEmits<{
         <span v-else-if="saveStatus === 'error'">Save failed</span>
         <span v-else>Unsaved changes</span>
       </div>
-      <span class="text-muted-foreground/70">Autosaves as you type · Select text to edit with AI</span>
+      <span class="text-muted-foreground/70"
+        >Autosaves as you type · Select text to edit with AI</span
+      >
     </div>
 
     <DocumentEditor

@@ -3,10 +3,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { PhX, PhSparkle, PhArrowUp, PhFileText } from '@phosphor-icons/vue'
 import ClarusLogo from '@/components/shell/ClarusLogo.vue'
 import { useClarusAi } from '@/composables/useClarusAi'
-import {
-  useDocumentAiChatMutation,
-  useDocumentAiSession,
-} from '@/composables/useDocumentAi'
+import { useDocumentAiChatMutation, useDocumentAiSession } from '@/composables/useDocumentAi'
 import { getApiErrorMessage } from '@/lib/api'
 import { cn } from '@/lib/utils'
 

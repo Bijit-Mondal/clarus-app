@@ -54,10 +54,7 @@ import {
 } from '@/lib/tiptapContent'
 import { SuggestionsExtension } from '@/lib/documentAi/suggestionsExtension'
 import { useDocumentSuggestions } from '@/composables/useDocumentSuggestions'
-import {
-  useDocumentAiSectionMutation,
-  useDocumentAiSession,
-} from '@/composables/useDocumentAi'
+import { useDocumentAiSectionMutation, useDocumentAiSession } from '@/composables/useDocumentAi'
 import { useClarusAi } from '@/composables/useClarusAi'
 import { getApiErrorMessage } from '@/lib/api'
 import type { SuggestionRange } from '@/lib/documentAi/suggestionTypes'
@@ -782,11 +779,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="document-editor__canvas" ref="canvasRef" @click="focusEditor">
-        <div
-          v-if="enableAi && aiSuggestionsActive"
-          class="document-editor__ai-bar"
-          role="status"
-        >
+        <div v-if="enableAi && aiSuggestionsActive" class="document-editor__ai-bar" role="status">
           <span class="document-editor__ai-bar-label">
             <PhSparkle :size="14" weight="fill" class="text-primary" aria-hidden="true" />
             {{ aiPendingRanges.length }}
@@ -802,12 +795,7 @@ onBeforeUnmount(() => {
             >
               Reject all
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              class="h-7 text-xs"
-              @click="acceptAllSuggestions()"
-            >
+            <Button type="button" size="sm" class="h-7 text-xs" @click="acceptAllSuggestions()">
               Accept all
             </Button>
           </div>
@@ -824,11 +812,7 @@ onBeforeUnmount(() => {
           <span class="text-xs text-muted-foreground">or start writing below</span>
         </div>
 
-        <p
-          v-if="sectionEditError"
-          class="document-editor__ai-error"
-          role="alert"
-        >
+        <p v-if="sectionEditError" class="document-editor__ai-error" role="alert">
           {{ sectionEditError }}
           <button type="button" class="ml-2 underline" @click="sectionEditError = null">
             Dismiss

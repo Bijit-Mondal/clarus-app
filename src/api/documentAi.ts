@@ -56,11 +56,7 @@ export type DocumentAiSectionInput = {
   instruction: string
 }
 
-export function chatDocumentAi(
-  tenantId: string,
-  documentId: string,
-  input: DocumentAiChatInput,
-) {
+export function chatDocumentAi(tenantId: string, documentId: string, input: DocumentAiChatInput) {
   return apiRequest<DocumentAiChatResponse>(`/v1/documents/${documentId}/ai/chat`, {
     method: 'POST',
     timeout: AI_TIMEOUT_MS,
@@ -81,19 +77,16 @@ export function editDocumentAiSection(
   documentId: string,
   input: DocumentAiSectionInput,
 ) {
-  return apiRequest<DocumentAiSectionResponse>(
-    `/v1/documents/${documentId}/ai/edit-section`,
-    {
-      method: 'POST',
-      timeout: AI_TIMEOUT_MS,
-      headers: {
-        'x-tenant-id': tenantId,
-        'content-type': 'application/json',
-      },
-      body: {
-        sectionText: input.sectionText,
-        instruction: input.instruction,
-      },
+  return apiRequest<DocumentAiSectionResponse>(`/v1/documents/${documentId}/ai/edit-section`, {
+    method: 'POST',
+    timeout: AI_TIMEOUT_MS,
+    headers: {
+      'x-tenant-id': tenantId,
+      'content-type': 'application/json',
     },
-  )
+    body: {
+      sectionText: input.sectionText,
+      instruction: input.instruction,
+    },
+  })
 }
