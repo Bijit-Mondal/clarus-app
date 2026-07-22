@@ -60,17 +60,14 @@ function toggleExpand(id: string) {
   expandedEvidences.value[id] = !expandedEvidences.value[id]
 }
 
-// Reset expanded state and initialize when evidences change (e.g. on new load)
+// Reset expanded state when evidences change (e.g. on new load)
 watch(
   () => props.evidences,
   (newEvidences) => {
     expandedEvidences.value = {}
     if (newEvidences) {
       newEvidences.forEach((e) => {
-        const isFailure = ['failed', 'rejected', 'ai_rejected', 'ai_review_failed'].includes(
-          e.status?.toLowerCase() || '',
-        )
-        expandedEvidences.value[e.$id] = isFailure && !!e.description
+        expandedEvidences.value[e.$id] = false
       })
     }
   },
