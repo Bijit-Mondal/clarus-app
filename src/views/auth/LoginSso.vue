@@ -112,7 +112,7 @@ function handleSubmit() {
               id="email"
               v-model="form.email"
               type="email"
-              placeholder="name@company.com"
+              placeholder="gavin@hooli.xyz"
               autocomplete="email"
               :class="
                 hasError('email')

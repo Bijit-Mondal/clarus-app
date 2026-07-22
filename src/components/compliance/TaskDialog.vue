@@ -190,7 +190,7 @@ function handleSubmit() {
               <Input
                 id="task-title"
                 v-model="taskTitle"
-                placeholder="Describe the work to be done"
+                placeholder="e.g. Implement middle-out compression algorithm"
                 required
               />
             </div>
@@ -201,7 +201,7 @@ function handleSubmit() {
                 v-model="taskDescription"
                 rows="8"
                 class="flex min-h-[220px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
-                placeholder="Add details or instructions..."
+                placeholder="Add details or instructions (e.g. Gilfoyle, make sure the Anton server doesn't overheat)..."
               />
             </div>
           </div>

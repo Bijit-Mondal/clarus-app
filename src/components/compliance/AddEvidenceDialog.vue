@@ -330,7 +330,7 @@ async function handleSubmit() {
             id="link-url"
             v-model="externalReference"
             type="url"
-            placeholder="https://github.com/my-org/repo/settings/security"
+            placeholder="https://github.com/piedpiper/nucleus/settings/security"
             required
             class="h-9"
           ></Input>

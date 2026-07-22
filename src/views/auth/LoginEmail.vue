@@ -87,7 +87,7 @@ async function handleSubmit() {
               id="email"
               v-model="form.email"
               type="email"
-              placeholder="name@example.com"
+              placeholder="dinesh@piedpiper.com"
               autocomplete="email"
               :class="
                 hasError('email')

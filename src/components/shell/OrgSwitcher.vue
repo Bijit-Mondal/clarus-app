@@ -186,7 +186,7 @@ async function createOrg() {
             <Input
               :id="nameInputId"
               v-model="orgName"
-              placeholder="e.g. Northwind Security"
+              placeholder="e.g. Pied Piper"
               autocomplete="organization"
             />
           </div>

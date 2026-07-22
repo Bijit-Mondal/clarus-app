@@ -895,7 +895,7 @@ onBeforeUnmount(() => {
             id="section-ai-instruction"
             v-model="sectionInstruction"
             rows="3"
-            placeholder="e.g. Require MFA for all remote access and name the approved VPN."
+            placeholder="e.g. Require MFA for all remote access to Anton servers and specify the VPN."
             class="clarus-scroll min-h-[88px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             @keydown.meta.enter.prevent="submitSectionEdit"
             @keydown.ctrl.enter.prevent="submitSectionEdit"
@@ -930,7 +930,7 @@ onBeforeUnmount(() => {
             id="document-link-url"
             v-model="linkUrl"
             type="url"
-            placeholder="https://example.com"
+            placeholder="https://piedpiper.com"
             autocomplete="url"
             @keydown.enter.prevent="saveLink"
           />

@@ -427,7 +427,7 @@ function simulateImport() {
               <Input
                 id="control-name"
                 v-model="newName"
-                placeholder="e.g. Access log reviews"
+                placeholder="e.g. Middle-out compression validation"
                 required
               />
             </div>
