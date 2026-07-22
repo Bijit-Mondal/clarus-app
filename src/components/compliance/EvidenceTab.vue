@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, type Component } from 'vue'
 import {
   PhPlus,
   PhTrash,
@@ -78,7 +78,7 @@ watch(
 interface StatusConfig {
   label: string
   class: string
-  icon: any
+  icon: Component
 }
 
 const statusConfigs: Record<string, StatusConfig> = {
@@ -93,22 +93,22 @@ const statusConfigs: Record<string, StatusConfig> = {
     icon: PhFile,
   },
   ai_approved: {
-    label: 'AI Approved',
+    label: 'Helix Approved',
     class: 'border-success/30 bg-success/10 text-success-emphasis',
     icon: PhCpu,
   },
   ai_rejected: {
-    label: 'AI Rejected',
+    label: 'Helix Rejected',
     class: 'border-destructive/30 bg-destructive/10 text-destructive-emphasis',
     icon: PhCpu,
   },
   ai_needs_review: {
-    label: 'AI Needs Review',
+    label: 'Helix Needs Review',
     class: 'border-warning/30 bg-warning/10 text-warning-emphasis',
     icon: PhWarningCircle,
   },
   ai_review_failed: {
-    label: 'AI Review Failed',
+    label: 'Helix Review Failed',
     class: 'border-destructive/30 bg-destructive/10 text-destructive-emphasis',
     icon: PhWarningCircle,
   },
@@ -140,21 +140,6 @@ function getStatusConfig(status: string): StatusConfig {
       icon: PhClock,
     }
   )
-}
-
-function getStatusBorderClass(status: string): string {
-  if (!status) return 'border-border/50'
-  const norm = status.toLowerCase()
-  if (['failed', 'rejected', 'ai_rejected', 'ai_review_failed'].includes(norm)) {
-    return 'border-l-2 border-l-destructive border-t-border/50 border-r-border/50 border-b-border/50'
-  }
-  if (['verified', 'passed', 'ai_approved'].includes(norm)) {
-    return 'border-l-2 border-l-success border-t-border/50 border-r-border/50 border-b-border/50'
-  }
-  if (['warning', 'ai_needs_review'].includes(norm)) {
-    return 'border-l-2 border-l-warning border-t-border/50 border-r-border/50 border-b-border/50'
-  }
-  return 'border-border/50'
 }
 </script>
 
