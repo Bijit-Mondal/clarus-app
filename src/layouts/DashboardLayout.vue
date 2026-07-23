@@ -56,7 +56,7 @@ const isImmersive = computed(() => route.meta.immersive === true)
                   leave-to-class="opacity-0"
                   mode="out-in"
                 >
-                  <component :is="PageComponent" :key="route.fullPath" />
+                  <component :is="PageComponent" :key="route.path" />
                 </Transition>
               </RouterView>
             </div>

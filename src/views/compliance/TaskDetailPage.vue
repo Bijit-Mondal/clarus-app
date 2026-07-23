@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PhCaretRight,
@@ -169,7 +169,35 @@ function saveEdit(payload: EditTaskPayload) {
 }
 
 // Tabs state
-const activeTab = ref<'evidences' | 'controls' | 'documents'>('evidences')
+type TaskTab = 'evidences' | 'controls' | 'documents'
+
+const getInitialTab = (): TaskTab => {
+  const queryTab = route.query.tab as string
+  const validTabs: TaskTab[] = ['evidences', 'controls', 'documents']
+  if (validTabs.includes(queryTab as TaskTab)) {
+    return queryTab as TaskTab
+  }
+  return 'evidences'
+}
+const activeTab = ref<TaskTab>(getInitialTab())
+
+watch(activeTab, (newTab) => {
+  if (route.query.tab !== newTab) {
+    void router.replace({
+      query: { ...route.query, tab: newTab },
+    })
+  }
+})
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    const validTabs: TaskTab[] = ['evidences', 'controls', 'documents']
+    if (newTab && validTabs.includes(newTab as TaskTab)) {
+      activeTab.value = newTab as TaskTab
+    }
+  },
+)
 
 // Fetch evidences
 const { data: evidencesData, isPending: isEvidencesLoading } = useTaskEvidencesQuery(taskId)

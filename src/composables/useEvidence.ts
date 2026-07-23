@@ -4,6 +4,7 @@ import {
   getEvidences,
   getTaskEvidences,
   getControlEvidences,
+  getControlWiseEvidences,
   createEvidence,
   uploadAttachment,
   deleteEvidence,
@@ -16,6 +17,8 @@ export const evidenceKeys = {
   all: ['evidences'] as const,
   list: (tenantId: string, options: Record<string, unknown>) =>
     [...evidenceKeys.all, tenantId, 'list', options] as const,
+  controlWise: (tenantId: string, options: Record<string, unknown>) =>
+    [...evidenceKeys.all, tenantId, 'controlWise', options] as const,
   taskList: (tenantId: string, taskId: string) =>
     [...evidenceKeys.all, tenantId, 'task', taskId] as const,
   controlList: (tenantId: string, controlId: string) =>
@@ -38,6 +41,25 @@ export function useEvidencesQuery(
       return evidenceKeys.list(tId, opts)
     }),
     queryFn: () => getEvidences(tenantId.value!, optionsVal.value),
+    enabled: computed(() => !!tenantId.value),
+    staleTime: 300_000,
+  })
+}
+
+export function useControlWiseEvidencesQuery(
+  options?: Ref<{ limit?: number; offset?: number }> | { limit?: number; offset?: number },
+) {
+  const organizationStore = useOrganizationStore()
+  const tenantId = computed(() => organizationStore.activeOrganization?.id)
+  const optionsVal = computed(() => (options && 'value' in options ? options.value : options))
+
+  return useQuery({
+    queryKey: computed(() => {
+      const tId = tenantId.value || ''
+      const opts = optionsVal.value || {}
+      return evidenceKeys.controlWise(tId, opts)
+    }),
+    queryFn: () => getControlWiseEvidences(tenantId.value!, optionsVal.value),
     enabled: computed(() => !!tenantId.value),
     staleTime: 300_000,
   })

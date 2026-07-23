@@ -27,10 +27,14 @@ const props = withDefaults(
     isLoading: boolean
     downloadingId?: string | null
     emptyDescription?: string
+    showDelete?: boolean
+    showToolbar?: boolean
   }>(),
   {
     downloadingId: null,
     emptyDescription: 'Add screenshots or reports as proof of this task being completed.',
+    showDelete: true,
+    showToolbar: true,
   },
 )
 
@@ -152,9 +156,9 @@ function getStatusConfig(status: string): StatusConfig {
     </div>
 
     <template v-else>
-      <!-- Header Toolbar (only shown if there is evidence) -->
+      <!-- Header Toolbar (only shown if there is evidence and showToolbar is true) -->
       <div
-        v-if="evidences.length"
+        v-if="evidences.length && showToolbar"
         class="flex items-center justify-between px-5 py-3 border-b border-border/60 bg-muted/10"
       >
         <div class="flex items-center gap-2">
@@ -187,7 +191,7 @@ function getStatusConfig(status: string): StatusConfig {
               <th class="px-5 py-2.5 font-medium w-[140px]">Reference</th>
               <th class="px-5 py-2.5 font-medium w-[160px]">Status</th>
               <th class="px-5 py-2.5 font-medium w-[140px]">Collected at</th>
-              <th class="px-5 py-2.5 w-12"></th>
+              <th v-if="showDelete" class="px-5 py-2.5 w-12"></th>
             </tr>
           </thead>
           <tbody>
@@ -336,7 +340,7 @@ function getStatusConfig(status: string): StatusConfig {
                 </td>
 
                 <!-- Delete Action -->
-                <td class="px-5 py-3 text-right align-top">
+                <td v-if="showDelete" class="px-5 py-3 text-right align-top">
                   <Tooltip>
                     <TooltipTrigger as-child>
                       <Button
@@ -359,7 +363,7 @@ function getStatusConfig(status: string): StatusConfig {
                 :key="e.$id + '-details'"
                 class="border-b border-border/40 bg-muted/15"
               >
-                <td colspan="6" class="px-5 pb-4 pt-1">
+                <td :colspan="showDelete ? 6 : 5" class="px-5 pb-4 pt-1">
                   <div
                     class="ml-[22px] pl-3.5 border-l border-border/80 py-1 space-y-2 animate-slide-down"
                   >

@@ -135,7 +135,35 @@ const control = computed(() => {
 })
 
 // Active Tab
-const activeTab = ref<'evidences' | 'tasks' | 'requirements' | 'documents'>('requirements')
+type DetailTab = 'evidences' | 'tasks' | 'requirements' | 'documents'
+
+const getInitialTab = (): DetailTab => {
+  const queryTab = route.query.tab as string
+  const validTabs: DetailTab[] = ['evidences', 'tasks', 'requirements', 'documents']
+  if (validTabs.includes(queryTab as DetailTab)) {
+    return queryTab as DetailTab
+  }
+  return 'requirements'
+}
+const activeTab = ref<DetailTab>(getInitialTab())
+
+watch(activeTab, (newTab) => {
+  if (route.query.tab !== newTab) {
+    void router.replace({
+      query: { ...route.query, tab: newTab },
+    })
+  }
+})
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    const validTabs: DetailTab[] = ['evidences', 'tasks', 'requirements', 'documents']
+    if (newTab && validTabs.includes(newTab as DetailTab)) {
+      activeTab.value = newTab as DetailTab
+    }
+  },
+)
 
 const { data: reqData, isPending: reqIsPending } = useControlRequirementsQuery(controlId)
 const requirements = computed(() => reqData.value?.tenantRequirementControlMaps || [])

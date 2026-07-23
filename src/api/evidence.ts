@@ -1,4 +1,5 @@
 import { api, apiRequest } from '@/lib/api'
+import type { TenantControl } from '@/api/controls'
 
 export type Evidence = {
   $id: string
@@ -19,6 +20,16 @@ export type Evidence = {
 export type EvidenceListResponse = {
   total: number
   evidences: Evidence[]
+}
+
+export type ControlEvidenceGroup = {
+  tenantControl: TenantControl
+  evidences: Evidence[]
+}
+
+export type ControlWiseEvidenceResponse = {
+  total: number
+  groups: ControlEvidenceGroup[]
 }
 
 export type AttachmentResponse = {
@@ -48,6 +59,18 @@ export function getEvidences(
   options?: { limit?: number; offset?: number; total?: boolean },
 ) {
   return apiRequest<EvidenceListResponse>('/v1/evidences', {
+    headers: {
+      'x-tenant-id': tenantId,
+    },
+    query: options,
+  })
+}
+
+export function getControlWiseEvidences(
+  tenantId: string,
+  options?: { limit?: number; offset?: number },
+) {
+  return apiRequest<ControlWiseEvidenceResponse>('/v1/evidences/control-wise', {
     headers: {
       'x-tenant-id': tenantId,
     },
