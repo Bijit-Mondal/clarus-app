@@ -1,0 +1,180 @@
+/* GitHub-inspired suggestion diff colors (not Clarus theme success/destructive) */
+:root {
+  --gh-diff-add-bg: #dafbe1;
+  --gh-diff-add-border: #1a7f37;
+  --gh-diff-add-fg: #116329;
+  --gh-diff-del-bg: #ffebe9;
+  --gh-diff-del-border: #cf222e;
+  --gh-diff-del-fg: #82071e;
+  --suggestion-padding-y: 8px;
+  --suggestion-padding-x: 12px;
+  --suggestion-border-width: 4px;
+}
+
+.dark {
+  --gh-diff-add-bg: rgba(46, 160, 67, 0.15);
+  --gh-diff-add-border: #3fb950;
+  --gh-diff-add-fg: #3fb950;
+  --gh-diff-del-bg: rgba(248, 81, 73, 0.15);
+  --gh-diff-del-border: #f85149;
+  --gh-diff-del-fg: #f85149;
+}
+
+.suggestion-new-section {
+  position: relative;
+  background: var(--gh-diff-add-bg);
+  box-shadow: inset var(--suggestion-border-width) 0 0 var(--gh-diff-add-border);
+  margin: 4px 0;
+  padding: var(--suggestion-padding-y) var(--suggestion-padding-x) var(--suggestion-padding-y)
+    calc(var(--suggestion-border-width) + var(--suggestion-padding-x));
+  border-radius: 0 6px 6px 0;
+  font-weight: normal;
+  font-size: inherit;
+}
+
+.suggestion-new-section h1,
+.suggestion-new-section h2,
+.suggestion-new-section h3 {
+  font-weight: 600;
+}
+
+.suggestion-new-section p {
+  margin: 0.25em 0;
+}
+
+.suggestion-deleted-section {
+  position: relative;
+  background: var(--gh-diff-del-bg);
+  box-shadow: inset var(--suggestion-border-width) 0 0 var(--gh-diff-del-border);
+  opacity: 0.75;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--gh-diff-del-border) 70%, transparent);
+  padding: var(--suggestion-padding-y) var(--suggestion-padding-x) var(--suggestion-padding-y)
+    calc(var(--suggestion-border-width) + var(--suggestion-padding-x));
+}
+
+.suggestion-deleted-section.suggestion-focused {
+  opacity: 0.9;
+  background: color-mix(in srgb, var(--gh-diff-del-bg) 85%, var(--gh-diff-del-border));
+}
+
+.suggestion-change-group {
+  position: relative;
+  margin: 4px 0;
+}
+
+.suggestion-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--gh-diff-add-bg) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--gh-diff-add-border) 25%, transparent);
+  border-radius: 6px 6px 0 0;
+}
+
+.suggestion-delete-group .suggestion-actions {
+  background: color-mix(in srgb, var(--gh-diff-del-bg) 70%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--gh-diff-del-border) 25%, transparent);
+}
+
+.suggestion-actions-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.suggestion-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+  background: var(--card, #fff);
+  color: var(--foreground, #24292f);
+}
+
+.suggestion-action-btn:hover {
+  background: color-mix(in srgb, var(--foreground, #24292f) 6%, transparent);
+}
+
+.suggestion-action-accept {
+  color: var(--gh-diff-add-fg);
+  border-color: color-mix(in srgb, var(--gh-diff-add-border) 35%, transparent);
+}
+
+.suggestion-action-accept:hover {
+  background: var(--gh-diff-add-bg);
+  border-color: var(--gh-diff-add-border);
+}
+
+.suggestion-action-reject {
+  color: var(--gh-diff-del-fg);
+  border-color: color-mix(in srgb, var(--gh-diff-del-border) 35%, transparent);
+}
+
+.suggestion-action-reject:hover {
+  background: var(--gh-diff-del-bg);
+  border-color: var(--gh-diff-del-border);
+}
+
+.suggestion-loading {
+  padding: var(--suggestion-padding-y) var(--suggestion-padding-x) var(--suggestion-padding-y)
+    calc(var(--suggestion-border-width) + var(--suggestion-padding-x));
+  background: var(--gh-diff-add-bg);
+  box-shadow: inset var(--suggestion-border-width) 0 0 var(--gh-diff-add-border);
+  border-radius: 0 6px 6px 0;
+}
+
+.suggestion-loading-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted-foreground, #656d76);
+}
+
+.suggestion-loading-content {
+  opacity: 0.4;
+}
+
+.suggestion-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.suggestion-skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground, #24292f) 8%, transparent);
+  animation: suggestion-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes suggestion-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .suggestion-skeleton-line {
+    animation: none;
+  }
+  .suggestion-action-btn {
+    transition: none;
+  }
+}

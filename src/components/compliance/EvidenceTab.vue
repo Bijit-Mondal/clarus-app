@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch, type Component } from 'vue'
 import {
   PhPlus,
   PhTrash,
@@ -12,21 +13,28 @@ import {
   PhCheckCircle,
   PhWarningCircle,
   PhClock,
+  PhCaretDown,
+  PhCaretRight,
 } from '@phosphor-icons/vue'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Badge } from '@/components/ui/badge'
 import type { Evidence } from '@/api/evidence'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     evidences: Evidence[]
     isLoading: boolean
     downloadingId?: string | null
     emptyDescription?: string
+    showDelete?: boolean
+    showToolbar?: boolean
   }>(),
   {
     downloadingId: null,
     emptyDescription: 'Add screenshots or reports as proof of this task being completed.',
+    showDelete: true,
+    showToolbar: true,
   },
 )
 
@@ -48,6 +56,95 @@ function formatDate(iso: string) {
   if (isNaN(date.getTime())) return 'N/A'
   return dateFormatter.format(date)
 }
+
+// Track expanded state of evidence descriptions
+const expandedEvidences = ref<Record<string, boolean>>({})
+
+function toggleExpand(id: string) {
+  expandedEvidences.value[id] = !expandedEvidences.value[id]
+}
+
+// Reset expanded state when evidences change (e.g. on new load)
+watch(
+  () => props.evidences,
+  (newEvidences) => {
+    expandedEvidences.value = {}
+    if (newEvidences) {
+      newEvidences.forEach((e) => {
+        expandedEvidences.value[e.$id] = false
+      })
+    }
+  },
+  { immediate: true },
+)
+
+// Status styling and icon configurations
+interface StatusConfig {
+  label: string
+  class: string
+  icon: Component
+}
+
+const statusConfigs: Record<string, StatusConfig> = {
+  pending: {
+    label: 'Pending Review',
+    class: 'border-border bg-muted/50 text-muted-foreground',
+    icon: PhClock,
+  },
+  available: {
+    label: 'Available',
+    class: 'border-info/30 bg-info/10 text-info',
+    icon: PhFile,
+  },
+  ai_approved: {
+    label: 'Helix Approved',
+    class: 'border-success/30 bg-success/10 text-success-emphasis',
+    icon: PhCpu,
+  },
+  ai_rejected: {
+    label: 'Helix Rejected',
+    class: 'border-destructive/30 bg-destructive/10 text-destructive-emphasis',
+    icon: PhCpu,
+  },
+  ai_needs_review: {
+    label: 'Helix Needs Review',
+    class: 'border-warning/30 bg-warning/10 text-warning-emphasis',
+    icon: PhWarningCircle,
+  },
+  ai_review_failed: {
+    label: 'Helix Review Failed',
+    class: 'border-destructive/30 bg-destructive/10 text-destructive-emphasis',
+    icon: PhWarningCircle,
+  },
+  passed: {
+    label: 'Passed',
+    class: 'border-success/30 bg-success/10 text-success-emphasis',
+    icon: PhCheckCircle,
+  },
+  failed: {
+    label: 'Failed',
+    class: 'border-destructive/30 bg-destructive/10 text-destructive-emphasis',
+    icon: PhWarningCircle,
+  },
+}
+
+function getStatusConfig(status: string): StatusConfig {
+  if (!status) {
+    return {
+      label: 'Pending',
+      class: 'border-border bg-muted/50 text-muted-foreground',
+      icon: PhClock,
+    }
+  }
+  const normalized = status.toLowerCase()
+  return (
+    statusConfigs[normalized] || {
+      label: status,
+      class: 'border-border bg-muted/50 text-muted-foreground',
+      icon: PhClock,
+    }
+  )
+}
 </script>
 
 <template>
@@ -59,9 +156,9 @@ function formatDate(iso: string) {
     </div>
 
     <template v-else>
-      <!-- Header Toolbar (only shown if there is evidence) -->
+      <!-- Header Toolbar (only shown if there is evidence and showToolbar is true) -->
       <div
-        v-if="evidences.length"
+        v-if="evidences.length && showToolbar"
         class="flex items-center justify-between px-5 py-3 border-b border-border/60 bg-muted/10"
       >
         <div class="flex items-center gap-2">
@@ -74,7 +171,7 @@ function formatDate(iso: string) {
         </div>
         <Button
           size="sm"
-          class="gap-1.5 font-semibold text-xs h-8 cursor-pointer"
+          class="cursor-pointer font-semibold text-xs gap-1.5"
           @click="$emit('add')"
         >
           <component :is="PhPlus" :size="14" weight="bold" />
@@ -90,151 +187,204 @@ function formatDate(iso: string) {
               class="border-b border-border bg-muted/40 text-xs text-muted-foreground font-medium"
             >
               <th class="px-5 py-2.5 font-medium">Evidence</th>
-              <th class="px-5 py-2.5 font-medium">Source</th>
-              <th class="px-5 py-2.5 font-medium">Reference</th>
-              <th class="px-5 py-2.5 font-medium">Status</th>
-              <th class="px-5 py-2.5 font-medium">Collected at</th>
-              <th class="px-5 py-2.5 w-10"></th>
+              <th class="px-5 py-2.5 font-medium w-[140px]">Source</th>
+              <th class="px-5 py-2.5 font-medium w-[140px]">Reference</th>
+              <th class="px-5 py-2.5 font-medium w-[160px]">Status</th>
+              <th class="px-5 py-2.5 font-medium w-[140px]">Collected at</th>
+              <th v-if="showDelete" class="px-5 py-2.5 w-12"></th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="e in evidences"
-              :key="e.$id"
-              class="border-b border-border/40 last:border-0 hover:bg-muted/10 transition-colors duration-150"
-            >
-              <!-- Evidence Title & Description -->
-              <td class="px-5 py-3 align-top max-w-[240px]">
-                <div
-                  class="font-medium text-foreground text-sm leading-normal truncate"
-                  :title="e.title"
-                >
-                  {{ e.title }}
-                </div>
-                <div
-                  v-if="e.description"
-                  class="text-xs text-muted-foreground mt-0.5 leading-normal truncate"
-                  :title="e.description"
-                >
-                  {{ e.description }}
-                </div>
-              </td>
-
-              <!-- Source Badge -->
-              <td class="px-5 py-3 align-top whitespace-nowrap">
-                <span
-                  v-if="e.sourceType === 'manual'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80"
-                >
-                  <component :is="PhUser" :size="12" />
-                  Manual
-                </span>
-                <span
-                  v-else-if="e.sourceType === 'auto' || e.sourceType === 'automated'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-info/10 text-info border border-info/20"
-                >
-                  <component :is="PhCpu" :size="12" />
-                  Automated
-                </span>
-                <span
-                  v-else
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border/80 capitalize"
-                >
-                  <component :is="PhFileText" :size="12" />
-                  {{ e.sourceType || 'unknown' }}
-                </span>
-              </td>
-
-              <!-- Reference Link or File -->
-              <td class="px-5 py-3 align-top whitespace-nowrap">
-                <Button
-                  v-if="e.attachmentId"
-                  variant="outline"
-                  size="sm"
-                  class="h-7 px-2 text-xs gap-1 cursor-pointer"
-                  :disabled="downloadingId === e.$id"
-                  @click="$emit('download', e.$id)"
-                >
-                  <component
-                    :is="downloadingId === e.$id ? PhSpinner : PhFile"
-                    :size="12"
-                    :class="{ 'animate-spin': downloadingId === e.$id }"
-                  />
-                  <span>View file</span>
-                  <component
-                    v-if="downloadingId !== e.$id"
-                    :is="PhArrowUpRight"
-                    :size="10"
-                    class="text-muted-foreground"
-                  />
-                </Button>
-
-                <a
-                  v-else-if="e.externalReference"
-                  :href="e.externalReference"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <component :is="PhLink" :size="12" class="text-muted-foreground" />
-                  <span>Open link</span>
-                  <component :is="PhArrowUpRight" :size="10" class="text-muted-foreground" />
-                </a>
-
-                <span v-else class="text-xs text-muted-foreground italic">None</span>
-              </td>
-
-              <!-- Status Badge (with Icon) -->
-              <td class="px-5 py-3 align-top whitespace-nowrap">
-                <span
-                  class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border capitalize"
-                  :class="
-                    e.status === 'verified'
-                      ? 'bg-success/10 text-success border-success/20'
-                      : e.status === 'failed' || e.status === 'rejected'
-                        ? 'bg-destructive/10 text-destructive border-destructive/20'
-                        : 'bg-warning/10 text-warning-emphasis border-warning/20'
-                  "
-                >
-                  <component
-                    :is="
-                      e.status === 'verified'
-                        ? PhCheckCircle
-                        : e.status === 'failed' || e.status === 'rejected'
-                          ? PhWarningCircle
-                          : PhClock
-                    "
-                    :size="12"
-                    class="shrink-0"
-                  />
-                  <span>{{ e.status }}</span>
-                </span>
-              </td>
-
-              <!-- Date Collected -->
-              <td
-                class="px-5 py-3 align-top text-muted-foreground tabular-nums text-xs whitespace-nowrap"
+            <template v-for="e in evidences" :key="e.$id">
+              <tr
+                class="transition-colors duration-150"
+                :class="[
+                  e.description && expandedEvidences[e.$id]
+                    ? 'bg-muted/15'
+                    : 'border-b border-border/40 last:border-0 hover:bg-muted/10',
+                ]"
               >
-                {{ formatDate(e.collectedAt || e.$createdAt) }}
-              </td>
-
-              <!-- Delete Action -->
-              <td class="px-5 py-3 text-right align-top">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-7 w-7 rounded-md cursor-pointer"
-                      @click="$emit('delete', e.$id)"
+                <!-- Evidence Title & Description -->
+                <td class="px-5 py-3 align-top max-w-[280px]">
+                  <div class="flex items-start gap-1.5">
+                    <!-- Chevron Toggle -->
+                    <button
+                      v-if="e.description"
+                      class="mt-0.5 flex size-4 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-transform duration-200"
+                      @click="toggleExpand(e.$id)"
                     >
-                      <component :is="PhTrash" :size="13" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete evidence</TooltipContent>
-                </Tooltip>
-              </td>
-            </tr>
+                      <component
+                        :is="expandedEvidences[e.$id] ? PhCaretDown : PhCaretRight"
+                        :size="14"
+                      />
+                    </button>
+                    <div v-else class="size-4 shrink-0" />
+
+                    <div class="min-w-0 flex-1">
+                      <button
+                        v-if="e.description"
+                        type="button"
+                        class="text-left font-medium text-foreground text-sm leading-normal hover:underline decoration-muted-foreground/30 cursor-pointer block w-full truncate"
+                        :title="e.title"
+                        @click="toggleExpand(e.$id)"
+                      >
+                        {{ e.title }}
+                      </button>
+                      <div
+                        v-else
+                        class="font-medium text-foreground text-sm leading-normal truncate"
+                        :title="e.title"
+                      >
+                        {{ e.title }}
+                      </div>
+                      <div
+                        v-if="e.description && !expandedEvidences[e.$id]"
+                        class="text-xs text-muted-foreground mt-0.5 leading-normal truncate cursor-pointer"
+                        @click="toggleExpand(e.$id)"
+                      >
+                        {{ e.description }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Source Badge -->
+                <td class="px-5 py-3 align-top whitespace-nowrap">
+                  <Badge
+                    v-if="e.sourceType === 'manual'"
+                    variant="outline"
+                    class="gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-muted/50 text-muted-foreground border-border/60"
+                  >
+                    <component :is="PhUser" :size="11" />
+                    <span>Manual</span>
+                  </Badge>
+                  <Badge
+                    v-else-if="e.sourceType === 'auto' || e.sourceType === 'automated'"
+                    variant="outline"
+                    class="gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-info/5 text-info border-info/20"
+                  >
+                    <component :is="PhCpu" :size="11" />
+                    <span>Automated</span>
+                  </Badge>
+                  <Badge
+                    v-else
+                    variant="outline"
+                    class="gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-muted/50 text-muted-foreground border-border/60 capitalize"
+                  >
+                    <component :is="PhFileText" :size="11" />
+                    <span>{{ e.sourceType || 'unknown' }}</span>
+                  </Badge>
+                </td>
+
+                <!-- Reference Link or File -->
+                <td class="px-5 py-3 align-top whitespace-nowrap">
+                  <Button
+                    v-if="e.attachmentId"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs gap-1 cursor-pointer"
+                    :disabled="downloadingId === e.$id"
+                    @click="$emit('download', e.$id)"
+                  >
+                    <component
+                      :is="downloadingId === e.$id ? PhSpinner : PhFile"
+                      :size="12"
+                      :class="{ 'animate-spin': downloadingId === e.$id }"
+                    />
+                    <span>View file</span>
+                    <component
+                      v-if="downloadingId !== e.$id"
+                      :is="PhArrowUpRight"
+                      :size="10"
+                      class="text-muted-foreground"
+                    />
+                  </Button>
+
+                  <Button
+                    v-else-if="e.externalReference"
+                    as="a"
+                    :href="e.externalReference"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs gap-1 cursor-pointer"
+                  >
+                    <component :is="PhLink" :size="12" class="text-muted-foreground" />
+                    <span>Open link</span>
+                    <component :is="PhArrowUpRight" :size="10" class="text-muted-foreground" />
+                  </Button>
+
+                  <span v-else class="text-xs text-muted-foreground italic">None</span>
+                </td>
+
+                <!-- Status Badge (with Icon) -->
+                <td class="px-5 py-3 align-top whitespace-nowrap">
+                  <Badge
+                    variant="outline"
+                    :class="[
+                      'gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border',
+                      getStatusConfig(e.status).class,
+                    ]"
+                  >
+                    <component :is="getStatusConfig(e.status).icon" :size="11" class="shrink-0" />
+                    <span>{{ getStatusConfig(e.status).label }}</span>
+                  </Badge>
+                </td>
+
+                <!-- Date Collected -->
+                <td
+                  class="px-5 py-3 align-top text-muted-foreground tabular-nums text-xs whitespace-nowrap"
+                >
+                  {{ formatDate(e.collectedAt || e.$createdAt) }}
+                </td>
+
+                <!-- Delete Action -->
+                <td v-if="showDelete" class="px-5 py-3 text-right align-top">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        class="text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                        @click="$emit('delete', e.$id)"
+                      >
+                        <component :is="PhTrash" :size="13" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete evidence</TooltipContent>
+                  </Tooltip>
+                </td>
+              </tr>
+
+              <!-- Details Row (only if description is present and expanded) -->
+              <tr
+                v-if="e.description && expandedEvidences[e.$id]"
+                :key="e.$id + '-details'"
+                class="border-b border-border/40 bg-muted/15"
+              >
+                <td :colspan="showDelete ? 6 : 5" class="px-5 pb-4 pt-1">
+                  <div
+                    class="ml-[22px] pl-3.5 border-l border-border/80 py-1 space-y-2 animate-slide-down"
+                  >
+                    <!-- Header -->
+                    <div
+                      class="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+                    >
+                      <component :is="getStatusConfig(e.status).icon" :size="12" class="shrink-0" />
+                      <span>{{ getStatusConfig(e.status).label }} Review Feedback</span>
+                    </div>
+
+                    <!-- Content -->
+                    <p
+                      class="text-xs text-foreground/90 whitespace-pre-line leading-relaxed font-sans max-w-[75ch]"
+                    >
+                      {{ e.description }}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -252,7 +402,7 @@ function formatDate(iso: string) {
         </p>
         <Button
           size="sm"
-          class="mt-5 gap-1.5 font-semibold text-xs h-8 cursor-pointer"
+          class="mt-5 gap-1.5 font-semibold text-xs cursor-pointer"
           @click="$emit('add')"
         >
           <component :is="PhPlus" :size="14" weight="bold" />
@@ -262,3 +412,26 @@ function formatDate(iso: string) {
     </template>
   </div>
 </template>
+
+<style scoped>
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down {
+    animation: none !important;
+  }
+}
+</style>

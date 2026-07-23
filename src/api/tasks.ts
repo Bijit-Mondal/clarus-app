@@ -102,13 +102,10 @@ export function getTaskDocuments(
   taskId: string,
   options?: { limit?: number; offset?: number },
 ) {
-  return apiRequest<TenantDocumentsResponse>(
-    `/v1/tenants/frameworks/tasks/${taskId}/documents`,
-    {
-      headers: {
-        'x-tenant-id': tenantId,
-      },
-      query: options,
+  return apiRequest<TenantDocumentsResponse>(`/v1/tenants/frameworks/tasks/${taskId}/documents`, {
+    headers: {
+      'x-tenant-id': tenantId,
     },
-  )
+    query: options,
+  })
 }

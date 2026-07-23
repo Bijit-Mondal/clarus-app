@@ -29,6 +29,7 @@
     "@vueuse/core": "^14.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "diff": "^9.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "ofetch": "^1.5.1",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",
+    "@types/diff": "^8.0.0",
     "@types/jsdom": "^28.0.3",
     "@types/node": "^24.13.2",
     "@vitejs/plugin-vue": "^6.0.7",

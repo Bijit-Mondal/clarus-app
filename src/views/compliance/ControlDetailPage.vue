@@ -135,9 +135,35 @@ const control = computed(() => {
 })
 
 // Active Tab
-const activeTab = ref<
-  'evidences' | 'tasks' | 'requirements' | 'documents'
->('requirements')
+type DetailTab = 'evidences' | 'tasks' | 'requirements' | 'documents'
+
+const getInitialTab = (): DetailTab => {
+  const queryTab = route.query.tab as string
+  const validTabs: DetailTab[] = ['evidences', 'tasks', 'requirements', 'documents']
+  if (validTabs.includes(queryTab as DetailTab)) {
+    return queryTab as DetailTab
+  }
+  return 'requirements'
+}
+const activeTab = ref<DetailTab>(getInitialTab())
+
+watch(activeTab, (newTab) => {
+  if (route.query.tab !== newTab) {
+    void router.replace({
+      query: { ...route.query, tab: newTab },
+    })
+  }
+})
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    const validTabs: DetailTab[] = ['evidences', 'tasks', 'requirements', 'documents']
+    if (newTab && validTabs.includes(newTab as DetailTab)) {
+      activeTab.value = newTab as DetailTab
+    }
+  },
+)
 
 const { data: reqData, isPending: reqIsPending } = useControlRequirementsQuery(controlId)
 const requirements = computed(() => reqData.value?.tenantRequirementControlMaps || [])
@@ -398,7 +424,10 @@ function getVersionStatusConfig(status: string) {
   if (normalized === 'in-review')
     return { label: 'In Review', classes: 'bg-warning/10 text-warning-emphasis border-warning/20' }
   if (normalized === 'rejected')
-    return { label: 'Rejected', classes: 'bg-destructive/10 text-destructive border-destructive/20' }
+    return {
+      label: 'Rejected',
+      classes: 'bg-destructive/10 text-destructive border-destructive/20',
+    }
   return { label: 'Draft', classes: 'bg-muted text-muted-foreground border-border' }
 }
 
@@ -752,10 +781,14 @@ function goToRequirement(map: ControlRequirementMap) {
               >
                 <td class="px-5 py-3.5">
                   <div class="flex items-center gap-2.5">
-                    <span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
+                    <span
+                      class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground"
+                    >
                       <PhFileText :size="16" />
                     </span>
-                    <span class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline">
+                    <span
+                      class="font-medium text-foreground text-xs leading-normal hover:text-primary hover:underline"
+                    >
                       {{ doc.title }}
                     </span>
                   </div>
@@ -920,7 +953,6 @@ function goToRequirement(map: ControlRequirementMap) {
       @link="linkRequirement"
       @search-query="handleRequirementSearchQuery"
     />
-
   </div>
   <div v-else class="py-16 flex items-center justify-center">
     <div

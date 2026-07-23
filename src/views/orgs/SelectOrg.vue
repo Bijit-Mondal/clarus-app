@@ -171,7 +171,7 @@ async function createAndEnter() {
             </DialogHeader>
             <form class="flex flex-col gap-2 py-2" @submit.prevent="createAndEnter">
               <Label for="org-name">Organization name</Label>
-              <Input id="org-name" v-model="orgName" placeholder="Organization name" />
+              <Input id="org-name" v-model="orgName" placeholder="e.g. Pied Piper" />
               <p class="text-pretty text-xs text-muted-foreground">
                 The name of your organization as it will appear throughout the platform.
               </p>

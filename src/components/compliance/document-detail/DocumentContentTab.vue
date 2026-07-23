@@ -39,7 +39,9 @@ const emit = defineEmits<{
         <span v-else-if="saveStatus === 'error'">Save failed</span>
         <span v-else>Unsaved changes</span>
       </div>
-      <span class="text-muted-foreground/70">Autosaves as you type</span>
+      <span class="text-muted-foreground/70"
+        >Autosaves as you type · Select text to edit with AI</span
+      >
     </div>
 
     <DocumentEditor
@@ -49,6 +51,8 @@ const emit = defineEmits<{
       :version="document.version"
       :download-user-email="downloadUserEmail"
       :download-filename="`${document.title.replace(/[^a-z0-9]/gi, '_')}_v${document.version}.pdf`"
+      enable-ai
+      :document-id="documentId"
       @update:model-value="emit('update:draftContent', $event)"
       @blur="emit('blur')"
     />

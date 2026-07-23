@@ -21,9 +21,7 @@ describe('Tiptap table commands', () => {
       extensions: [StarterKit, TableKit],
     })
 
-    expect(
-      editor.chain().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run(),
-    ).toBe(true)
+    expect(editor.chain().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run()).toBe(true)
     expect(getTableColumnCount()).toBe(2)
 
     expect(editor.chain().addColumnAfter().run()).toBe(true)

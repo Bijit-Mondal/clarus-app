@@ -8,23 +8,17 @@ import {
   PhClock,
   PhCpu,
   PhDownload,
-  PhFile,
-  PhFileText,
   PhFolder,
-  PhLink,
   PhListBullets,
   PhMagnifyingGlass,
   PhPlus,
-  PhSpinner,
   PhSquaresFour,
-  PhTrash,
-  PhUser,
-  PhWarningCircle,
   PhX,
 } from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import ClarusLoadingState from '@/components/feedback/ClarusLoadingState.vue'
 import AddEvidenceDialog from '@/components/compliance/AddEvidenceDialog.vue'
+import EvidenceTab from '@/components/compliance/EvidenceTab.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -34,13 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  useEvidencesQuery,
-  useDeleteEvidenceMutation,
+  useControlWiseEvidencesQuery,
   useDownloadEvidenceMutation,
 } from '@/composables/useEvidence'
-import { useTenantControlsQuery } from '@/composables/useControls'
 import type { Evidence } from '@/api/evidence'
 import type { TenantControl } from '@/api/controls'
 import { getApiErrorMessage } from '@/lib/api'
@@ -48,27 +39,6 @@ import { getApiErrorMessage } from '@/lib/api'
 const route = useRoute()
 const router = useRouter()
 const organizationSlug = computed(() => (route.params.organizationSlug as string) || '')
-
-// ── Data ──────────────────────────────────────────────────────────────────────
-const controlsLimit = ref(500)
-const controlsOffset = ref(0)
-const { data: controlsData, isPending: isControlsLoading } = useTenantControlsQuery(
-  controlsLimit,
-  controlsOffset,
-)
-const { data: evidencesData, isPending: isEvidencesLoading } = useEvidencesQuery(
-  computed(() => ({ limit: 1000, total: true })),
-)
-
-const controls = computed(() => controlsData.value?.tenantControls ?? [])
-const evidences = computed(() => evidencesData.value?.evidences ?? [])
-const isLoading = computed(() => isEvidencesLoading.value || isControlsLoading.value)
-
-const controlById = computed(() => {
-  const map = new Map<string, TenantControl>()
-  for (const c of controls.value) map.set(c.$id, c)
-  return map
-})
 
 // ── Filters & view ────────────────────────────────────────────────────────────
 type ViewMode = 'controls' | 'list'
@@ -80,8 +50,27 @@ const statusFilter = ref<StatusFilter>('all')
 const sourceFilter = ref<SourceFilter>('all')
 const viewMode = ref<ViewMode>('controls')
 const page = ref(1)
-const PAGE_SIZE_GRID = 12
-const PAGE_SIZE_LIST = 10
+const limit = 200
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+const { data: evidencesData, isPending: isLoading } = useControlWiseEvidencesQuery(
+  computed(() => ({
+    limit,
+    offset: (page.value - 1) * limit,
+  })),
+)
+
+const groups = computed(() => evidencesData.value?.groups ?? [])
+
+const controlById = computed(() => {
+  const map = new Map<string, TenantControl>()
+  for (const g of groups.value) {
+    if (g.tenantControl) {
+      map.set(g.tenantControl.$id, g.tenantControl)
+    }
+  }
+  return map
+})
 
 const statusFilters = [
   { id: 'all' as const, label: 'All statuses' },
@@ -97,34 +86,7 @@ const sourceFilters = [
 ]
 
 // ── Filtering ─────────────────────────────────────────────────────────────────
-function matchesFilters(e: Evidence) {
-  const query = searchQuery.value.trim().toLowerCase()
-  const matchesSearch =
-    !query ||
-    e.title.toLowerCase().includes(query) ||
-    (e.description?.toLowerCase().includes(query) ?? false) ||
-    (e.externalReference?.toLowerCase().includes(query) ?? false) ||
-    resolveControlLabel(e.tenantControlId).toLowerCase().includes(query)
-
-  const status = normalizeStatus(e.status)
-  const matchesStatus =
-    statusFilter.value === 'all' ||
-    (statusFilter.value === 'verified' && status === 'verified') ||
-    (statusFilter.value === 'pending' && status === 'pending') ||
-    (statusFilter.value === 'failed' && status === 'failed')
-
-  const source = normalizeSource(e.sourceType)
-  const matchesSource =
-    sourceFilter.value === 'all' ||
-    (sourceFilter.value === 'manual' && source === 'manual') ||
-    (sourceFilter.value === 'auto' && source === 'auto')
-
-  return matchesSearch && matchesStatus && matchesSource
-}
-
-const filteredEvidences = computed(() => evidences.value.filter(matchesFilters))
-
-// ── Group by control ──────────────────────────────────────────────────────────
+// ── Filtering & Grouping ──────────────────────────────────────────────────────
 type ControlGroup = {
   key: string
   controlId: string | null
@@ -134,105 +96,155 @@ type ControlGroup = {
   verifiedCount: number
   pendingCount: number
   coverage: number
+  aiApprovedCount: number
+  humanApprovedCount: number
 }
 
-function resolveControlLabel(tenantControlId?: string) {
-  if (!tenantControlId) return 'Unassigned'
-  const control = controlById.value.get(tenantControlId)
-  if (!control) return 'Unknown control'
-  return `${control.controlKey} · ${control.name}`
-}
+const filteredGroups = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  const list: ControlGroup[] = []
 
-const controlGroups = computed<ControlGroup[]>(() => {
-  const buckets = new Map<string, Evidence[]>()
+  for (const g of groups.value) {
+    const matchedEvidences = g.evidences.filter((e) => {
+      const status = normalizeStatus(e.status)
+      const matchesStatus =
+        statusFilter.value === 'all' ||
+        (statusFilter.value === 'verified' && status === 'verified') ||
+        (statusFilter.value === 'pending' && status === 'pending') ||
+        (statusFilter.value === 'failed' && status === 'failed')
 
-  for (const e of filteredEvidences.value) {
-    const key = e.tenantControlId || '__unassigned__'
-    const list = buckets.get(key)
-    if (list) list.push(e)
-    else buckets.set(key, [e])
-  }
+      const source = normalizeSource(e.sourceType)
+      const matchesSource =
+        sourceFilter.value === 'all' ||
+        (sourceFilter.value === 'manual' && source === 'manual') ||
+        (sourceFilter.value === 'auto' && source === 'auto')
 
-  const groups: ControlGroup[] = []
+      if (!matchesStatus || !matchesSource) return false
 
-  for (const [key, items] of buckets) {
-    const control = key === '__unassigned__' ? null : (controlById.value.get(key) ?? null)
-    const verifiedCount = items.filter((e) => normalizeStatus(e.status) === 'verified').length
-    const pendingCount = items.filter((e) => normalizeStatus(e.status) === 'pending').length
-    const coverage = items.length === 0 ? 0 : Math.round((verifiedCount / items.length) * 100)
+      if (!query) return true
 
-    groups.push({
-      key,
-      controlId: control?.$id ?? (key === '__unassigned__' ? null : key),
-      controlKey: control?.controlKey ?? (key === '__unassigned__' ? '—' : '…'),
-      name: control?.name ?? (key === '__unassigned__' ? 'Unassigned evidence' : 'Unknown control'),
-      evidences: items.sort(
-        (a, b) =>
-          new Date(b.collectedAt || b.$createdAt).getTime() -
-          new Date(a.collectedAt || a.$createdAt).getTime(),
-      ),
-      verifiedCount,
-      pendingCount,
-      coverage,
+      const matchesSearch =
+        e.title.toLowerCase().includes(query) ||
+        (e.description?.toLowerCase().includes(query) ?? false) ||
+        (e.externalReference?.toLowerCase().includes(query) ?? false)
+
+      return matchesSearch
     })
+
+    const controlMatchesSearch =
+      !query ||
+      (g.tenantControl
+        ? g.tenantControl.name.toLowerCase().includes(query) ||
+          g.tenantControl.controlKey.toLowerCase().includes(query)
+        : 'unassigned evidence'.includes(query))
+
+    const hasMatchingEvidences = matchedEvidences.length > 0
+    const shouldKeepGroup =
+      hasMatchingEvidences ||
+      (controlMatchesSearch && statusFilter.value === 'all' && sourceFilter.value === 'all')
+
+    if (shouldKeepGroup) {
+      const verifiedVal = matchedEvidences.filter(
+        (e) => normalizeStatus(e.status) === 'verified',
+      ).length
+      const pendingVal = matchedEvidences.filter(
+        (e) => normalizeStatus(e.status) === 'pending',
+      ).length
+      const coverageVal =
+        matchedEvidences.length === 0
+          ? 0
+          : Math.round((verifiedVal / matchedEvidences.length) * 100)
+
+      const aiApprovedVal = matchedEvidences.filter((e) => e.status === 'ai_approved').length
+      const humanApprovedVal = matchedEvidences.filter(
+        (e) =>
+          e.status === 'passed' ||
+          e.status === 'verified' ||
+          e.status === 'approved' ||
+          e.status === 'done',
+      ).length
+
+      list.push({
+        key: g.tenantControl?.$id ?? '__unassigned__',
+        controlId: g.tenantControl?.$id ?? null,
+        controlKey: g.tenantControl?.controlKey ?? '—',
+        name: g.tenantControl?.name ?? 'Unassigned evidence',
+        evidences: matchedEvidences.sort(
+          (a, b) =>
+            new Date(b.collectedAt || b.$createdAt).getTime() -
+            new Date(a.collectedAt || a.$createdAt).getTime(),
+        ),
+        verifiedCount: verifiedVal,
+        pendingCount: pendingVal,
+        coverage: coverageVal,
+        aiApprovedCount: aiApprovedVal,
+        humanApprovedCount: humanApprovedVal,
+      })
+    }
   }
 
-  groups.sort((a, b) => {
+  // Sort groups by controlKey, push __unassigned__ to the end
+  list.sort((a, b) => {
     if (a.key === '__unassigned__') return 1
     if (b.key === '__unassigned__') return -1
     return a.controlKey.localeCompare(b.controlKey)
   })
 
-  return groups
+  return list
 })
 
-const pageSize = computed(() => (viewMode.value === 'controls' ? PAGE_SIZE_GRID : PAGE_SIZE_LIST))
-
-const totalForPagination = computed(() =>
-  viewMode.value === 'controls' ? controlGroups.value.length : filteredEvidences.value.length,
-)
-
-const pageCount = computed(() => Math.max(1, Math.ceil(totalForPagination.value / pageSize.value)))
-
-const pagedGroups = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return controlGroups.value.slice(start, start + pageSize.value)
+const filteredList = computed(() => {
+  const list: Evidence[] = []
+  for (const group of filteredGroups.value) {
+    for (const e of group.evidences) {
+      list.push(e)
+    }
+  }
+  return list.sort(
+    (a, b) =>
+      new Date(b.collectedAt || b.$createdAt).getTime() -
+      new Date(a.collectedAt || a.$createdAt).getTime(),
+  )
 })
 
-const pagedList = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredEvidences.value
-    .slice()
-    .sort(
-      (a, b) =>
-        new Date(b.collectedAt || b.$createdAt).getTime() -
-        new Date(a.collectedAt || a.$createdAt).getTime(),
-    )
-    .slice(start, start + pageSize.value)
-})
+const pagedGroups = computed(() => filteredGroups.value)
+const pagedList = computed(() => filteredList.value)
+
+const totalForPagination = computed(() => evidencesData.value?.total ?? 0)
+const pageCount = computed(() => Math.max(1, Math.ceil(totalForPagination.value / limit)))
 
 const rangeStart = computed(() =>
-  totalForPagination.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1,
+  totalForPagination.value === 0 ? 0 : (page.value - 1) * limit + 1,
 )
-const rangeEnd = computed(() => Math.min(page.value * pageSize.value, totalForPagination.value))
+const rangeEnd = computed(() => Math.min(page.value * limit, totalForPagination.value))
 
 watch([searchQuery, statusFilter, sourceFilter, viewMode], () => {
   page.value = 1
 })
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
-const totalCount = computed(() => evidencesData.value?.total ?? evidences.value.length)
+const allEvidences = computed(() => {
+  const list: Evidence[] = []
+  for (const g of groups.value) {
+    for (const e of g.evidences) {
+      list.push(e)
+    }
+  }
+  return list
+})
+
+const totalCount = computed(() => allEvidences.value.length)
 const verifiedCount = computed(
-  () => evidences.value.filter((e) => normalizeStatus(e.status) === 'verified').length,
+  () => allEvidences.value.filter((e) => normalizeStatus(e.status) === 'verified').length,
 )
 const pendingCount = computed(
-  () => evidences.value.filter((e) => normalizeStatus(e.status) === 'pending').length,
+  () => allEvidences.value.filter((e) => normalizeStatus(e.status) === 'pending').length,
 )
 const failedCount = computed(
-  () => evidences.value.filter((e) => normalizeStatus(e.status) === 'failed').length,
+  () => allEvidences.value.filter((e) => normalizeStatus(e.status) === 'failed').length,
 )
 const autoCount = computed(
-  () => evidences.value.filter((e) => normalizeSource(e.sourceType) === 'auto').length,
+  () => allEvidences.value.filter((e) => normalizeSource(e.sourceType) === 'auto').length,
 )
 const verifiedCoverage = computed(() => {
   if (totalCount.value === 0) return 0
@@ -244,7 +256,6 @@ const remainingCount = computed(() => Math.max(0, totalCount.value - verifiedCou
 const isEvidenceDialogOpen = ref(false)
 const createControlId = ref<string | undefined>(undefined)
 const downloadingId = ref<string | null>(null)
-const deleteMutation = useDeleteEvidenceMutation()
 const downloadMutation = useDownloadEvidenceMutation()
 
 function openCreateDialog(controlId?: string | null) {
@@ -268,16 +279,10 @@ function goToControl(group: ControlGroup) {
       organizationSlug: organizationSlug.value,
       controlId: controlKey,
     },
+    query: {
+      tab: 'evidences',
+    },
   })
-}
-
-async function removeEvidence(id: string) {
-  if (!confirm('Delete this evidence item? This cannot be undone.')) return
-  try {
-    await deleteMutation.mutateAsync(id)
-  } catch (err) {
-    alert(getApiErrorMessage(err, 'Failed to delete evidence.'))
-  }
 }
 
 async function downloadFile(evidenceId: string) {
@@ -298,10 +303,19 @@ function resetFilters() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
 function normalizeStatus(status: string): 'verified' | 'pending' | 'failed' {
   const s = (status || '').toLowerCase()
-  if (s === 'verified' || s === 'approved' || s === 'done') return 'verified'
-  if (s === 'failed' || s === 'rejected' || s === 'expired') return 'failed'
+  if (s === 'passed' || s === 'ai_approved' || s === 'verified' || s === 'approved' || s === 'done')
+    return 'verified'
+  if (
+    s === 'failed' ||
+    s === 'ai_rejected' ||
+    s === 'ai_review_failed' ||
+    s === 'rejected' ||
+    s === 'expired'
+  )
+    return 'failed'
   return 'pending'
 }
 
@@ -310,52 +324,6 @@ function normalizeSource(source: string): 'manual' | 'auto' | 'other' {
   if (s === 'manual') return 'manual'
   if (s === 'auto' || s === 'automated') return 'auto'
   return 'other'
-}
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-})
-
-function formatDate(iso: string) {
-  if (!iso) return '—'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  return dateFormatter.format(date)
-}
-
-// Semantic base colors follow the DocumentsPage color-mix pattern.
-const evidenceStatusConfig = {
-  verified: {
-    label: 'Verified',
-    icon: PhCheckCircle,
-    base: 'var(--success-emphasis)',
-    iconWeight: 'fill' as const,
-  },
-  pending: {
-    label: 'Pending',
-    icon: PhClock,
-    base: 'var(--warning-emphasis)',
-    iconWeight: 'fill' as const,
-  },
-  failed: {
-    label: 'Failed',
-    icon: PhWarningCircle,
-    base: 'var(--destructive-emphasis)',
-    iconWeight: 'fill' as const,
-  },
-} as const
-
-function statusBadgeStyle(base: string) {
-  return {
-    backgroundColor: `color-mix(in oklab, ${base} 15%, transparent)`,
-    color: base,
-  }
-}
-
-function statusMeta(status: string) {
-  return evidenceStatusConfig[normalizeStatus(status)]
 }
 </script>
 
@@ -383,7 +351,9 @@ function statusMeta(status: string) {
       <div class="col-span-2 rounded-lg border border-border bg-card p-4 lg:col-span-2">
         <div class="flex items-start justify-between gap-3">
           <p class="text-xs font-medium text-muted-foreground">Verification progress</p>
-          <p class="text-2xl font-semibold tracking-tight text-foreground tabular-nums leading-none">
+          <p
+            class="text-2xl font-semibold tracking-tight text-foreground tabular-nums leading-none"
+          >
             {{ isLoading ? '—' : `${verifiedCoverage}%` }}
           </p>
         </div>
@@ -536,7 +506,10 @@ function statusMeta(status: string) {
     </div>
 
     <!-- Loading ─────────────────────────────────────────────────────────────── -->
-    <section v-if="isLoading && evidences.length === 0" class="rounded-lg border border-border bg-card">
+    <section
+      v-if="isLoading && groups.length === 0"
+      class="rounded-lg border border-border bg-card"
+    >
       <ClarusLoadingState variant="table-rows" :rows="8" label="Loading evidence" />
     </section>
 
@@ -595,9 +568,7 @@ function statusMeta(status: string) {
         v-for="group in pagedGroups"
         :key="group.key"
         class="group relative flex flex-col rounded-lg border border-border bg-card transition-shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-        :class="
-          group.key === '__unassigned__' ? '' : 'cursor-pointer hover:shadow-sm'
-        "
+        :class="group.key === '__unassigned__' ? '' : 'cursor-pointer hover:shadow-sm'"
         :tabindex="group.key === '__unassigned__' ? undefined : 0"
         :role="group.key === '__unassigned__' ? undefined : 'button'"
         :aria-label="
@@ -655,11 +626,18 @@ function statusMeta(status: string) {
             {{ group.evidences.length }}
             {{ group.evidences.length === 1 ? 'item' : 'items' }}
           </span>
-          <template v-if="group.verifiedCount > 0">
+          <template v-if="group.humanApprovedCount > 0">
             <span aria-hidden="true" class="text-border">·</span>
             <span class="inline-flex items-center gap-1 text-success-emphasis">
               <PhCheckCircle :size="11" weight="fill" aria-hidden="true" />
-              {{ group.verifiedCount }} verified
+              {{ group.humanApprovedCount }} passed
+            </span>
+          </template>
+          <template v-if="group.aiApprovedCount > 0">
+            <span aria-hidden="true" class="text-border">·</span>
+            <span class="inline-flex items-center gap-1 text-success-emphasis">
+              <PhCpu :size="11" aria-hidden="true" />
+              {{ group.aiApprovedCount }} AI approved
             </span>
           </template>
           <template v-if="group.pendingCount > 0">
@@ -675,208 +653,46 @@ function statusMeta(status: string) {
 
     <!-- ── Flat list ───────────────────────────────────────────────────────── -->
     <section v-else class="rounded-lg border border-border bg-card" aria-label="Evidence list">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr
-              class="border-b border-border bg-muted/20 text-xs text-muted-foreground font-medium"
-            >
-              <th class="px-5 py-3">Evidence</th>
-              <th class="px-5 py-3">Control</th>
-              <th class="px-5 py-3">Source</th>
-              <th class="px-5 py-3">Reference</th>
-              <th class="px-5 py-3">Status</th>
-              <th class="px-5 py-3">Collected</th>
-              <th class="relative px-5 py-3 w-12">
-                <span class="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            <tr
-              v-for="e in pagedList"
-              :key="e.$id"
-              class="group border-b border-border/60 transition-colors last:border-0 hover:bg-muted/30"
-            >
-              <td class="px-5 py-4 align-top max-w-[280px]">
-                <div class="flex items-start gap-3">
-                  <div
-                    class="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground"
-                    aria-hidden="true"
-                  >
-                    <PhFileText :size="16" />
-                  </div>
-                  <div class="min-w-0">
-                    <div
-                      class="font-medium text-foreground text-sm leading-normal truncate"
-                      :title="e.title"
-                    >
-                      {{ e.title }}
-                    </div>
-                    <p
-                      v-if="e.description"
-                      class="mt-0.5 text-xs text-muted-foreground line-clamp-1"
-                    >
-                      {{ e.description }}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td class="px-5 py-4 align-top">
-                <div class="flex flex-col items-start gap-1 max-w-[200px]">
-                  <span
-                    v-if="e.tenantControlId && controlById.get(e.tenantControlId)"
-                    class="font-mono text-[11px] font-semibold text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border tracking-wide"
-                  >
-                    {{ controlById.get(e.tenantControlId)!.controlKey }}
-                  </span>
-                  <span v-else class="text-xs text-muted-foreground italic">Unassigned</span>
-                  <p
-                    v-if="e.tenantControlId && controlById.get(e.tenantControlId)"
-                    class="text-xs text-muted-foreground line-clamp-2 mt-0.5"
-                    :title="controlById.get(e.tenantControlId)!.name"
-                  >
-                    {{ controlById.get(e.tenantControlId)!.name }}
-                  </p>
-                </div>
-              </td>
-              <td class="px-5 py-4 align-top whitespace-nowrap">
-                <span
-                  v-if="normalizeSource(e.sourceType) === 'manual'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none text-muted-foreground"
-                  :style="{
-                    backgroundColor: `color-mix(in oklab, var(--muted-foreground) 12%, transparent)`,
-                    borderColor: `color-mix(in oklab, var(--muted-foreground) 20%, transparent)`,
-                  }"
-                >
-                  <PhUser :size="12" aria-hidden="true" />
-                  Manual
-                </span>
-                <span
-                  v-else-if="normalizeSource(e.sourceType) === 'auto'"
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none"
-                  :style="{
-                    backgroundColor: `color-mix(in oklab, var(--info) 12%, transparent)`,
-                    color: 'var(--info)',
-                    borderColor: `color-mix(in oklab, var(--info) 20%, transparent)`,
-                  }"
-                >
-                  <PhCpu :size="12" aria-hidden="true" />
-                  Automated
-                </span>
-                <span
-                  v-else
-                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border leading-none text-muted-foreground capitalize"
-                  :style="{
-                    backgroundColor: `color-mix(in oklab, var(--muted-foreground) 12%, transparent)`,
-                    borderColor: `color-mix(in oklab, var(--muted-foreground) 20%, transparent)`,
-                  }"
-                >
-                  {{ e.sourceType || 'Unknown' }}
-                </span>
-              </td>
-              <td class="px-5 py-4 align-top whitespace-nowrap">
-                <Button
-                  v-if="e.attachmentId"
-                  variant="outline"
-                  size="sm"
-                  class="h-7 px-2 text-xs gap-1"
-                  :disabled="downloadingId === e.$id"
-                  @click="downloadFile(e.$id)"
-                >
-                  <component
-                    :is="downloadingId === e.$id ? PhSpinner : PhFile"
-                    :size="12"
-                    :class="{ 'animate-spin': downloadingId === e.$id }"
-                    aria-hidden="true"
-                  />
-                  View file
-                </Button>
-                <a
-                  v-else-if="e.externalReference"
-                  :href="e.externalReference"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <PhLink :size="12" class="text-muted-foreground" aria-hidden="true" />
-                  Open link
-                </a>
-                <span v-else class="text-xs text-muted-foreground italic">None</span>
-              </td>
-              <td class="px-5 py-4 align-top whitespace-nowrap">
-                <span
-                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                  :style="statusBadgeStyle(statusMeta(e.status).base)"
-                >
-                  <component
-                    :is="statusMeta(e.status).icon"
-                    :size="13"
-                    :weight="statusMeta(e.status).iconWeight"
-                    aria-hidden="true"
-                  />
-                  {{ statusMeta(e.status).label }}
-                </span>
-              </td>
-              <td class="px-5 py-4 align-top whitespace-nowrap text-muted-foreground tabular-nums text-xs">
-                {{ formatDate(e.collectedAt || e.$createdAt) }}
-              </td>
-              <td class="px-5 py-4 text-right align-top">
-                <div
-                  class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-                >
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        :aria-label="`Delete ${e.title}`"
-                        @click="removeEvidence(e.$id)"
-                      >
-                        <PhTrash :size="15" aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete evidence</TooltipContent>
-                  </Tooltip>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <EvidenceTab
+        :evidences="pagedList"
+        :is-loading="isLoading"
+        :downloading-id="downloadingId"
+        :show-delete="false"
+        :show-toolbar="false"
+        @download="downloadFile"
+      />
 
-        <div
-          v-if="totalForPagination > 0"
-          class="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between bg-muted/10"
-        >
-          <p class="text-xs text-muted-foreground" aria-live="polite">
-            Showing
-            <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
-            <span class="font-medium text-foreground">{{ totalForPagination }}</span> items
-          </p>
-          <div class="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :disabled="page === 1"
-              aria-label="Previous page"
-              @click="page = Math.max(1, page - 1)"
-            >
-              <PhCaretLeft :size="14" aria-hidden="true" />
-            </Button>
-            <span class="px-2 text-xs tabular-nums text-muted-foreground">
-              Page {{ page }} of {{ pageCount }}
-            </span>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              :disabled="page === pageCount"
-              aria-label="Next page"
-              @click="page = Math.min(pageCount, page + 1)"
-            >
-              <PhCaretRight :size="14" aria-hidden="true" />
-            </Button>
-          </div>
+      <div
+        v-if="totalForPagination > 0"
+        class="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between bg-muted/10"
+      >
+        <p class="text-xs text-muted-foreground" aria-live="polite">
+          Showing
+          <span class="font-medium text-foreground">{{ rangeStart }}–{{ rangeEnd }}</span> of
+          <span class="font-medium text-foreground">{{ totalForPagination }}</span> items
+        </p>
+        <div class="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            :disabled="page === 1"
+            aria-label="Previous page"
+            @click="page = Math.max(1, page - 1)"
+          >
+            <PhCaretLeft :size="14" aria-hidden="true" />
+          </Button>
+          <span class="px-2 text-xs tabular-nums text-muted-foreground">
+            Page {{ page }} of {{ pageCount }}
+          </span>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            :disabled="page === pageCount"
+            aria-label="Next page"
+            @click="page = Math.min(pageCount, page + 1)"
+          >
+            <PhCaretRight :size="14" aria-hidden="true" />
+          </Button>
         </div>
       </div>
     </section>
@@ -919,3 +735,26 @@ function statusMeta(status: string) {
     <AddEvidenceDialog v-model:open="isEvidenceDialogOpen" :tenant-control-id="createControlId" />
   </div>
 </template>
+
+<style scoped>
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down {
+    animation: none !important;
+  }
+}
+</style>

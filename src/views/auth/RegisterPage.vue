@@ -109,7 +109,7 @@ async function handleSubmit() {
               id="fullName"
               v-model="form.fullName"
               type="text"
-              placeholder="Jane Smith"
+              placeholder="Richard Hendricks"
               :class="
                 hasError('fullName')
                   ? 'border-destructive focus-visible:ring-destructive/50 focus-visible:border-destructive'
@@ -132,7 +132,7 @@ async function handleSubmit() {
               id="email"
               v-model="form.email"
               type="email"
-              placeholder="jane@company.com"
+              placeholder="richard@piedpiper.com"
               autocomplete="email"
               :class="
                 hasError('email')

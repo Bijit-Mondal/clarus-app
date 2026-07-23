@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { PhArrowUpRight, PhExport, PhListChecks, PhPlus, PhShieldCheck, PhWarningCircle } from '@phosphor-icons/vue'
+import {
+  PhArrowUpRight,
+  PhExport,
+  PhListChecks,
+  PhPlus,
+  PhShieldCheck,
+  PhWarningCircle,
+} from '@phosphor-icons/vue'
 import PageHeader from '@/components/shell/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,7 +75,12 @@ function goToFrameworks() {
         <div>
           <p class="font-medium text-foreground">Compliance overview could not be loaded</p>
           <p class="mt-1 text-sm text-muted-foreground">
-            {{ getApiErrorMessage(query.error.value, 'An unexpected error occurred. Please try again.') }}
+            {{
+              getApiErrorMessage(
+                query.error.value,
+                'An unexpected error occurred. Please try again.',
+              )
+            }}
           </p>
           <Button class="mt-4" size="sm" variant="outline" @click="query.refetch()">
             Try again
@@ -78,7 +90,11 @@ function goToFrameworks() {
     </div>
 
     <!-- Loading skeleton -->
-    <div v-else-if="query.isPending.value" class="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_1fr]" aria-label="Loading compliance summary">
+    <div
+      v-else-if="query.isPending.value"
+      class="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_1fr]"
+      aria-label="Loading compliance summary"
+    >
       <!-- Readiness Overview Skeleton -->
       <div class="rounded-lg border border-border bg-card p-5 sm:p-6 space-y-5 animate-pulse">
         <div class="flex items-center justify-between">
@@ -89,7 +105,9 @@ function goToFrameworks() {
           <div class="h-6 w-20 rounded bg-muted/50" />
         </div>
         <div class="flex flex-col items-center gap-6 sm:flex-row">
-          <div class="size-40 rounded-full border-4 border-muted/30 flex items-center justify-center bg-card">
+          <div
+            class="size-40 rounded-full border-4 border-muted/30 flex items-center justify-center bg-card"
+          >
             <div class="size-28 rounded-full bg-muted/20" />
           </div>
           <div class="grid w-full grid-cols-3 gap-3">
@@ -126,12 +144,16 @@ function goToFrameworks() {
       v-else-if="!hasFrameworks"
       class="rounded-lg border border-border bg-card p-8 md:p-12 text-center"
     >
-      <div class="mx-auto flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4">
+      <div
+        class="mx-auto flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground mb-4"
+      >
         <PhShieldCheck :size="24" aria-hidden="true" />
       </div>
       <h2 class="text-lg font-semibold text-foreground">Adopt a compliance framework first</h2>
       <p class="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-        To start tracking your organization's security posture and view readiness metrics, you must first adopt a compliance framework. Clarus supports industry standards like SOC 2, ISO 27001, and more.
+        To start tracking your organization's security posture and view readiness metrics, you must
+        first adopt a compliance framework. Clarus supports industry standards like SOC 2, ISO
+        27001, and more.
       </p>
       <div class="mt-6 flex justify-center gap-3">
         <Button size="sm" @click="goToFrameworks">

@@ -94,9 +94,7 @@ export function useControlDocumentsQuery(controlId: Ref<string> | string) {
   const controlIdVal = computed(() => (typeof controlId === 'string' ? controlId : controlId.value))
 
   return useQuery({
-    queryKey: computed(() =>
-      controlKeys.documents(tenantId.value || '', controlIdVal.value || ''),
-    ),
+    queryKey: computed(() => controlKeys.documents(tenantId.value || '', controlIdVal.value || '')),
     queryFn: () => getControlDocuments(tenantId.value!, controlIdVal.value!),
     enabled: computed(() => !!tenantId.value && !!controlIdVal.value),
     staleTime: 300_000,

@@ -617,7 +617,11 @@ function handleCreateDocument() {
         <div class="grid gap-4 py-4">
           <div class="grid gap-2">
             <Label for="title">Title</Label>
-            <Input id="title" v-model="newDocTitle" placeholder="e.g. Encryption Policy" />
+            <Input
+              id="title"
+              v-model="newDocTitle"
+              placeholder="e.g. Middle-Out Encryption Standard"
+            />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -668,7 +672,7 @@ function handleCreateDocument() {
             <Textarea
               id="description"
               v-model="newDocDescription"
-              placeholder="Provide a brief summary of this document's purpose..."
+              placeholder="Provide a brief summary of this document's purpose (e.g. guidelines for backing up Anton)..."
               class="h-20"
             />
           </div>
